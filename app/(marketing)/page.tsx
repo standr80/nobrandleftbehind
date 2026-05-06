@@ -1,6 +1,10 @@
 import Link from 'next/link'
+import { auth } from '@clerk/nextjs/server'
+import { redirect } from 'next/navigation'
 
-export default function LandingPage() {
+export default async function LandingPage() {
+  const { userId } = await auth()
+  if (userId) redirect('/dashboard')
   return (
     <main className="min-h-screen bg-gray-950 text-white flex flex-col">
       {/* Nav */}
