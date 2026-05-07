@@ -2,6 +2,7 @@ import { auth } from '@clerk/nextjs/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import Link from 'next/link'
 import TriggerSuggestButton from '@/components/dashboard/TriggerSuggestButton'
+import SuggestionsList from '@/components/dashboard/SuggestionsList'
 
 async function getTenantForUser(clerkUserId: string) {
   const db = createAdminClient()
@@ -19,9 +20,10 @@ async function getDashboardStats(tenantId: string) {
   const [suggestionsRes, postsRes] = await Promise.all([
     db
       .from('suggestions')
-      .select('id, status', { count: 'exact' })
+      .select('id, proposed_title, rationale, target_keywords, status')
       .eq('tenant_id', tenantId)
-      .eq('status', 'pending'),
+      .eq('status', 'pending')
+      .order('created_at', { ascending: false }),
     db
       .from('blog_posts')
       .select('id, status, title, slug, created_at', { count: 'exact' })
@@ -49,8 +51,11 @@ async function getDashboardStats(tenantId: string) {
     .eq('tenant_id', tenantId)
     .eq('status', 'in_review')
 
+  const suggestions = suggestionsRes.data ?? []
+
   return {
-    pendingSuggestions: suggestionsRes.count ?? 0,
+    pendingSuggestions: suggestions.length,
+    suggestions,
     inReview: inReviewRes.count ?? 0,
     scheduled: scheduledRes.count ?? 0,
     publishedThisMonth: publishedRes.count ?? 0,
@@ -169,6 +174,13 @@ export default async function DashboardPage() {
             Cadence: {tenant.publish_cadence} · {tenant.publish_days?.join(', ')} at{' '}
             {tenant.publish_time}
           </p>
+        </div>
+      )}
+
+      {/* Pending suggestions list */}
+      {stats.suggestions.length > 0 && (
+        <div className="mb-8">
+          <SuggestionsList suggestions={stats.suggestions} tenantId={tenant.id} />
         </div>
       )}
 

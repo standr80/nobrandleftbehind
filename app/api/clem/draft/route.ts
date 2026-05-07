@@ -11,8 +11,8 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'tenantId and suggestionId required' }, { status: 400 })
 
   try {
-    await runDraft(tenantId, suggestionId)
-    return NextResponse.json({ ok: true })
+    const postId = await runDraft(tenantId, suggestionId)
+    return NextResponse.json({ ok: true, postId })
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
     console.error('[/api/clem/draft]', message)
