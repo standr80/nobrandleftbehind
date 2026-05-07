@@ -32,14 +32,18 @@ export async function runImageSearch(tenantId: string, postId: string): Promise<
 
   if (postErr || !post) throw new Error(`Post ${postId} not found`)
 
-  // Build a search query from post title + first tag
-  const searchQuery = [post.title, post.tags?.[0]].filter(Boolean).join(' ')
+  // Build a search query from post title + first two tags
+  const searchQuery = [post.title, ...(post.tags?.slice(0, 2) ?? [])].filter(Boolean).join(' ')
 
-  console.log(`[clem/images] Searching Unsplash for "${searchQuery}"…`)
+  // Randomise the page so each refresh yields fresh candidates
+  const page = Math.floor(Math.random() * 5) + 1
+
+  console.log(`[clem/images] Searching Unsplash for "${searchQuery}" (page ${page})…`)
 
   const result = await unsplash.search.getPhotos({
     query: searchQuery,
-    perPage: 5,
+    perPage: 10,
+    page,
     orientation: 'landscape',
   })
 
