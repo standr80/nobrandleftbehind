@@ -9,6 +9,12 @@ export async function POST(request: Request) {
   const { tenantId } = await request.json()
   if (!tenantId) return NextResponse.json({ error: 'tenantId required' }, { status: 400 })
 
-  await runSuggestions(tenantId)
-  return NextResponse.json({ ok: true })
+  try {
+    await runSuggestions(tenantId)
+    return NextResponse.json({ ok: true })
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err)
+    console.error('[/api/clem/suggest]', message)
+    return NextResponse.json({ error: message }, { status: 500 })
+  }
 }

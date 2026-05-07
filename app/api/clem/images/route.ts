@@ -10,6 +10,12 @@ export async function POST(request: Request) {
   if (!tenantId || !postId)
     return NextResponse.json({ error: 'tenantId and postId required' }, { status: 400 })
 
-  await runImageSearch(tenantId, postId)
-  return NextResponse.json({ ok: true })
+  try {
+    await runImageSearch(tenantId, postId)
+    return NextResponse.json({ ok: true })
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err)
+    console.error('[/api/clem/images]', message)
+    return NextResponse.json({ error: message }, { status: 500 })
+  }
 }
