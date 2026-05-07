@@ -52,6 +52,8 @@ type Section = 'basics' | 'brand' | 'publishing' | 'team'
 export default function SettingsForm({ tenant, members, isAdmin }: Props) {
   const router = useRouter()
   const [section, setSection] = useState<Section>('basics')
+  const [crawling, setCrawling] = useState(false)
+  const [crawlMsg, setCrawlMsg] = useState('')
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [error, setError] = useState('')
@@ -116,6 +118,25 @@ export default function SettingsForm({ tenant, members, isAdmin }: Props) {
     }
   }
 
+  async function recrawl() {
+    setCrawling(true)
+    setCrawlMsg('')
+    try {
+      const res = await fetch('/api/clem/crawl', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tenantId: tenant.id }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error ?? 'Crawl failed')
+      setCrawlMsg('✓ Site crawled — new suggestions will use fresh content')
+    } catch (err) {
+      setCrawlMsg(err instanceof Error ? err.message : 'Crawl failed')
+    } finally {
+      setCrawling(false)
+    }
+  }
+
   const inputClass =
     'w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-sm text-white placeholder-white/30 focus:outline-none focus:border-indigo-500 transition-colors'
   const labelClass = 'block text-xs text-white/50 mb-1.5'
@@ -167,6 +188,37 @@ export default function SettingsForm({ tenant, members, isAdmin }: Props) {
               <p className="text-sm text-white/60 bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 capitalize">
                 {tenant.billing_tier ?? 'starter'}
               </p>
+            </div>
+
+            <div className="pt-2 border-t border-white/10">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <p className="text-sm font-medium">Site crawl</p>
+                  <p className="text-xs text-white/40 mt-0.5">
+                    Re-crawl the domain so Clem understands your current content. Always do this after changing the domain.
+                  </p>
+                  {crawlMsg && (
+                    <p className={`text-xs mt-2 ${crawlMsg.startsWith('✓') ? 'text-emerald-400' : 'text-red-400'}`}>
+                      {crawlMsg}
+                    </p>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  onClick={recrawl}
+                  disabled={crawling}
+                  className="shrink-0 inline-flex items-center gap-1.5 px-4 py-2 text-sm bg-white/5 border border-white/10 hover:bg-white/10 disabled:opacity-40 text-white/70 hover:text-white rounded-lg transition-colors"
+                >
+                  {crawling ? (
+                    <>
+                      <span className="w-3 h-3 border border-white/30 border-t-white rounded-full animate-spin" />
+                      Crawling…
+                    </>
+                  ) : (
+                    '↺ Re-crawl site'
+                  )}
+                </button>
+              </div>
             </div>
           </>
         )}

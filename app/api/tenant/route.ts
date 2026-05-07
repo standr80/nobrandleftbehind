@@ -46,12 +46,30 @@ export async function PATCH(request: Request) {
     if (key in body) (updates as Record<string, unknown>)[key] = body[key]
   }
 
+  // Fetch current domain before updating so we can detect a change
+  const { data: currentTenant } = await db
+    .from('tenants')
+    .select('domain')
+    .eq('id', membership.tenant_id)
+    .single()
+
   const { error } = await db
     .from('tenants')
     .update(updates)
     .eq('id', membership.tenant_id)
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+  // If the domain changed, invalidate the crawl cache so the next suggestion
+  // run crawls the new site rather than returning stale data.
+  const newDomain = updates.domain?.replace(/^https?:\/\//, '').replace(/\/$/, '')
+  const oldDomain = currentTenant?.domain
+  if (newDomain && oldDomain && newDomain !== oldDomain) {
+    await db
+      .from('site_crawl_cache')
+      .delete()
+      .eq('tenant_id', membership.tenant_id)
+  }
 
   return NextResponse.json({ ok: true })
 }
