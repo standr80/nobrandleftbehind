@@ -62,9 +62,10 @@ const STATUS_STYLES: Record<string, string> = {
 
 interface Props {
   post: BlogPost
+  tenantId: string
 }
 
-export default function PostReviewClient({ post }: Props) {
+export default function PostReviewClient({ post, tenantId }: Props) {
   const router = useRouter()
   const fm = parseFrontmatter(post.body_mdx ?? '')
   const initialBody = parseMdxBody(post.body_mdx ?? '')
@@ -92,8 +93,29 @@ export default function PostReviewClient({ post }: Props) {
   const [saving, setSaving] = useState(false)
   const [actionLoading, setActionLoading] = useState<string | null>(null)
   const [saveMsg, setSaveMsg] = useState('')
+  const [imageSearching, setImageSearching] = useState(false)
+  const [imageError, setImageError] = useState('')
 
   const handleBodyChange = useCallback((md: string) => setBody(md), [])
+
+  async function searchImages() {
+    setImageSearching(true)
+    setImageError('')
+    try {
+      const res = await fetch('/api/clem/images', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tenantId, postId: post.id }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error ?? 'Image search failed')
+      router.refresh()
+    } catch (err) {
+      setImageError(err instanceof Error ? err.message : 'Something went wrong')
+    } finally {
+      setImageSearching(false)
+    }
+  }
 
   async function savePost() {
     setSaving(true)
@@ -248,9 +270,30 @@ export default function PostReviewClient({ post }: Props) {
 
         {activeTab === 'images' && (
           <div className="space-y-4">
-            <p className="text-sm text-white/50">
-              Select a hero image for this post. Attribution is included automatically.
-            </p>
+            <div className="flex items-center justify-between">
+              <p className="text-sm text-white/50">
+                {candidates.length
+                  ? 'Select a hero image. Attribution is included automatically.'
+                  : 'Search Unsplash for hero image candidates.'}
+              </p>
+              <button
+                onClick={searchImages}
+                disabled={imageSearching}
+                className="inline-flex items-center gap-1.5 px-4 py-1.5 text-xs bg-white/5 border border-white/10 hover:bg-white/10 disabled:opacity-40 disabled:cursor-not-allowed text-white/60 hover:text-white rounded-lg transition-colors shrink-0"
+              >
+                {imageSearching ? (
+                  <>
+                    <span className="w-3 h-3 border border-white/30 border-t-white rounded-full animate-spin" />
+                    Searching…
+                  </>
+                ) : candidates.length ? (
+                  '↺ Refresh images'
+                ) : (
+                  '⌕ Search Unsplash'
+                )}
+              </button>
+            </div>
+            {imageError && <p className="text-xs text-red-400">{imageError}</p>}
             <ImagePicker
               candidates={candidates}
               selectedId={selectedImage?.unsplash_id ?? null}

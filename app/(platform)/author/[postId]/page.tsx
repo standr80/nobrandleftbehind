@@ -43,7 +43,7 @@ export default async function PostReviewPage({ params }: Props) {
           ← All posts
         </Link>
       </div>
-      <PostReviewClient post={post} />
+      <PostReviewClient post={post} tenantId={post.tenant_id} />
     </div>
   )
 }
