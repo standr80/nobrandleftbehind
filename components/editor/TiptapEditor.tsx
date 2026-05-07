@@ -56,6 +56,7 @@ export default function TiptapEditor({ content, onChange, editable = true }: Pro
     ],
     content,
     editable,
+    immediatelyRender: false,
     onUpdate: handleUpdate,
     editorProps: {
       attributes: {
