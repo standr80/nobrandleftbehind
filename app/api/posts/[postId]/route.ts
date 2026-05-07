@@ -6,24 +6,15 @@ interface Params {
   params: Promise<{ postId: string }>
 }
 
-// PATCH — save edits to a post (body, title, excerpt, tags, meta description)
-export async function PATCH(request: Request, { params }: Params) {
-  const { userId } = await auth()
-  if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-
-  const { postId } = await params
-  const body = await request.json()
-
+async function getPostAndVerifyMember(postId: string, userId: string) {
   const db = createAdminClient()
-
-  // Verify the user belongs to this post's tenant
   const { data: post } = await db
     .from('blog_posts')
     .select('tenant_id')
     .eq('id', postId)
     .single()
 
-  if (!post) return NextResponse.json({ error: 'Post not found' }, { status: 404 })
+  if (!post) return { post: null, member: null, db }
 
   const { data: member } = await db
     .from('tenant_members')
@@ -32,6 +23,19 @@ export async function PATCH(request: Request, { params }: Params) {
     .eq('clerk_user_id', userId)
     .maybeSingle()
 
+  return { post, member, db }
+}
+
+// PATCH — save edits (body, title, excerpt, tags, meta description)
+export async function PATCH(request: Request, { params }: Params) {
+  const { userId } = await auth()
+  if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const { postId } = await params
+  const body = await request.json()
+  const { post, member, db } = await getPostAndVerifyMember(postId, userId)
+
+  if (!post) return NextResponse.json({ error: 'Post not found' }, { status: 404 })
   if (!member) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   type PostUpdate = {
@@ -50,7 +54,23 @@ export async function PATCH(request: Request, { params }: Params) {
   }
 
   const { error } = await db.from('blog_posts').update(updates).eq('id', postId)
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
+  return NextResponse.json({ ok: true })
+}
+
+// DELETE — permanently remove a post
+export async function DELETE(_request: Request, { params }: Params) {
+  const { userId } = await auth()
+  if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const { postId } = await params
+  const { post, member, db } = await getPostAndVerifyMember(postId, userId)
+
+  if (!post) return NextResponse.json({ error: 'Post not found' }, { status: 404 })
+  if (!member) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+
+  const { error } = await db.from('blog_posts').delete().eq('id', postId)
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
   return NextResponse.json({ ok: true })

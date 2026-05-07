@@ -121,6 +121,17 @@ export default function PostReviewClient({ post }: Props) {
     setTimeout(() => setSaveMsg(''), 2000)
   }
 
+  async function handleDelete() {
+    if (!confirm('Permanently delete this post? This cannot be undone.')) return
+    setActionLoading('delete')
+    const res = await fetch(`/api/posts/${post.id}`, { method: 'DELETE' })
+    if (res.ok) {
+      router.push('/author')
+    } else {
+      setActionLoading(null)
+    }
+  }
+
   async function takeAction(action: 'submit_review' | 'approve' | 'request_changes' | 'reject') {
     setActionLoading(action)
     const payload: Record<string, unknown> = {
@@ -186,6 +197,13 @@ export default function PostReviewClient({ post }: Props) {
             className="px-4 py-2 text-sm bg-white/10 hover:bg-white/15 rounded-lg transition-colors disabled:opacity-50"
           >
             {saving ? 'Saving…' : saveMsg || 'Save'}
+          </button>
+          <button
+            onClick={handleDelete}
+            disabled={actionLoading === 'delete'}
+            className="px-4 py-2 text-sm text-white/40 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors disabled:opacity-50"
+          >
+            {actionLoading === 'delete' ? 'Deleting…' : 'Delete'}
           </button>
         </div>
       </div>

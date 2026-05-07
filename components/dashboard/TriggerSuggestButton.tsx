@@ -1,18 +1,21 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 
 interface Props {
   tenantId: string
 }
 
 export default function TriggerSuggestButton({ tenantId }: Props) {
+  const router = useRouter()
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle')
-  const [message, setMessage] = useState('')
+  const [error, setError] = useState('')
 
   async function handleClick() {
+    if (status === 'loading') return
     setStatus('loading')
-    setMessage('')
+    setError('')
     try {
       const res = await fetch('/api/clem/suggest', {
         method: 'POST',
@@ -24,10 +27,10 @@ export default function TriggerSuggestButton({ tenantId }: Props) {
         throw new Error(data.error ?? 'Request failed')
       }
       setStatus('success')
-      setMessage('5 new topic suggestions generated — refresh to see them.')
+      router.refresh()
     } catch (err) {
       setStatus('error')
-      setMessage(err instanceof Error ? err.message : 'Something went wrong')
+      setError(err instanceof Error ? err.message : 'Something went wrong')
     }
   }
 
@@ -35,7 +38,7 @@ export default function TriggerSuggestButton({ tenantId }: Props) {
     <div className="flex flex-col items-center gap-3">
       <button
         onClick={handleClick}
-        disabled={status === 'loading' || status === 'success'}
+        disabled={status === 'loading'}
         className="inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 disabled:bg-indigo-600/40 disabled:cursor-not-allowed text-white px-5 py-2.5 rounded-lg text-sm transition-colors"
       >
         {status === 'loading' ? (
@@ -44,16 +47,12 @@ export default function TriggerSuggestButton({ tenantId }: Props) {
             Generating…
           </>
         ) : status === 'success' ? (
-          '✓ Done'
+          '✦ Generate more topics'
         ) : (
           '✦ Generate topics'
         )}
       </button>
-      {message && (
-        <p className={`text-xs ${status === 'error' ? 'text-red-400' : 'text-green-400'}`}>
-          {message}
-        </p>
-      )}
+      {error && <p className="text-xs text-red-400">{error}</p>}
     </div>
   )
 }
