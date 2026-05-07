@@ -1,15 +1,31 @@
-// Sprint 5 — tenant onboarding wizard
-export default function SetupPage() {
+import { auth } from '@clerk/nextjs/server'
+import { redirect } from 'next/navigation'
+import { createAdminClient } from '@/lib/supabase/admin'
+import SetupWizard from './SetupWizard'
+
+export default async function SetupPage() {
+  const { userId } = await auth()
+  if (!userId) return null
+
+  const db = createAdminClient()
+  const { data: membership } = await db
+    .from('tenant_members')
+    .select('tenant_id, role')
+    .eq('clerk_user_id', userId)
+    .maybeSingle()
+
+  // Already has a tenant — redirect to settings
+  if (membership) redirect('/settings')
+
   return (
     <div className="max-w-2xl">
-      <h1 className="text-2xl font-bold mb-2">Tenant setup</h1>
-      <p className="text-white/40 text-sm mb-8">
-        Configure a new client site — brand voice, Git repo, publish cadence, and more.
-      </p>
-
-      <div className="bg-white/5 border border-white/10 rounded-2xl p-12 text-center">
-        <p className="text-white/30 text-sm">Onboarding wizard coming in Sprint 5.</p>
+      <div className="mb-8">
+        <h1 className="text-2xl font-bold mb-2">Set up your workspace</h1>
+        <p className="text-white/40 text-sm">
+          Tell Clem about your website so it can write content that sounds like you.
+        </p>
       </div>
+      <SetupWizard />
     </div>
   )
 }

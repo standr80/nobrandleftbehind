@@ -51,6 +51,13 @@ async function getDashboardStats(tenantId: string) {
     .eq('tenant_id', tenantId)
     .eq('status', 'in_review')
 
+  const publishLogRes = await db
+    .from('publish_log')
+    .select('id, action, success, git_pr_url, attempted_at, error_message, blog_posts(title)')
+    .eq('tenant_id', tenantId)
+    .order('attempted_at', { ascending: false })
+    .limit(10)
+
   const suggestions = suggestionsRes.data ?? []
 
   return {
@@ -60,6 +67,7 @@ async function getDashboardStats(tenantId: string) {
     scheduled: scheduledRes.count ?? 0,
     publishedThisMonth: publishedRes.count ?? 0,
     recentPosts: postsRes.data ?? [],
+    publishLog: publishLogRes.data ?? [],
   }
 }
 
@@ -181,6 +189,54 @@ export default async function DashboardPage() {
       {stats.suggestions.length > 0 && (
         <div className="mb-8">
           <SuggestionsList suggestions={stats.suggestions} tenantId={tenant.id} />
+        </div>
+      )}
+
+      {/* Publish log */}
+      {stats.publishLog.length > 0 && (
+        <div className="bg-white/5 border border-white/10 rounded-2xl overflow-hidden mb-8">
+          <div className="px-6 py-4 border-b border-white/10">
+            <h2 className="text-sm font-medium text-white/70">Publish log</h2>
+          </div>
+          <ul className="divide-y divide-white/5">
+            {stats.publishLog.map((entry) => {
+              const postTitle = Array.isArray(entry.blog_posts)
+                ? entry.blog_posts[0]?.title
+                : (entry.blog_posts as { title: string } | null)?.title
+              return (
+                <li key={entry.id} className="flex items-center gap-4 px-6 py-3">
+                  <span className={`w-2 h-2 rounded-full shrink-0 ${entry.success ? 'bg-emerald-400' : 'bg-red-400'}`} />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm text-white/80 truncate">{postTitle ?? 'Unknown post'}</p>
+                    <p className="text-xs text-white/30 mt-0.5">
+                      {entry.action?.replace('_', ' ')}
+                      {entry.error_message && (
+                        <span className="text-red-400 ml-2">{entry.error_message}</span>
+                      )}
+                    </p>
+                  </div>
+                  <div className="text-right shrink-0">
+                    {entry.git_pr_url && (
+                      <a
+                        href={entry.git_pr_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-xs text-indigo-400 hover:text-indigo-300 transition-colors block mb-0.5"
+                      >
+                        View PR →
+                      </a>
+                    )}
+                    <span className="text-xs text-white/20">
+                      {new Date(entry.attempted_at!).toLocaleDateString('en-GB', {
+                        day: 'numeric',
+                        month: 'short',
+                      })}
+                    </span>
+                  </div>
+                </li>
+              )
+            })}
+          </ul>
         </div>
       )}
 

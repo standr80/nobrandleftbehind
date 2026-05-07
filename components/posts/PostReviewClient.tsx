@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import dynamic from 'next/dynamic'
 import ImagePicker, { type ImageCandidate } from './ImagePicker'
 import SchedulePicker from './SchedulePicker'
+import PostPreview from './PostPreview'
 import type { BlogPost } from '@/lib/supabase/aliases'
 
 const TiptapEditor = dynamic(() => import('@/components/editor/TiptapEditor'), { ssr: false })
@@ -44,7 +45,7 @@ function buildMdx(fm: Record<string, string>, body: string): string {
 // Types
 // ============================================================
 
-type Tab = 'editor' | 'images' | 'schedule' | 'meta'
+type Tab = 'editor' | 'preview' | 'images' | 'schedule' | 'meta'
 
 const STATUS_STYLES: Record<string, string> = {
   draft: 'bg-yellow-500/10 text-yellow-300 border-yellow-500/20',
@@ -160,6 +161,7 @@ export default function PostReviewClient({ post }: Props) {
 
   const tabs: { id: Tab; label: string }[] = [
     { id: 'editor', label: 'Editor' },
+    { id: 'preview', label: 'Preview' },
     { id: 'images', label: `Images${candidates.length ? ` (${candidates.length})` : ''}` },
     { id: 'schedule', label: 'Schedule' },
     { id: 'meta', label: 'Meta' },
@@ -229,6 +231,19 @@ export default function PostReviewClient({ post }: Props) {
       <div className="mb-8">
         {activeTab === 'editor' && (
           <TiptapEditor content={body} onChange={handleBodyChange} />
+        )}
+
+        {activeTab === 'preview' && (
+          <div className="bg-white/3 border border-white/10 rounded-2xl p-8">
+            <PostPreview
+              title={title}
+              body={body}
+              excerpt={excerpt}
+              tags={tags.split(',').map((t) => t.trim()).filter(Boolean)}
+              selectedImage={selectedImage}
+              draftedAt={post.drafted_at ?? null}
+            />
+          </div>
         )}
 
         {activeTab === 'images' && (

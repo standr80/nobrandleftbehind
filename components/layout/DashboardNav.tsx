@@ -7,7 +7,7 @@ import { UserButton } from '@clerk/nextjs'
 const navItems = [
   { href: '/dashboard', label: 'Dashboard', icon: '▦' },
   { href: '/author', label: 'Author', icon: '✎' },
-  { href: '/setup', label: 'Setup', icon: '⚙' },
+  { href: '/settings', label: 'Settings', icon: '⚙' },
   { href: '/admin', label: 'Admin', icon: '◈' },
 ]
 
