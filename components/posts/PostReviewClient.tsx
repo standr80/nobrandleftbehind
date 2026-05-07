@@ -95,6 +95,9 @@ export default function PostReviewClient({ post, tenantId }: Props) {
   const [saveMsg, setSaveMsg] = useState('')
   const [imageSearching, setImageSearching] = useState(false)
   const [imageError, setImageError] = useState('')
+  const [imageQuery, setImageQuery] = useState(
+    [post.title, ...(post.tags ?? []).slice(0, 2)].filter(Boolean).join(' '),
+  )
 
   const handleBodyChange = useCallback((md: string) => setBody(md), [])
 
@@ -105,7 +108,7 @@ export default function PostReviewClient({ post, tenantId }: Props) {
       const res = await fetch('/api/clem/images', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ tenantId, postId: post.id }),
+        body: JSON.stringify({ tenantId, postId: post.id, query: imageQuery }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error ?? 'Image search failed')
@@ -270,29 +273,33 @@ export default function PostReviewClient({ post, tenantId }: Props) {
 
         {activeTab === 'images' && (
           <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <p className="text-sm text-white/50">
-                {candidates.length
-                  ? 'Select a hero image. Attribution is included automatically.'
-                  : 'Search Unsplash for hero image candidates.'}
-              </p>
+            {/* Search bar */}
+            <div className="flex gap-2">
+              <input
+                value={imageQuery}
+                onChange={(e) => setImageQuery(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && !imageSearching && searchImages()}
+                placeholder="e.g. UK small business printing"
+                className="flex-1 bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-sm text-white placeholder-white/30 focus:outline-none focus:border-indigo-500 transition-colors"
+              />
               <button
                 onClick={searchImages}
-                disabled={imageSearching}
-                className="inline-flex items-center gap-1.5 px-4 py-1.5 text-xs bg-white/5 border border-white/10 hover:bg-white/10 disabled:opacity-40 disabled:cursor-not-allowed text-white/60 hover:text-white rounded-lg transition-colors shrink-0"
+                disabled={imageSearching || !imageQuery.trim()}
+                className="inline-flex items-center gap-1.5 px-4 py-2 text-sm bg-indigo-600 hover:bg-indigo-500 disabled:bg-indigo-600/40 disabled:cursor-not-allowed text-white rounded-lg transition-colors shrink-0"
               >
                 {imageSearching ? (
                   <>
                     <span className="w-3 h-3 border border-white/30 border-t-white rounded-full animate-spin" />
                     Searching…
                   </>
-                ) : candidates.length ? (
-                  '↺ Refresh images'
                 ) : (
-                  '⌕ Search Unsplash'
+                  '⌕ Search'
                 )}
               </button>
             </div>
+            <p className="text-xs text-white/30">
+              Edit the query to refine results — try adding &ldquo;UK&rdquo;, a location, or a more specific term.
+            </p>
             {imageError && <p className="text-xs text-red-400">{imageError}</p>}
             <ImagePicker
               candidates={candidates}

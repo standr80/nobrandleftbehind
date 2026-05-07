@@ -20,7 +20,11 @@ export interface ImageCandidate {
 // Stores 5 candidates as jsonb on blog_posts.image_suggestions
 // ============================================================
 
-export async function runImageSearch(tenantId: string, postId: string): Promise<void> {
+export async function runImageSearch(
+  tenantId: string,
+  postId: string,
+  customQuery?: string,
+): Promise<void> {
   const db = createAdminClient()
 
   const { data: post, error: postErr } = await db
@@ -32,8 +36,10 @@ export async function runImageSearch(tenantId: string, postId: string): Promise<
 
   if (postErr || !post) throw new Error(`Post ${postId} not found`)
 
-  // Build a search query from post title + first two tags
-  const searchQuery = [post.title, ...(post.tags?.slice(0, 2) ?? [])].filter(Boolean).join(' ')
+  // Use the custom query if provided, otherwise build from title + tags
+  const searchQuery =
+    customQuery?.trim() ||
+    [post.title, ...(post.tags?.slice(0, 2) ?? [])].filter(Boolean).join(' ')
 
   // Randomise the page so each refresh yields fresh candidates
   const page = Math.floor(Math.random() * 5) + 1

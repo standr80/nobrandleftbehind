@@ -6,12 +6,12 @@ export async function POST(request: Request) {
   const { userId } = await auth()
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { tenantId, postId } = await request.json()
+  const { tenantId, postId, query } = await request.json()
   if (!tenantId || !postId)
     return NextResponse.json({ error: 'tenantId and postId required' }, { status: 400 })
 
   try {
-    await runImageSearch(tenantId, postId)
+    await runImageSearch(tenantId, postId, query)
     return NextResponse.json({ ok: true })
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
