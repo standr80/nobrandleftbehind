@@ -1,12 +1,35 @@
 'use client'
 
 import { useEditor, EditorContent } from '@tiptap/react'
+import { BubbleMenu } from '@tiptap/react/menus'
 import StarterKit from '@tiptap/starter-kit'
 import Link from '@tiptap/extension-link'
 import Image from '@tiptap/extension-image'
 import Placeholder from '@tiptap/extension-placeholder'
 import { Markdown } from 'tiptap-markdown'
 import { useEffect, useCallback, useState, useRef } from 'react'
+
+// Extend Image to support mutable class + alignment
+const AlignableImage = Image.extend({
+  addAttributes() {
+    return {
+      ...this.parent?.(),
+      class: {
+        default: 'rounded-lg max-w-full my-4 mx-auto block',
+        parseHTML: (el) => el.getAttribute('class'),
+        renderHTML: (attrs) => ({ class: attrs.class }),
+      },
+    }
+  },
+})
+
+const ALIGN = {
+  center: 'rounded-lg max-w-full my-4 mx-auto block',
+  left:   'rounded-lg my-4 mr-6 float-left max-w-[45%]',
+  right:  'rounded-lg my-4 ml-6 float-right max-w-[45%]',
+  full:   'rounded-lg my-4 w-full block',
+} as const
+type Alignment = keyof typeof ALIGN
 
 interface Props {
   content: string
@@ -47,6 +70,8 @@ export default function TiptapEditor({ content, onChange, editable = true, postI
   const imageInputRef = useRef<HTMLInputElement>(null)
   const [imageUploading, setImageUploading] = useState(false)
   const [imageUploadError, setImageUploadError] = useState('')
+  const [altText, setAltText] = useState('')
+  const altInputRef = useRef<HTMLInputElement>(null)
 
   const handleUpdate = useCallback(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -60,7 +85,7 @@ export default function TiptapEditor({ content, onChange, editable = true, postI
     extensions: [
       StarterKit.configure({ codeBlock: { HTMLAttributes: { class: 'bg-white/5 rounded p-3 text-sm font-mono' } } }),
       Link.configure({ openOnClick: false, HTMLAttributes: { class: 'text-indigo-400 underline' } }),
-      Image.configure({ HTMLAttributes: { class: 'rounded-lg max-w-full my-4' } }),
+      AlignableImage,
       Placeholder.configure({ placeholder: 'Start writing…' }),
       Markdown.configure({ html: false, transformCopiedText: true }),
     ],
@@ -102,6 +127,38 @@ export default function TiptapEditor({ content, onChange, editable = true, postI
       setImageUploading(false)
       e.target.value = ''
     }
+  }
+
+  // Sync alt text state whenever the image selection changes
+  useEffect(() => {
+    if (!editor) return
+    const update = () => {
+      if (editor.isActive('image')) {
+        setAltText(editor.getAttributes('image').alt ?? '')
+      }
+    }
+    editor.on('selectionUpdate', update)
+    return () => { editor.off('selectionUpdate', update) }
+  }, [editor])
+
+  function applyAlt() {
+    editor?.chain().focus().updateAttributes('image', { alt: altText }).run()
+  }
+
+  function setAlignment(align: Alignment) {
+    editor?.chain().focus().updateAttributes('image', { class: ALIGN[align] }).run()
+  }
+
+  function getActiveAlignment(): Alignment {
+    const cls: string = editor?.getAttributes('image').class ?? ''
+    if (cls.includes('float-left'))  return 'left'
+    if (cls.includes('float-right')) return 'right'
+    if (cls.includes('w-full'))      return 'full'
+    return 'center'
+  }
+
+  function deleteImage() {
+    editor?.chain().focus().deleteSelection().run()
   }
 
   function openLinkPopover() {
@@ -248,6 +305,56 @@ export default function TiptapEditor({ content, onChange, editable = true, postI
         )}
         </div>
       )}
+      {/* Image bubble menu — appears when an image is selected */}
+      <BubbleMenu
+        editor={editor}
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        shouldShow={({ editor: e }: { editor: any }) => e.isActive('image')}
+      >
+        <div className="flex flex-col gap-1.5 bg-[#1e1e2e] border border-white/15 rounded-xl shadow-xl p-3 min-w-[280px]">
+          {/* Alt text */}
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-white/40 shrink-0 w-6">Alt</span>
+            <input
+              ref={altInputRef}
+              value={altText}
+              onChange={(e) => setAltText(e.target.value)}
+              onBlur={applyAlt}
+              onKeyDown={(e) => { if (e.key === 'Enter') { applyAlt(); e.currentTarget.blur() } }}
+              placeholder="Describe this image for screen readers"
+              className="flex-1 bg-white/5 border border-white/10 rounded px-2.5 py-1 text-xs text-white placeholder-white/20 focus:outline-none focus:border-indigo-500"
+            />
+          </div>
+
+          {/* Alignment + delete */}
+          <div className="flex items-center gap-1 pt-0.5">
+            <span className="text-xs text-white/40 w-6 shrink-0">↔</span>
+            {((['center', 'left', 'right', 'full'] as Alignment[])).map((a) => {
+              const labels: Record<Alignment, string> = { center: '⊞ Centre', left: '⇤ Left', right: '⇥ Right', full: '⟺ Full' }
+              const active = getActiveAlignment() === a
+              return (
+                <button
+                  key={a}
+                  type="button"
+                  onMouseDown={(e) => { e.preventDefault(); setAlignment(a) }}
+                  className={`px-2 py-1 text-xs rounded transition-colors ${active ? 'bg-indigo-600/50 text-indigo-200' : 'text-white/50 hover:bg-white/10 hover:text-white'}`}
+                >
+                  {labels[a]}
+                </button>
+              )
+            })}
+            <div className="flex-1" />
+            <button
+              type="button"
+              onMouseDown={(e) => { e.preventDefault(); deleteImage() }}
+              className="px-2 py-1 text-xs text-white/30 hover:text-red-400 hover:bg-red-500/10 rounded transition-colors"
+            >
+              ✕ Remove
+            </button>
+          </div>
+        </div>
+      </BubbleMenu>
+
       <div className="prose prose-invert prose-sm max-w-none [&_.tiptap]:outline-none">
         <EditorContent editor={editor} />
       </div>
