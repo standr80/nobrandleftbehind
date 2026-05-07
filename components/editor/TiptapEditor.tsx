@@ -100,7 +100,7 @@ export default function TiptapEditor({ content, onChange, editable = true }: Pro
           </ToolbarButton>
           <span className="w-px bg-white/10 mx-1" />
           <ToolbarButton active={editor.isActive('blockquote')} onClick={() => editor.chain().focus().toggleBlockquote().run()}>
-            " Quote
+            &ldquo; Quote
           </ToolbarButton>
           <ToolbarButton active={editor.isActive('code')} onClick={() => editor.chain().focus().toggleCode().run()}>
             {'</>'}

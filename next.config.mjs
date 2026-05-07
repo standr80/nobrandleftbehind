@@ -6,6 +6,7 @@ const nextConfig = {
       { protocol: 'https', hostname: '**.supabase.co' },
     ],
   },
+  serverExternalPackages: ['@mendable/firecrawl-js'],
 }
 
 export default nextConfig
