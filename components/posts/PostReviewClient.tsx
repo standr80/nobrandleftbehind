@@ -298,7 +298,7 @@ export default function PostReviewClient({ post, tenantId }: Props) {
       {/* Tab content */}
       <div className="mb-8">
         {activeTab === 'editor' && (
-          <TiptapEditor content={body} onChange={handleBodyChange} />
+          <TiptapEditor content={body} onChange={handleBodyChange} postId={post.id} />
         )}
 
         {activeTab === 'preview' && (

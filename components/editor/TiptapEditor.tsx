@@ -3,6 +3,7 @@
 import { useEditor, EditorContent } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import Link from '@tiptap/extension-link'
+import Image from '@tiptap/extension-image'
 import Placeholder from '@tiptap/extension-placeholder'
 import { Markdown } from 'tiptap-markdown'
 import { useEffect, useCallback, useState, useRef } from 'react'
@@ -11,6 +12,7 @@ interface Props {
   content: string
   onChange: (markdown: string) => void
   editable?: boolean
+  postId?: string
 }
 
 function ToolbarButton({
@@ -38,10 +40,13 @@ function ToolbarButton({
   )
 }
 
-export default function TiptapEditor({ content, onChange, editable = true }: Props) {
+export default function TiptapEditor({ content, onChange, editable = true, postId }: Props) {
   const [linkPopover, setLinkPopover] = useState(false)
   const [linkUrl, setLinkUrl] = useState('')
   const linkInputRef = useRef<HTMLInputElement>(null)
+  const imageInputRef = useRef<HTMLInputElement>(null)
+  const [imageUploading, setImageUploading] = useState(false)
+  const [imageUploadError, setImageUploadError] = useState('')
 
   const handleUpdate = useCallback(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -55,6 +60,7 @@ export default function TiptapEditor({ content, onChange, editable = true }: Pro
     extensions: [
       StarterKit.configure({ codeBlock: { HTMLAttributes: { class: 'bg-white/5 rounded p-3 text-sm font-mono' } } }),
       Link.configure({ openOnClick: false, HTMLAttributes: { class: 'text-indigo-400 underline' } }),
+      Image.configure({ HTMLAttributes: { class: 'rounded-lg max-w-full my-4' } }),
       Placeholder.configure({ placeholder: 'Start writing…' }),
       Markdown.configure({ html: false, transformCopiedText: true }),
     ],
@@ -77,6 +83,26 @@ export default function TiptapEditor({ content, onChange, editable = true }: Pro
       editor.commands.setContent(content)
     }
   }, [content, editor])
+
+  async function handleImageFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file || !editor || !postId) return
+    setImageUploading(true)
+    setImageUploadError('')
+    try {
+      const fd = new FormData()
+      fd.append('file', file)
+      const res = await fetch(`/api/posts/${postId}/upload`, { method: 'POST', body: fd })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error ?? 'Upload failed')
+      editor.chain().focus().setImage({ src: data.url, alt: file.name.replace(/\.[^/.]+$/, '') }).run()
+    } catch (err) {
+      setImageUploadError(err instanceof Error ? err.message : 'Upload failed')
+    } finally {
+      setImageUploading(false)
+      e.target.value = ''
+    }
+  }
 
   function openLinkPopover() {
     if (!editor) return
@@ -142,6 +168,30 @@ export default function TiptapEditor({ content, onChange, editable = true }: Pro
             <ToolbarButton active={editor.isActive('link')} onClick={openLinkPopover}>
               🔗 Link
             </ToolbarButton>
+            {postId && (
+              <>
+                <ToolbarButton
+                  active={false}
+                  onClick={() => imageInputRef.current?.click()}
+                >
+                  {imageUploading ? (
+                    <span className="inline-flex items-center gap-1">
+                      <span className="w-2.5 h-2.5 border border-white/30 border-t-white rounded-full animate-spin" />
+                      Uploading…
+                    </span>
+                  ) : (
+                    '🖼 Image'
+                  )}
+                </ToolbarButton>
+                <input
+                  ref={imageInputRef}
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp,image/gif"
+                  className="sr-only"
+                  onChange={handleImageFile}
+                />
+              </>
+            )}
             <span className="w-px bg-white/10 mx-1" />
             <ToolbarButton active={false} onClick={() => editor.chain().focus().undo().run()}>
               ↩ Undo
@@ -191,6 +241,11 @@ export default function TiptapEditor({ content, onChange, editable = true }: Pro
               </button>
             </div>
           )}
+        {imageUploadError && (
+          <div className="px-3 py-2 border-t border-white/10 text-xs text-red-400">
+            {imageUploadError}
+          </div>
+        )}
         </div>
       )}
       <div className="prose prose-invert prose-sm max-w-none [&_.tiptap]:outline-none">
