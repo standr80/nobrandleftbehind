@@ -308,7 +308,14 @@ export default function PostReviewClient({ post, tenantId }: Props) {
               body={body}
               excerpt={excerpt}
               tags={tags.split(',').map((t) => t.trim()).filter(Boolean)}
-              selectedImage={selectedImage}
+              heroImageUrl={uploadedImageUrl ?? selectedImage?.thumb_url ?? null}
+              heroImageCredit={
+                uploadedImageUrl
+                  ? null
+                  : selectedImage
+                    ? `Photo by ${selectedImage.photographer_name} on Unsplash`
+                    : null
+              }
               draftedAt={post.drafted_at ?? null}
             />
           </div>

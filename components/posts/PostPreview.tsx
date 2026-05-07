@@ -2,41 +2,33 @@
 
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
-import type { ImageCandidate } from './ImagePicker'
-
 interface Props {
   title: string
   body: string
   excerpt: string
   tags: string[]
-  selectedImage: ImageCandidate | null
+  heroImageUrl: string | null
+  heroImageCredit: string | null
   draftedAt: string | null
 }
 
-export default function PostPreview({ title, body, excerpt, tags, selectedImage, draftedAt }: Props) {
+export default function PostPreview({ title, body, excerpt, tags, heroImageUrl, heroImageCredit, draftedAt }: Props) {
   return (
     <div className="max-w-2xl mx-auto">
       {/* Hero image */}
-      {selectedImage && (
+      {heroImageUrl && (
         <div className="mb-8 rounded-xl overflow-hidden aspect-[16/7] relative">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src={selectedImage.thumb_url}
-            alt={selectedImage.alt_text}
+            src={heroImageUrl}
+            alt={title}
             className="w-full h-full object-cover"
           />
-          <p className="absolute bottom-2 right-3 text-xs text-white/60 bg-black/40 px-2 py-0.5 rounded">
-            Photo by{' '}
-            <a
-              href={selectedImage.photographer_url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="underline hover:text-white"
-            >
-              {selectedImage.photographer_name}
-            </a>{' '}
-            on Unsplash
-          </p>
+          {heroImageCredit && (
+            <p className="absolute bottom-2 right-3 text-xs text-white/60 bg-black/40 px-2 py-0.5 rounded">
+              {heroImageCredit}
+            </p>
+          )}
         </div>
       )}
 
