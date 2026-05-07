@@ -98,8 +98,37 @@ export default function PostReviewClient({ post, tenantId }: Props) {
   const [imageQuery, setImageQuery] = useState(
     [post.title, ...(post.tags ?? []).slice(0, 2)].filter(Boolean).join(' '),
   )
+  // Uploaded image (overrides Unsplash selection when set)
+  const [uploadedImageUrl, setUploadedImageUrl] = useState<string | null>(
+    post.hero_image_url && !candidates.find((c) => c.url === post.hero_image_url)
+      ? post.hero_image_url
+      : null,
+  )
+  const [uploading, setUploading] = useState(false)
+  const [uploadError, setUploadError] = useState('')
 
   const handleBodyChange = useCallback((md: string) => setBody(md), [])
+
+  async function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setUploading(true)
+    setUploadError('')
+    try {
+      const fd = new FormData()
+      fd.append('file', file)
+      const res = await fetch(`/api/posts/${post.id}/upload`, { method: 'POST', body: fd })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error ?? 'Upload failed')
+      setUploadedImageUrl(data.url)
+      setSelectedImage(null) // clear Unsplash selection
+    } catch (err) {
+      setUploadError(err instanceof Error ? err.message : 'Upload failed')
+    } finally {
+      setUploading(false)
+      e.target.value = ''
+    }
+  }
 
   async function searchImages() {
     setImageSearching(true)
@@ -131,6 +160,16 @@ export default function PostReviewClient({ post, tenantId }: Props) {
       tags: `[${tags.split(',').map((t: string) => `"${t.trim()}"`).join(', ')}]`,
     }
     const newMdx = buildMdx(updatedFm, body)
+    const heroFields = uploadedImageUrl
+      ? { hero_image_url: uploadedImageUrl, hero_image_credit: null, hero_image_alt: title }
+      : selectedImage
+        ? {
+            hero_image_url: selectedImage.url,
+            hero_image_credit: `Photo by ${selectedImage.photographer_name} on Unsplash`,
+            hero_image_alt: selectedImage.alt_text,
+          }
+        : {}
+
     const res = await fetch(`/api/posts/${post.id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
@@ -140,6 +179,7 @@ export default function PostReviewClient({ post, tenantId }: Props) {
         excerpt,
         meta_description: metaDescription,
         tags: tags.split(',').map((t: string) => t.trim()).filter(Boolean),
+        ...heroFields,
       }),
     })
     setSaving(false)
@@ -169,7 +209,10 @@ export default function PostReviewClient({ post, tenantId }: Props) {
       if (schedule.mode === 'manual' && schedule.datetime) {
         payload.scheduledFor = new Date(schedule.datetime).toISOString()
       }
-      if (selectedImage) {
+      if (uploadedImageUrl) {
+        payload.heroImageUrl = uploadedImageUrl
+        payload.heroImageAlt = title
+      } else if (selectedImage) {
         payload.heroImageUrl = selectedImage.url
         payload.heroImageCredit = `Photo by ${selectedImage.photographer_name} on Unsplash`
         payload.heroImageAlt = selectedImage.alt_text
@@ -272,8 +315,60 @@ export default function PostReviewClient({ post, tenantId }: Props) {
         )}
 
         {activeTab === 'images' && (
-          <div className="space-y-4">
+          <div className="space-y-6">
+            {/* Upload your own */}
+            <div className="space-y-3">
+              <p className="text-xs text-white/50 font-medium uppercase tracking-wide">Upload your own</p>
+              <label className={`flex flex-col items-center justify-center gap-2 border-2 border-dashed rounded-xl px-6 py-8 cursor-pointer transition-colors ${uploading ? 'border-white/10 opacity-50' : 'border-white/15 hover:border-indigo-500/50 hover:bg-indigo-500/5'}`}>
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp,image/gif"
+                  className="sr-only"
+                  disabled={uploading}
+                  onChange={handleFileUpload}
+                />
+                {uploading ? (
+                  <>
+                    <span className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+                    <span className="text-sm text-white/40">Uploading…</span>
+                  </>
+                ) : (
+                  <>
+                    <span className="text-2xl">↑</span>
+                    <span className="text-sm text-white/60">Click to upload an image</span>
+                    <span className="text-xs text-white/30">JPEG, PNG, WebP or GIF · max 10 MB</span>
+                  </>
+                )}
+              </label>
+              {uploadError && <p className="text-xs text-red-400">{uploadError}</p>}
+              {uploadedImageUrl && (
+                <div className="relative rounded-xl overflow-hidden aspect-[16/7]">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={uploadedImageUrl} alt="Uploaded hero" className="w-full h-full object-cover" />
+                  <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
+                    <button
+                      type="button"
+                      onClick={() => setUploadedImageUrl(null)}
+                      className="px-3 py-1.5 text-xs bg-red-600 hover:bg-red-500 text-white rounded-lg"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                  <div className="absolute top-2 left-2 bg-indigo-600 text-white text-xs px-2 py-0.5 rounded">
+                    ✓ Selected
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="flex items-center gap-3">
+              <hr className="flex-1 border-white/10" />
+              <span className="text-xs text-white/20">or search Unsplash</span>
+              <hr className="flex-1 border-white/10" />
+            </div>
+
             {/* Search bar */}
+            <div className="space-y-4">
             <div className="flex gap-2">
               <input
                 value={imageQuery}
@@ -312,6 +407,7 @@ export default function PostReviewClient({ post, tenantId }: Props) {
                 <span className="text-sm text-white/70 truncate">{selectedImage.alt_text}</span>
               </div>
             )}
+            </div>{/* end Unsplash section */}
           </div>
         )}
 

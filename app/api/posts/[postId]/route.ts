@@ -45,9 +45,15 @@ export async function PATCH(request: Request, { params }: Params) {
     excerpt?: string
     meta_description?: string
     tags?: string[]
+    hero_image_url?: string | null
+    hero_image_credit?: string | null
+    hero_image_alt?: string | null
   }
 
-  const allowedFields: (keyof PostUpdate)[] = ['body_mdx', 'title', 'slug', 'excerpt', 'meta_description', 'tags']
+  const allowedFields: (keyof PostUpdate)[] = [
+    'body_mdx', 'title', 'slug', 'excerpt', 'meta_description', 'tags',
+    'hero_image_url', 'hero_image_credit', 'hero_image_alt',
+  ]
   const updates: PostUpdate = {}
   for (const field of allowedFields) {
     if (field in body) (updates as Record<string, unknown>)[field] = body[field]
