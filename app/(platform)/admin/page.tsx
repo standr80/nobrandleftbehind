@@ -4,6 +4,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import AdminTriggers from './AdminTriggers'
 import CreateWorkspaceForm from './CreateWorkspaceForm'
 import WorkspaceManage from './WorkspaceManage'
+import QuotaManager from './QuotaManager'
 
 const PLATFORM_ADMIN_ID = process.env.PLATFORM_ADMIN_CLERK_USER_ID
 
@@ -18,6 +19,29 @@ export default async function AdminPage() {
     .from('tenants')
     .select('id, name, domain, billing_tier, created_at, cms_type, publish_cadence')
     .order('created_at', { ascending: false })
+
+  // Fetch workspace creation quotas (with Clerk user info joined manually)
+  const { data: rawQuotas } = await db
+    .from('workspace_quotas')
+    .select('id, clerk_user_id, max_workspaces, notes, created_at')
+    .order('created_at', { ascending: false })
+
+  // Enrich quotas with email/name from tenant_members (best-effort)
+  const memberEmailMap: Record<string, { email: string | null; name: string | null }> = {}
+  // Fetch all members to build a clerk_user_id → email/name map
+  const { data: allMembersForMap } = await db
+    .from('tenant_members')
+    .select('clerk_user_id, email, name')
+  for (const m of allMembersForMap ?? []) {
+    if (!memberEmailMap[m.clerk_user_id]) {
+      memberEmailMap[m.clerk_user_id] = { email: m.email, name: m.name }
+    }
+  }
+  const quotas = (rawQuotas ?? []).map((q) => ({
+    ...q,
+    email: memberEmailMap[q.clerk_user_id]?.email ?? null,
+    name: memberEmailMap[q.clerk_user_id]?.name ?? null,
+  }))
 
   // Fetch members for all workspaces in one go
   const { data: allMembers } = await db
@@ -125,6 +149,8 @@ export default async function AdminPage() {
           })}
         </ul>
       </div>
+      {/* Workspace creation quotas */}
+      <QuotaManager quotas={quotas} />
     </div>
   )
 }

@@ -11,9 +11,11 @@ export default async function InvitePage({ params }: Props) {
   const { token } = await params
   const { userId } = await auth()
 
-  // If not signed in, redirect to sign-up then back here
+  // If not signed in, set a pending-invite cookie then go to sign-up.
+  // We can't rely on ?redirect_url because SignUp uses forceRedirectUrl="/dashboard".
+  // The middleware picks up the cookie after authentication and routes back here.
   if (!userId) {
-    redirect(`/sign-up?redirect_url=/invite/${token}`)
+    redirect(`/api/invite/${token}/begin`)
   }
 
   const db = createAdminClient()

@@ -382,6 +382,36 @@ export type Database = {
         }
         Relationships: []
       }
+      workspace_quotas: {
+        Row: {
+          id: string
+          clerk_user_id: string
+          max_workspaces: number
+          granted_by: string | null
+          notes: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          clerk_user_id: string
+          max_workspaces?: number
+          granted_by?: string | null
+          notes?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          clerk_user_id?: string
+          max_workspaces?: number
+          granted_by?: string | null
+          notes?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       workspace_invitations: {
         Row: {
           id: string

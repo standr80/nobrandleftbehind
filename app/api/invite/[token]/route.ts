@@ -2,6 +2,7 @@ import { auth, clerkClient } from '@clerk/nextjs/server'
 import { NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { ACTIVE_WORKSPACE_COOKIE } from '@/lib/workspace/active'
+import { PENDING_INVITE_COOKIE } from './begin/route'
 
 interface Params {
   params: Promise<{ token: string }>
@@ -79,7 +80,7 @@ export async function POST(_request: Request, { params }: Params) {
     .update({ accepted_at: new Date().toISOString() })
     .eq('id', invite.id)
 
-  // Return the tenantId so the page can set the active workspace cookie
+  // Set the active workspace cookie and clear the pending invite cookie
   const response = NextResponse.json({ ok: true, tenantId: invite.tenant_id })
   response.cookies.set(ACTIVE_WORKSPACE_COOKIE, invite.tenant_id, {
     httpOnly: true,
@@ -88,6 +89,7 @@ export async function POST(_request: Request, { params }: Params) {
     path: '/',
     maxAge: 60 * 60 * 24 * 365,
   })
+  response.cookies.delete(PENDING_INVITE_COOKIE)
 
   return response
 }

@@ -2,11 +2,14 @@ import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server'
 import { NextResponse } from 'next/server'
 import { ACTIVE_WORKSPACE_COOKIE } from '@/lib/workspace/active'
 
+const PENDING_INVITE_COOKIE = 'clem_pending_invite'
+
 const isPublicRoute = createRouteMatcher([
   '/',               // marketing landing page
   '/sign-in(.*)',
   '/sign-up(.*)',
   '/invite(.*)',     // workspace invite acceptance page
+  '/api/invite(.*)', // invite API routes (begin, accept)
   '/api/webhooks(.*)', // Inngest + GitHub webhooks are verified internally
 ])
 
@@ -21,6 +24,15 @@ export default clerkMiddleware(async (auth, request) => {
   if (isPublicRoute(request)) return NextResponse.next()
 
   await auth.protect()
+
+  const pathname = request.nextUrl.pathname
+
+  // After sign-up/sign-in: if a pending invite cookie exists and the user
+  // isn't already on the invite page, redirect them there to accept.
+  const pendingInvite = request.cookies.get(PENDING_INVITE_COOKIE)?.value
+  if (pendingInvite && !pathname.startsWith('/invite/')) {
+    return NextResponse.redirect(new URL(`/invite/${pendingInvite}`, request.url))
+  }
 
   // On workspace routes: if the active_workspace_id cookie is present but
   // obviously malformed (not a UUID), clear it so getActiveWorkspace()
