@@ -3,16 +3,8 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import Link from 'next/link'
 import TriggerSuggestButton from '@/components/dashboard/TriggerSuggestButton'
 import SuggestionsList from '@/components/dashboard/SuggestionsList'
-
-async function getTenantForUser(clerkUserId: string) {
-  const db = createAdminClient()
-  const { data } = await db
-    .from('tenant_members')
-    .select('tenant_id, role, tenants(*)')
-    .eq('clerk_user_id', clerkUserId)
-    .maybeSingle()
-  return data
-}
+import WorkspaceSwitcher from '@/components/dashboard/WorkspaceSwitcher'
+import { getActiveWorkspace, getAllWorkspaces } from '@/lib/workspace/active'
 
 async function getDashboardStats(tenantId: string) {
   const db = createAdminClient()
@@ -84,32 +76,42 @@ export default async function DashboardPage() {
   const { userId } = await auth()
   if (!userId) return null
 
-  const membership = await getTenantForUser(userId)
+  const [workspace, allWorkspaces] = await Promise.all([
+    getActiveWorkspace(userId),
+    getAllWorkspaces(userId),
+  ])
 
-  // No tenant linked yet — show setup prompt
-  if (!membership) {
+  // No workspace linked yet — show setup prompt
+  if (!workspace) {
     return (
       <div className="max-w-2xl">
         <h1 className="text-2xl font-bold mb-2">Dashboard</h1>
         <div className="bg-white/5 border border-white/10 rounded-2xl p-12 text-center mt-8">
-          <p className="text-white/60 mb-4">Your account isn&apos;t linked to a tenant yet.</p>
+          <p className="text-white/60 mb-4">Your account isn&apos;t linked to a workspace yet.</p>
           <p className="text-white/30 text-sm max-w-sm mx-auto">
-            Run the SQL in{' '}
-            <code className="text-indigo-300">supabase/migrations/002_seed_designs_on_print.sql</code>{' '}
-            and add yourself to the <code className="text-indigo-300">tenant_members</code> table.
+            Ask your workspace admin to send you an invite, or{' '}
+            <Link href="/setup" className="text-indigo-400 hover:text-indigo-300">set up a new workspace</Link>.
           </p>
         </div>
       </div>
     )
   }
 
-  const tenant = Array.isArray(membership.tenants) ? membership.tenants[0] : membership.tenants
-  if (!tenant) return null
-
+  const tenant = workspace.tenant
   const stats = await getDashboardStats(tenant.id)
 
   return (
     <div className="max-w-5xl">
+      {/* Workspace switcher */}
+      {allWorkspaces.length > 0 && (
+        <div className="mb-6">
+          <WorkspaceSwitcher
+            workspaces={allWorkspaces}
+            activeId={workspace.tenantId}
+          />
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex items-start justify-between mb-8">
         <div>

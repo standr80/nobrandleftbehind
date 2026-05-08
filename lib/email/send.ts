@@ -41,6 +41,50 @@ export async function sendDraftReadyEmail({
   })
 }
 
+export async function sendWorkspaceInvite({
+  to,
+  inviterName,
+  workspaceName,
+  workspaceDomain,
+  role,
+  token,
+}: {
+  to: string
+  inviterName: string
+  workspaceName: string
+  workspaceDomain: string
+  role: string
+  token: string
+}) {
+  const inviteUrl = `${APP_URL}/invite/${token}`
+
+  await resend.emails.send({
+    from: FROM,
+    to,
+    subject: `You've been invited to join ${workspaceName} on Clem`,
+    html: `
+      <div style="font-family:sans-serif;max-width:600px;margin:0 auto;color:#111">
+        <p>Hi,</p>
+        <p><strong>${inviterName}</strong> has invited you to collaborate on <strong>${workspaceName}</strong> (${workspaceDomain}) as a <strong>${role}</strong>.</p>
+        <p>
+          <a href="${inviteUrl}" style="display:inline-block;background:#4f46e5;color:#fff;padding:10px 20px;border-radius:8px;text-decoration:none">
+            Accept invite →
+          </a>
+        </p>
+        <p style="color:#666;font-size:0.875rem">
+          If you don't have a Clem account yet, you'll be asked to create one first.
+          This invite expires in 7 days.
+        </p>
+        <hr style="border:none;border-top:1px solid #eee;margin:24px 0"/>
+        <p style="color:#999;font-size:0.75rem">
+          If you weren't expecting this invitation, you can safely ignore it.
+          Sent by Clem — nobrandleftbehind.com
+        </p>
+      </div>
+    `,
+  })
+}
+
 export async function sendPublishedEmail({
   to,
   postTitle,

@@ -1,5 +1,6 @@
 import { auth } from '@clerk/nextjs/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { getActiveWorkspace } from '@/lib/workspace/active'
 import Link from 'next/link'
 
 const STATUS_STYLES: Record<string, string> = {
@@ -17,29 +18,25 @@ export default async function AuthorPage() {
   const { userId } = await auth()
   if (!userId) return null
 
-  const db = createAdminClient()
+  const workspace = await getActiveWorkspace(userId)
 
-  const { data: member } = await db
-    .from('tenant_members')
-    .select('tenant_id')
-    .eq('clerk_user_id', userId)
-    .maybeSingle()
-
-  if (!member) {
+  if (!workspace) {
     return (
       <div className="max-w-5xl">
         <h1 className="text-2xl font-bold mb-8">Author</h1>
         <div className="bg-white/5 border border-white/10 rounded-2xl p-12 text-center">
-          <p className="text-white/30 text-sm">No tenant linked to your account.</p>
+          <p className="text-white/30 text-sm">No workspace linked to your account.</p>
         </div>
       </div>
     )
   }
 
+  const db = createAdminClient()
+
   const { data: posts } = await db
     .from('blog_posts')
     .select('id, title, slug, status, drafted_at, approved_at, scheduled_for, created_at')
-    .eq('tenant_id', member.tenant_id)
+    .eq('tenant_id', workspace.tenantId)
     .order('created_at', { ascending: false })
 
   const grouped = STATUS_ORDER.reduce<Record<string, typeof posts>>((acc, status) => {

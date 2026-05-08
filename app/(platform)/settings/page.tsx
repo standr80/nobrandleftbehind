@@ -1,24 +1,19 @@
 import { auth } from '@clerk/nextjs/server'
 import { redirect } from 'next/navigation'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { getActiveWorkspace } from '@/lib/workspace/active'
 import SettingsForm from './SettingsForm'
 
 export default async function SettingsPage() {
   const { userId } = await auth()
   if (!userId) return null
 
+  const workspace = await getActiveWorkspace(userId)
+
+  if (!workspace) redirect('/setup')
+
+  const { tenant, role } = workspace
   const db = createAdminClient()
-
-  const { data: membership } = await db
-    .from('tenant_members')
-    .select('tenant_id, role, tenants(*)')
-    .eq('clerk_user_id', userId)
-    .maybeSingle()
-
-  if (!membership) redirect('/setup')
-
-  const tenant = Array.isArray(membership.tenants) ? membership.tenants[0] : membership.tenants
-  if (!tenant) redirect('/setup')
 
   const { data: members } = await db
     .from('tenant_members')
@@ -35,7 +30,7 @@ export default async function SettingsPage() {
       <SettingsForm
         tenant={tenant}
         members={members ?? []}
-        isAdmin={membership.role === 'admin'}
+        isAdmin={role === 'admin'}
       />
     </div>
   )

@@ -1,21 +1,16 @@
 import { auth } from '@clerk/nextjs/server'
 import { redirect } from 'next/navigation'
-import { createAdminClient } from '@/lib/supabase/admin'
+import { getActiveWorkspace } from '@/lib/workspace/active'
 import SetupWizard from './SetupWizard'
 
 export default async function SetupPage() {
   const { userId } = await auth()
   if (!userId) return null
 
-  const db = createAdminClient()
-  const { data: membership } = await db
-    .from('tenant_members')
-    .select('tenant_id, role')
-    .eq('clerk_user_id', userId)
-    .maybeSingle()
+  const workspace = await getActiveWorkspace(userId)
 
-  // Already has a tenant — redirect to settings
-  if (membership) redirect('/settings')
+  // Already has a workspace — redirect to settings
+  if (workspace) redirect('/settings')
 
   return (
     <div className="max-w-2xl">

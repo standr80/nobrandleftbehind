@@ -2,6 +2,7 @@ import { auth } from '@clerk/nextjs/server'
 import { redirect } from 'next/navigation'
 import { createAdminClient } from '@/lib/supabase/admin'
 import AdminTriggers from './AdminTriggers'
+import CreateWorkspaceForm from './CreateWorkspaceForm'
 
 const PLATFORM_ADMIN_ID = process.env.PLATFORM_ADMIN_CLERK_USER_ID
 
@@ -39,9 +40,12 @@ export default async function AdminPage() {
 
   return (
     <div className="max-w-5xl">
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold mb-2">Platform admin</h1>
-        <p className="text-white/40 text-sm">Superadmin access only.</p>
+      <div className="flex items-start justify-between mb-8">
+        <div>
+          <h1 className="text-2xl font-bold mb-2">Platform admin</h1>
+          <p className="text-white/40 text-sm">Superadmin access only.</p>
+        </div>
+        <CreateWorkspaceForm />
       </div>
 
       {/* Platform stats */}

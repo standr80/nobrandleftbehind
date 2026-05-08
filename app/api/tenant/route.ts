@@ -1,22 +1,19 @@
 import { auth } from '@clerk/nextjs/server'
 import { NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { getActiveWorkspace } from '@/lib/workspace/active'
 
-// PATCH /api/tenant — update current user's tenant config
+// PATCH /api/tenant — update the active workspace config
 export async function PATCH(request: Request) {
   const { userId } = await auth()
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
+  const workspace = await getActiveWorkspace(userId)
+  if (!workspace) return NextResponse.json({ error: 'No workspace found' }, { status: 404 })
+  if (workspace.role !== 'admin') return NextResponse.json({ error: 'Admin only' }, { status: 403 })
+
   const db = createAdminClient()
-
-  const { data: membership } = await db
-    .from('tenant_members')
-    .select('tenant_id, role')
-    .eq('clerk_user_id', userId)
-    .maybeSingle()
-
-  if (!membership) return NextResponse.json({ error: 'No tenant found' }, { status: 404 })
-  if (membership.role !== 'admin') return NextResponse.json({ error: 'Admin only' }, { status: 403 })
+  const membership = { tenant_id: workspace.tenantId, role: workspace.role }
 
   const body = await request.json()
 
@@ -74,20 +71,12 @@ export async function PATCH(request: Request) {
   return NextResponse.json({ ok: true })
 }
 
-// POST /api/tenant — create a new tenant and link the current user as admin
+// POST /api/tenant — create a new workspace and link the current user as admin
 export async function POST(request: Request) {
   const { userId } = await auth()
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const db = createAdminClient()
-
-  const { data: existing } = await db
-    .from('tenant_members')
-    .select('id')
-    .eq('clerk_user_id', userId)
-    .maybeSingle()
-
-  if (existing) return NextResponse.json({ error: 'Already linked to a tenant' }, { status: 409 })
 
   const body = await request.json()
   const { name, domain, brand_voice, target_audience, publish_cadence, publish_days, publish_time, cms_type } = body

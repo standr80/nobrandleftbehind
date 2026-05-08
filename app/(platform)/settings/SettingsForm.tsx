@@ -61,6 +61,7 @@ export default function SettingsForm({ tenant, members: initialMembers, isAdmin 
   const [addRole, setAddRole] = useState<'author' | 'reviewer' | 'admin'>('author')
   const [addingMember, setAddingMember] = useState(false)
   const [addMemberError, setAddMemberError] = useState('')
+  const [inviteSent, setInviteSent] = useState(false)
   const [removingId, setRemovingId] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
@@ -145,24 +146,24 @@ export default function SettingsForm({ tenant, members: initialMembers, isAdmin 
     }
   }
 
-  async function addMember() {
+  async function sendInvite() {
     if (!addEmail.trim()) return
     setAddingMember(true)
     setAddMemberError('')
+    setInviteSent(false)
     try {
-      const res = await fetch('/api/tenant/members', {
+      const res = await fetch('/api/invite', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: addEmail.trim(), role: addRole }),
       })
       const data = await res.json()
-      if (!res.ok) throw new Error(data.error ?? 'Failed to add member')
-      setMemberList((prev) => [...prev, data.member])
+      if (!res.ok) throw new Error(data.error ?? 'Failed to send invite')
+      setInviteSent(true)
       setAddEmail('')
       setAddRole('author')
-      setShowAddMember(false)
     } catch (err) {
-      setAddMemberError(err instanceof Error ? err.message : 'Failed to add member')
+      setAddMemberError(err instanceof Error ? err.message : 'Failed to send invite')
     } finally {
       setAddingMember(false)
     }
@@ -430,71 +431,97 @@ export default function SettingsForm({ tenant, members: initialMembers, isAdmin 
               <h3 className="text-sm font-medium">Team members</h3>
               {isAdmin && !showAddMember && (
                 <button
-                  onClick={() => setShowAddMember(true)}
+                  onClick={() => { setShowAddMember(true); setInviteSent(false) }}
                   className="text-xs text-indigo-400 hover:text-indigo-300 transition-colors"
                 >
-                  + Add member
+                  + Invite member
                 </button>
               )}
             </div>
 
-            {/* Add member form */}
+            {/* Invite member form */}
             {showAddMember && (
               <div className="bg-indigo-500/5 border border-indigo-500/20 rounded-xl p-4 space-y-3">
-                <p className="text-xs font-medium text-indigo-300">Add a team member</p>
-                <p className="text-xs text-white/40">
-                  They must already have a Clem account. Enter their email address and we&apos;ll link them automatically.
-                </p>
-                <div>
-                  <label className={labelClass}>Email address</label>
-                  <input
-                    autoFocus
-                    type="email"
-                    className={inputClass}
-                    value={addEmail}
-                    onChange={(e) => setAddEmail(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && addMember()}
-                    placeholder="colleague@example.com"
-                  />
-                </div>
-                <div>
-                  <label className={labelClass}>Role</label>
-                  <div className="flex gap-2">
-                    {(['author', 'reviewer', 'admin'] as const).map((r) => (
+                {inviteSent ? (
+                  <div className="text-center py-2">
+                    <p className="text-sm text-emerald-400 font-medium">✓ Invite sent!</p>
+                    <p className="text-xs text-white/40 mt-1">
+                      They&apos;ll receive an email with a link to join this workspace.
+                    </p>
+                    <div className="flex gap-2 justify-center mt-4">
                       <button
-                        key={r}
-                        type="button"
-                        onClick={() => setAddRole(r)}
-                        className={`px-4 py-1.5 text-xs rounded-lg border capitalize transition-colors ${
-                          addRole === r
-                            ? 'bg-indigo-600 border-indigo-500 text-white'
-                            : 'bg-white/5 border-white/10 text-white/50 hover:text-white'
-                        }`}
+                        onClick={() => { setInviteSent(false); setAddEmail('') }}
+                        className="px-4 py-1.5 text-xs bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg transition-colors"
                       >
-                        {r}
+                        Send another
                       </button>
-                    ))}
+                      <button
+                        onClick={() => { setShowAddMember(false); setInviteSent(false) }}
+                        className="px-4 py-1.5 text-xs text-white/40 hover:text-white rounded-lg transition-colors"
+                      >
+                        Done
+                      </button>
+                    </div>
                   </div>
-                  <p className="text-xs text-white/20 mt-1.5">
-                    Author — can draft and edit · Reviewer — can approve · Admin — full access
-                  </p>
-                </div>
-                {addMemberError && <p className="text-xs text-red-400">{addMemberError}</p>}
-                <div className="flex gap-2 pt-1">
-                  <button
-                    onClick={addMember}
-                    disabled={addingMember || !addEmail.trim()}
-                    className="px-4 py-1.5 text-xs bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 text-white rounded-lg transition-colors"
-                  >
-                    {addingMember ? 'Adding…' : 'Add member'}
-                  </button>
-                  <button
-                    onClick={() => { setShowAddMember(false); setAddEmail(''); setAddMemberError('') }}
-                    className="px-4 py-1.5 text-xs text-white/40 hover:text-white rounded-lg transition-colors"
-                  >
-                    Cancel
-                  </button>
-                </div>
+                ) : (
+                  <>
+                    <p className="text-xs font-medium text-indigo-300">Invite a team member</p>
+                    <p className="text-xs text-white/40">
+                      An email invitation will be sent. If they don&apos;t have a Clem account yet,
+                      they&apos;ll be prompted to create one first.
+                    </p>
+                    <div>
+                      <label className={labelClass}>Email address</label>
+                      <input
+                        autoFocus
+                        type="email"
+                        className={inputClass}
+                        value={addEmail}
+                        onChange={(e) => setAddEmail(e.target.value)}
+                        onKeyDown={(e) => e.key === 'Enter' && sendInvite()}
+                        placeholder="colleague@example.com"
+                      />
+                    </div>
+                    <div>
+                      <label className={labelClass}>Role</label>
+                      <div className="flex gap-2">
+                        {(['author', 'reviewer', 'admin'] as const).map((r) => (
+                          <button
+                            key={r}
+                            type="button"
+                            onClick={() => setAddRole(r)}
+                            className={`px-4 py-1.5 text-xs rounded-lg border capitalize transition-colors ${
+                              addRole === r
+                                ? 'bg-indigo-600 border-indigo-500 text-white'
+                                : 'bg-white/5 border-white/10 text-white/50 hover:text-white'
+                            }`}
+                          >
+                            {r}
+                          </button>
+                        ))}
+                      </div>
+                      <p className="text-xs text-white/20 mt-1.5">
+                        Author — can draft and edit · Reviewer — can approve · Admin — full access
+                      </p>
+                    </div>
+                    {addMemberError && <p className="text-xs text-red-400">{addMemberError}</p>}
+                    <div className="flex gap-2 pt-1">
+                      <button
+                        onClick={sendInvite}
+                        disabled={addingMember || !addEmail.trim()}
+                        className="px-4 py-1.5 text-xs bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 text-white rounded-lg transition-colors"
+                      >
+                        {addingMember ? 'Sending…' : 'Send invite'}
+                      </button>
+                      <button
+                        onClick={() => { setShowAddMember(false); setAddEmail(''); setAddMemberError('') }}
+                        className="px-4 py-1.5 text-xs text-white/40 hover:text-white rounded-lg transition-colors"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </>
+                )}
               </div>
             )}
 

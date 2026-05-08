@@ -1,16 +1,40 @@
 import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server'
+import { NextResponse } from 'next/server'
+import { ACTIVE_WORKSPACE_COOKIE } from '@/lib/workspace/active'
 
 const isPublicRoute = createRouteMatcher([
   '/',               // marketing landing page
   '/sign-in(.*)',
   '/sign-up(.*)',
+  '/invite(.*)',     // workspace invite acceptance page
   '/api/webhooks(.*)', // Inngest + GitHub webhooks are verified internally
 ])
 
+// Platform routes where the workspace cookie must be valid
+const isWorkspaceRoute = createRouteMatcher([
+  '/dashboard(.*)',
+  '/author(.*)',
+  '/settings(.*)',
+])
+
 export default clerkMiddleware(async (auth, request) => {
-  if (!isPublicRoute(request)) {
-    await auth.protect()
+  if (isPublicRoute(request)) return NextResponse.next()
+
+  await auth.protect()
+
+  // On workspace routes: if the active_workspace_id cookie is present but
+  // obviously malformed (not a UUID), clear it so getActiveWorkspace()
+  // falls back to the user's first membership rather than failing silently.
+  if (isWorkspaceRoute(request)) {
+    const cookieVal = request.cookies.get(ACTIVE_WORKSPACE_COOKIE)?.value
+    if (cookieVal && !/^[0-9a-f-]{36}$/i.test(cookieVal)) {
+      const response = NextResponse.next()
+      response.cookies.delete(ACTIVE_WORKSPACE_COOKIE)
+      return response
+    }
   }
+
+  return NextResponse.next()
 })
 
 export const config = {

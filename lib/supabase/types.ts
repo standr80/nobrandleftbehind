@@ -382,6 +382,57 @@ export type Database = {
         }
         Relationships: []
       }
+      workspace_invitations: {
+        Row: {
+          id: string
+          tenant_id: string
+          email: string
+          role: string
+          token: string
+          invited_by: string | null
+          accepted_at: string | null
+          expires_at: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          tenant_id: string
+          email: string
+          role?: string
+          token: string
+          invited_by?: string | null
+          accepted_at?: string | null
+          expires_at?: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          tenant_id?: string
+          email?: string
+          role?: string
+          token?: string
+          invited_by?: string | null
+          accepted_at?: string | null
+          expires_at?: string
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workspace_invitations_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "workspace_invitations_invited_by_fkey"
+            columns: ["invited_by"]
+            isOneToOne: false
+            referencedRelation: "tenant_members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
