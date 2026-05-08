@@ -61,7 +61,7 @@ export default function SettingsForm({ tenant, members: initialMembers, isAdmin 
   const [addRole, setAddRole] = useState<'author' | 'reviewer' | 'admin'>('author')
   const [addingMember, setAddingMember] = useState(false)
   const [addMemberError, setAddMemberError] = useState('')
-  const [inviteSent, setInviteSent] = useState(false)
+  const [inviteResult, setInviteResult] = useState<{ emailSent: boolean; inviteUrl: string } | null>(null)
   const [removingId, setRemovingId] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
@@ -150,7 +150,7 @@ export default function SettingsForm({ tenant, members: initialMembers, isAdmin 
     if (!addEmail.trim()) return
     setAddingMember(true)
     setAddMemberError('')
-    setInviteSent(false)
+    setInviteResult(null)
     try {
       const res = await fetch('/api/invite', {
         method: 'POST',
@@ -159,7 +159,7 @@ export default function SettingsForm({ tenant, members: initialMembers, isAdmin 
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error ?? 'Failed to send invite')
-      setInviteSent(true)
+      setInviteResult({ emailSent: data.emailSent, inviteUrl: data.inviteUrl })
       setAddEmail('')
       setAddRole('author')
     } catch (err) {
@@ -431,7 +431,7 @@ export default function SettingsForm({ tenant, members: initialMembers, isAdmin 
               <h3 className="text-sm font-medium">Team members</h3>
               {isAdmin && !showAddMember && (
                 <button
-                  onClick={() => { setShowAddMember(true); setInviteSent(false) }}
+                  onClick={() => { setShowAddMember(true); setInviteResult(null) }}
                   className="text-xs text-indigo-400 hover:text-indigo-300 transition-colors"
                 >
                   + Invite member
@@ -442,21 +442,48 @@ export default function SettingsForm({ tenant, members: initialMembers, isAdmin 
             {/* Invite member form */}
             {showAddMember && (
               <div className="bg-indigo-500/5 border border-indigo-500/20 rounded-xl p-4 space-y-3">
-                {inviteSent ? (
-                  <div className="text-center py-2">
-                    <p className="text-sm text-emerald-400 font-medium">✓ Invite sent!</p>
-                    <p className="text-xs text-white/40 mt-1">
-                      They&apos;ll receive an email with a link to join this workspace.
-                    </p>
-                    <div className="flex gap-2 justify-center mt-4">
+                {inviteResult ? (
+                  <div className="space-y-3">
+                    {inviteResult.emailSent ? (
+                      <>
+                        <p className="text-sm text-emerald-400 font-medium">✓ Invite email sent!</p>
+                        <p className="text-xs text-white/40">
+                          They&apos;ll receive an email with a link to join this workspace.
+                        </p>
+                      </>
+                    ) : (
+                      <>
+                        <p className="text-sm text-yellow-400 font-medium">⚠ Invite created — email failed to send</p>
+                        <p className="text-xs text-white/40">
+                          The invite is valid. Share this link manually:
+                        </p>
+                        <div className="flex items-center gap-2">
+                          <input
+                            readOnly
+                            value={inviteResult.inviteUrl}
+                            className="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-xs text-white/70 font-mono truncate"
+                          />
+                          <button
+                            onClick={() => navigator.clipboard.writeText(inviteResult.inviteUrl)}
+                            className="shrink-0 px-3 py-2 text-xs bg-white/10 hover:bg-white/20 text-white rounded-lg transition-colors"
+                          >
+                            Copy
+                          </button>
+                        </div>
+                        <p className="text-xs text-white/30">
+                          To fix email delivery, check your <code>RESEND_API_KEY</code> and <code>RESEND_FROM_EMAIL</code> environment variables in Vercel.
+                        </p>
+                      </>
+                    )}
+                    <div className="flex gap-2 pt-1">
                       <button
-                        onClick={() => { setInviteSent(false); setAddEmail('') }}
+                        onClick={() => { setInviteResult(null); setAddEmail('') }}
                         className="px-4 py-1.5 text-xs bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg transition-colors"
                       >
                         Send another
                       </button>
                       <button
-                        onClick={() => { setShowAddMember(false); setInviteSent(false) }}
+                        onClick={() => { setShowAddMember(false); setInviteResult(null) }}
                         className="px-4 py-1.5 text-xs text-white/40 hover:text-white rounded-lg transition-colors"
                       >
                         Done

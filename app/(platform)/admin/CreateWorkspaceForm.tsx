@@ -94,11 +94,11 @@ export default function CreateWorkspaceForm() {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className={labelClass}>Workspace name</label>
-              <input className={inputClass} value={name} onChange={(e) => setName(e.target.value)} placeholder="Designs on Print" />
+              <input className={inputClass} value={name} onChange={(e) => setName(e.target.value)} placeholder="My Workspace" />
             </div>
             <div>
               <label className={labelClass}>Domain</label>
-              <input className={inputClass} value={domain} onChange={(e) => setDomain(e.target.value)} placeholder="designsonprint.com" />
+              <input className={inputClass} value={domain} onChange={(e) => setDomain(e.target.value)} placeholder="workspace-domain.com" />
             </div>
           </div>
 
@@ -109,7 +109,7 @@ export default function CreateWorkspaceForm() {
               className={inputClass}
               value={adminEmail}
               onChange={(e) => setAdminEmail(e.target.value)}
-              placeholder="admin@designsonprint.com"
+              placeholder="admin@workspace-domain.com"
             />
             <p className="text-xs text-white/30 mt-1">
               If this user already has a Clem account they&apos;ll be added directly; otherwise an invite will be sent.

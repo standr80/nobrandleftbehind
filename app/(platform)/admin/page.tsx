@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation'
 import { createAdminClient } from '@/lib/supabase/admin'
 import AdminTriggers from './AdminTriggers'
 import CreateWorkspaceForm from './CreateWorkspaceForm'
+import WorkspaceManage from './WorkspaceManage'
 
 const PLATFORM_ADMIN_ID = process.env.PLATFORM_ADMIN_CLERK_USER_ID
 
@@ -17,6 +18,18 @@ export default async function AdminPage() {
     .from('tenants')
     .select('id, name, domain, billing_tier, created_at, cms_type, publish_cadence')
     .order('created_at', { ascending: false })
+
+  // Fetch members for all workspaces in one go
+  const { data: allMembers } = await db
+    .from('tenant_members')
+    .select('id, tenant_id, name, email, role, clerk_user_id, created_at')
+    .order('created_at', { ascending: true })
+
+  const membersByTenant: Record<string, typeof allMembers> = {}
+  for (const m of allMembers ?? []) {
+    if (!membersByTenant[m.tenant_id]) membersByTenant[m.tenant_id] = []
+    membersByTenant[m.tenant_id]!.push(m)
+  }
 
   const statsPromises = (tenants ?? []).map(async (t) => {
     const [postsRes, publishedRes, suggestionsRes] = await Promise.all([
@@ -51,7 +64,7 @@ export default async function AdminPage() {
       {/* Platform stats */}
       <div className="grid grid-cols-3 gap-4 mb-10">
         {[
-          { label: 'Tenants', value: tenants?.length ?? 0 },
+          { label: 'Workspaces', value: tenants?.length ?? 0 },
           { label: 'Total posts', value: totalPosts },
           { label: 'Total published', value: totalPublished },
         ].map(({ label, value }) => (
@@ -62,43 +75,51 @@ export default async function AdminPage() {
         ))}
       </div>
 
-      {/* Tenant table */}
+      {/* Workspace table */}
       <div className="bg-white/5 border border-white/10 rounded-2xl overflow-hidden mb-8">
         <div className="px-6 py-4 border-b border-white/10">
-          <h2 className="text-sm font-medium text-white/70">All tenants</h2>
+          <h2 className="text-sm font-medium text-white/70">All workspaces</h2>
         </div>
         <ul className="divide-y divide-white/5">
           {(tenants ?? []).map((t) => {
             const s = statsMap[t.id]
+            const members = membersByTenant[t.id] ?? []
             return (
-              <li key={t.id} className="px-6 py-4">
-                <div className="flex items-start justify-between gap-4">
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-3 mb-1">
-                      <p className="text-sm font-medium text-white">{t.name}</p>
-                      <span className="text-xs text-white/30 font-mono">{t.domain}</span>
+              <li key={t.id}>
+                <div className="px-6 py-4">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-3 mb-1">
+                        <p className="text-sm font-medium text-white">{t.name}</p>
+                        <span className="text-xs text-white/30 font-mono">{t.domain}</span>
+                      </div>
+                      <div className="flex items-center gap-4 text-xs text-white/30">
+                        <span>{s?.totalPosts ?? 0} posts</span>
+                        <span>{s?.published ?? 0} published</span>
+                        <span>{s?.pendingSuggestions ?? 0} pending</span>
+                        <span>{members.length} member{members.length !== 1 ? 's' : ''}</span>
+                        <span className="capitalize">{t.cms_type ?? 'download'}</span>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-4 text-xs text-white/30">
-                      <span>{s?.totalPosts ?? 0} posts</span>
-                      <span>{s?.published ?? 0} published</span>
-                      <span>{s?.pendingSuggestions ?? 0} pending suggestions</span>
-                      <span className="capitalize">{t.cms_type ?? 'download'}</span>
-                      <span>{t.publish_cadence}</span>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <span className={`text-xs px-2.5 py-0.5 rounded-full border capitalize ${
+                        t.billing_tier === 'agency'
+                          ? 'bg-purple-500/10 text-purple-300 border-purple-500/20'
+                          : t.billing_tier === 'growth'
+                            ? 'bg-blue-500/10 text-blue-300 border-blue-500/20'
+                            : 'bg-white/5 text-white/40 border-white/10'
+                      }`}>
+                        {t.billing_tier}
+                      </span>
+                      <AdminTriggers tenantId={t.id} tenantName={t.name} />
                     </div>
-                  </div>
-                  <div className="flex items-center gap-2 shrink-0">
-                    <span className={`text-xs px-2.5 py-0.5 rounded-full border capitalize ${
-                      t.billing_tier === 'agency'
-                        ? 'bg-purple-500/10 text-purple-300 border-purple-500/20'
-                        : t.billing_tier === 'growth'
-                          ? 'bg-blue-500/10 text-blue-300 border-blue-500/20'
-                          : 'bg-white/5 text-white/40 border-white/10'
-                    }`}>
-                      {t.billing_tier}
-                    </span>
-                    <AdminTriggers tenantId={t.id} tenantName={t.name} />
                   </div>
                 </div>
+                <WorkspaceManage
+                  workspaceId={t.id}
+                  workspaceName={t.name}
+                  members={members}
+                />
               </li>
             )
           })}

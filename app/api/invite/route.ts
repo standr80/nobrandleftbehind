@@ -5,6 +5,8 @@ import { getActiveWorkspace } from '@/lib/workspace/active'
 import { sendWorkspaceInvite } from '@/lib/email/send'
 import { randomUUID } from 'crypto'
 
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'
+
 // POST /api/invite — send a workspace invitation email
 export async function POST(request: Request) {
   const { userId } = await auth()
@@ -23,41 +25,37 @@ export async function POST(request: Request) {
 
   const db = createAdminClient()
 
-  // Get inviter's name from Clerk
+  // Get inviter's name from Clerk; also check if the invitee already has an account
   let inviterName = 'A workspace admin'
+  let inviteeClerkId: string | null = null
   try {
     const clerk = await clerkClient()
-    const inviter = await clerk.users.getUser(userId)
+    const [inviter, invitees] = await Promise.all([
+      clerk.users.getUser(userId),
+      clerk.users.getUserList({ emailAddress: [email.toLowerCase().trim()] }),
+    ])
     inviterName = [inviter.firstName, inviter.lastName].filter(Boolean).join(' ') || inviterName
+    inviteeClerkId = invitees.data[0]?.id ?? null
   } catch { /* non-critical */ }
 
-  // Check if already a member
-  const { data: existingMember } = await db
-    .from('tenant_members')
-    .select('id')
-    .eq('tenant_id', workspace.tenantId)
-    .eq('clerk_user_id', (
-      // Try to look up Clerk user by email for the membership check
-      await (async () => {
-        try {
-          const clerk = await clerkClient()
-          const users = await clerk.users.getUserList({ emailAddress: [email] })
-          return users.data[0]?.id ?? 'no-match'
-        } catch {
-          return 'no-match'
-        }
-      })()
-    ))
-    .maybeSingle()
+  // Check if already a member (only possible if they have a Clerk account)
+  if (inviteeClerkId) {
+    const { data: existingMember } = await db
+      .from('tenant_members')
+      .select('id')
+      .eq('tenant_id', workspace.tenantId)
+      .eq('clerk_user_id', inviteeClerkId)
+      .maybeSingle()
 
-  if (existingMember) {
-    return NextResponse.json({ error: 'This person is already a member of this workspace' }, { status: 409 })
+    if (existingMember) {
+      return NextResponse.json({ error: 'This person is already a member of this workspace' }, { status: 409 })
+    }
   }
 
   // Check for an active (unexpired, unaccepted) invite for this email+workspace
   const { data: activeInvite } = await db
     .from('workspace_invitations')
-    .select('id')
+    .select('id, token')
     .eq('tenant_id', workspace.tenantId)
     .eq('email', email.toLowerCase().trim())
     .is('accepted_at', null)
@@ -65,7 +63,12 @@ export async function POST(request: Request) {
     .maybeSingle()
 
   if (activeInvite) {
-    return NextResponse.json({ error: 'An active invite already exists for this email address' }, { status: 409 })
+    // Return the existing invite URL so admin can re-share it manually
+    const inviteUrl = `${APP_URL}/invite/${activeInvite.token}`
+    return NextResponse.json(
+      { error: 'An active invite already exists for this email address', inviteUrl },
+      { status: 409 },
+    )
   }
 
   // Get the inviter's tenant_member row ID
@@ -88,6 +91,10 @@ export async function POST(request: Request) {
 
   if (insertError) return NextResponse.json({ error: insertError.message }, { status: 500 })
 
+  const inviteUrl = `${APP_URL}/invite/${token}`
+  let emailSent = false
+  let emailError: string | null = null
+
   try {
     await sendWorkspaceInvite({
       to: email,
@@ -97,11 +104,11 @@ export async function POST(request: Request) {
       role,
       token,
     })
+    emailSent = true
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err)
-    console.error('[/api/invite] Failed to send email:', message)
-    // Don't fail — invite row is created, email failure is non-fatal
+    emailError = err instanceof Error ? err.message : String(err)
+    console.error('[/api/invite] Failed to send email:', emailError)
   }
 
-  return NextResponse.json({ ok: true })
+  return NextResponse.json({ ok: true, emailSent, emailError, inviteUrl })
 }
