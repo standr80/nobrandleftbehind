@@ -9,11 +9,24 @@ import Placeholder from '@tiptap/extension-placeholder'
 import { Markdown } from 'tiptap-markdown'
 import { useEffect, useCallback, useState, useRef } from 'react'
 
-// Extend Image to support mutable class + alignment
+// Extend Image to support mutable class + alignment.
+// We also override `alt` to default to '' (empty string) rather than null,
+// because tiptap-markdown's escapeMarkdown() calls str.replace() on it and
+// crashes if the value is null/undefined.
 const AlignableImage = Image.extend({
   addAttributes() {
     return {
       ...this.parent?.(),
+      alt: {
+        default: '',
+        parseHTML: (el) => el.getAttribute('alt') ?? '',
+        renderHTML: (attrs) => ({ alt: attrs.alt ?? '' }),
+      },
+      title: {
+        default: '',
+        parseHTML: (el) => el.getAttribute('title') ?? '',
+        renderHTML: (attrs) => (attrs.title ? { title: attrs.title } : {}),
+      },
       class: {
         default: 'rounded-lg max-w-full my-4 mx-auto block',
         parseHTML: (el) => el.getAttribute('class'),
@@ -76,7 +89,11 @@ export default function TiptapEditor({ content, onChange, editable = true, postI
   const handleUpdate = useCallback(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     ({ editor }: { editor: any }) => {
-      onChange(editor.storage.markdown.getMarkdown())
+      try {
+        onChange(editor.storage.markdown.getMarkdown())
+      } catch {
+        // Serialisation failure — skip this update rather than crash
+      }
     },
     [onChange],
   )
@@ -102,10 +119,15 @@ export default function TiptapEditor({ content, onChange, editable = true, postI
 
   useEffect(() => {
     if (!editor) return
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const current = (editor.storage as any).markdown.getMarkdown()
-    if (content !== current) {
-      editor.commands.setContent(content)
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const current = (editor.storage as any).markdown.getMarkdown()
+      if (content !== current) {
+        editor.commands.setContent(content ?? '')
+      }
+    } catch {
+      // Serialisation can fail if nodes have malformed attributes (e.g. null alt on images)
+      editor.commands.setContent(content ?? '')
     }
   }, [content, editor])
 
