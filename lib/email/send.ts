@@ -1,6 +1,9 @@
 import { Resend } from 'resend'
 
-const resend = new Resend(process.env.RESEND_API_KEY!)
+function getResend() {
+  return new Resend(process.env.RESEND_API_KEY!)
+}
+
 const FROM = process.env.RESEND_FROM_EMAIL ?? 'clem@nobrandleftbehind.com'
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'
 
@@ -17,7 +20,7 @@ export async function sendDraftReadyEmail({
 }) {
   const reviewUrl = `${APP_URL}/author/${postId}`
 
-  await resend.emails.send({
+  await getResend().emails.send({
     from: FROM,
     to,
     subject: `[Clem] New draft ready for review — "${postTitle}"`,
@@ -58,7 +61,7 @@ export async function sendWorkspaceInvite({
 }) {
   const inviteUrl = `${APP_URL}/invite/${token}`
 
-  await resend.emails.send({
+  await getResend().emails.send({
     from: FROM,
     to,
     subject: `You've been invited to join ${workspaceName} on Clem`,
@@ -96,7 +99,7 @@ export async function sendPublishedEmail({
   prUrl: string
   tenantName: string
 }) {
-  await resend.emails.send({
+  await getResend().emails.send({
     from: FROM,
     to,
     subject: `[Clem] Post published — "${postTitle}"`,
