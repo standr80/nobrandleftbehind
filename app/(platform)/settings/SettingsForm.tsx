@@ -49,11 +49,19 @@ interface Props {
 
 type Section = 'basics' | 'brand' | 'publishing' | 'team'
 
-export default function SettingsForm({ tenant, members, isAdmin }: Props) {
+export default function SettingsForm({ tenant, members: initialMembers, isAdmin }: Props) {
   const router = useRouter()
   const [section, setSection] = useState<Section>('basics')
   const [crawling, setCrawling] = useState(false)
   const [crawlMsg, setCrawlMsg] = useState('')
+  // Team state
+  const [memberList, setMemberList] = useState<Member[]>(initialMembers)
+  const [showAddMember, setShowAddMember] = useState(false)
+  const [addEmail, setAddEmail] = useState('')
+  const [addRole, setAddRole] = useState<'author' | 'reviewer' | 'admin'>('author')
+  const [addingMember, setAddingMember] = useState(false)
+  const [addMemberError, setAddMemberError] = useState('')
+  const [removingId, setRemovingId] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [error, setError] = useState('')
@@ -134,6 +142,48 @@ export default function SettingsForm({ tenant, members, isAdmin }: Props) {
       setCrawlMsg(err instanceof Error ? err.message : 'Crawl failed')
     } finally {
       setCrawling(false)
+    }
+  }
+
+  async function addMember() {
+    if (!addEmail.trim()) return
+    setAddingMember(true)
+    setAddMemberError('')
+    try {
+      const res = await fetch('/api/tenant/members', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: addEmail.trim(), role: addRole }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error ?? 'Failed to add member')
+      setMemberList((prev) => [...prev, data.member])
+      setAddEmail('')
+      setAddRole('author')
+      setShowAddMember(false)
+    } catch (err) {
+      setAddMemberError(err instanceof Error ? err.message : 'Failed to add member')
+    } finally {
+      setAddingMember(false)
+    }
+  }
+
+  async function removeMember(memberId: string) {
+    if (!confirm('Remove this member from the workspace?')) return
+    setRemovingId(memberId)
+    try {
+      const res = await fetch('/api/tenant/members', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ memberId }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error ?? 'Failed to remove')
+      setMemberList((prev) => prev.filter((m) => m.id !== memberId))
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Failed to remove member')
+    } finally {
+      setRemovingId(null)
     }
   }
 
@@ -375,33 +425,111 @@ export default function SettingsForm({ tenant, members, isAdmin }: Props) {
 
         {/* Team */}
         {section === 'team' && (
-          <div>
-            <div className="flex items-center justify-between mb-4">
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
               <h3 className="text-sm font-medium">Team members</h3>
+              {isAdmin && !showAddMember && (
+                <button
+                  onClick={() => setShowAddMember(true)}
+                  className="text-xs text-indigo-400 hover:text-indigo-300 transition-colors"
+                >
+                  + Add member
+                </button>
+              )}
             </div>
+
+            {/* Add member form */}
+            {showAddMember && (
+              <div className="bg-indigo-500/5 border border-indigo-500/20 rounded-xl p-4 space-y-3">
+                <p className="text-xs font-medium text-indigo-300">Add a team member</p>
+                <p className="text-xs text-white/40">
+                  They must already have a Clem account. Enter their email address and we&apos;ll link them automatically.
+                </p>
+                <div>
+                  <label className={labelClass}>Email address</label>
+                  <input
+                    autoFocus
+                    type="email"
+                    className={inputClass}
+                    value={addEmail}
+                    onChange={(e) => setAddEmail(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && addMember()}
+                    placeholder="colleague@example.com"
+                  />
+                </div>
+                <div>
+                  <label className={labelClass}>Role</label>
+                  <div className="flex gap-2">
+                    {(['author', 'reviewer', 'admin'] as const).map((r) => (
+                      <button
+                        key={r}
+                        type="button"
+                        onClick={() => setAddRole(r)}
+                        className={`px-4 py-1.5 text-xs rounded-lg border capitalize transition-colors ${
+                          addRole === r
+                            ? 'bg-indigo-600 border-indigo-500 text-white'
+                            : 'bg-white/5 border-white/10 text-white/50 hover:text-white'
+                        }`}
+                      >
+                        {r}
+                      </button>
+                    ))}
+                  </div>
+                  <p className="text-xs text-white/20 mt-1.5">
+                    Author — can draft and edit · Reviewer — can approve · Admin — full access
+                  </p>
+                </div>
+                {addMemberError && <p className="text-xs text-red-400">{addMemberError}</p>}
+                <div className="flex gap-2 pt-1">
+                  <button
+                    onClick={addMember}
+                    disabled={addingMember || !addEmail.trim()}
+                    className="px-4 py-1.5 text-xs bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 text-white rounded-lg transition-colors"
+                  >
+                    {addingMember ? 'Adding…' : 'Add member'}
+                  </button>
+                  <button
+                    onClick={() => { setShowAddMember(false); setAddEmail(''); setAddMemberError('') }}
+                    className="px-4 py-1.5 text-xs text-white/40 hover:text-white rounded-lg transition-colors"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Member list */}
             <ul className="space-y-2">
-              {members.map((m) => (
+              {memberList.map((m) => (
                 <li key={m.id} className="flex items-center justify-between px-4 py-3 bg-white/5 rounded-xl border border-white/10">
                   <div>
                     <p className="text-sm text-white">{m.name ?? m.email ?? m.clerk_user_id}</p>
-                    {m.email && <p className="text-xs text-white/40 mt-0.5">{m.email}</p>}
+                    {m.email && m.name && <p className="text-xs text-white/40 mt-0.5">{m.email}</p>}
                   </div>
-                  <span className={`text-xs px-2.5 py-0.5 rounded-full border capitalize ${
-                    m.role === 'admin'
-                      ? 'bg-indigo-500/10 text-indigo-300 border-indigo-500/20'
-                      : m.role === 'reviewer'
-                        ? 'bg-blue-500/10 text-blue-300 border-blue-500/20'
-                        : 'bg-white/5 text-white/50 border-white/10'
-                  }`}>
-                    {m.role}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className={`text-xs px-2.5 py-0.5 rounded-full border capitalize ${
+                      m.role === 'admin'
+                        ? 'bg-indigo-500/10 text-indigo-300 border-indigo-500/20'
+                        : m.role === 'reviewer'
+                          ? 'bg-blue-500/10 text-blue-300 border-blue-500/20'
+                          : 'bg-white/5 text-white/50 border-white/10'
+                    }`}>
+                      {m.role}
+                    </span>
+                    {isAdmin && (
+                      <button
+                        onClick={() => removeMember(m.id)}
+                        disabled={removingId === m.id}
+                        className="text-xs text-white/20 hover:text-red-400 transition-colors disabled:opacity-30 ml-1"
+                        title="Remove member"
+                      >
+                        {removingId === m.id ? '…' : '✕'}
+                      </button>
+                    )}
+                  </div>
                 </li>
               ))}
             </ul>
-            <p className="text-xs text-white/20 mt-4">
-              To invite team members, add them to the <code className="text-indigo-300">tenant_members</code> table with the tenant ID{' '}
-              <code className="text-indigo-300">{tenant.id}</code>.
-            </p>
           </div>
         )}
 
