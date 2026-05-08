@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
+import { PENDING_INVITE_COOKIE } from '@/lib/workspace/active'
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'
-export const PENDING_INVITE_COOKIE = 'clem_pending_invite'
 
 interface Params {
   params: Promise<{ token: string }>
@@ -20,7 +20,7 @@ export async function GET(_request: Request, { params }: Params) {
     sameSite: 'lax',
     secure: process.env.NODE_ENV === 'production',
     path: '/',
-    maxAge: 60 * 60 * 24, // 24 hours — long enough for the sign-up flow
+    maxAge: 60 * 60 * 24, // 24 hours
   })
   return response
 }

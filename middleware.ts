@@ -1,8 +1,6 @@
 import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server'
 import { NextResponse } from 'next/server'
-import { ACTIVE_WORKSPACE_COOKIE } from '@/lib/workspace/active'
-
-const PENDING_INVITE_COOKIE = 'clem_pending_invite'
+import { ACTIVE_WORKSPACE_COOKIE, PENDING_INVITE_COOKIE } from '@/lib/workspace/active'
 
 const isPublicRoute = createRouteMatcher([
   '/',               // marketing landing page

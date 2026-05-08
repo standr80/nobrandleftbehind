@@ -1,8 +1,7 @@
 import { auth, clerkClient } from '@clerk/nextjs/server'
 import { NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { ACTIVE_WORKSPACE_COOKIE } from '@/lib/workspace/active'
-import { PENDING_INVITE_COOKIE } from './begin/route'
+import { ACTIVE_WORKSPACE_COOKIE, PENDING_INVITE_COOKIE } from '@/lib/workspace/active'
 
 interface Params {
   params: Promise<{ token: string }>

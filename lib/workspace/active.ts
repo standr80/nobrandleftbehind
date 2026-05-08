@@ -2,6 +2,7 @@ import { cookies } from 'next/headers'
 import { createAdminClient } from '@/lib/supabase/admin'
 
 export const ACTIVE_WORKSPACE_COOKIE = 'clem_active_workspace'
+export const PENDING_INVITE_COOKIE = 'clem_pending_invite'
 
 export interface ActiveWorkspace {
   tenantId: string
