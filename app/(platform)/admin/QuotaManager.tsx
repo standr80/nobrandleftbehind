@@ -23,6 +23,9 @@ export default function QuotaManager({ quotas: initialQuotas }: Props) {
   const [notes, setNotes] = useState('')
   const [saving, setSaving] = useState(false)
   const [revoking, setRevoking] = useState<string | null>(null)
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [editValue, setEditValue] = useState(1)
+  const [updatingId, setUpdatingId] = useState<string | null>(null)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
   const router = useRouter()
@@ -49,6 +52,32 @@ export default function QuotaManager({ quotas: initialQuotas }: Props) {
       setError(err instanceof Error ? err.message : 'Failed to grant quota')
     } finally {
       setSaving(false)
+    }
+  }
+
+  async function updateQuota(q: Quota, newMax: number) {
+    setUpdatingId(q.clerk_user_id)
+    setError('')
+    try {
+      const res = await fetch('/api/admin/quotas', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: q.email ?? q.clerk_user_id,
+          max_workspaces: newMax,
+          notes: q.notes,
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error ?? 'Failed to update')
+      setQuotas((prev) => prev.map((item) =>
+        item.clerk_user_id === q.clerk_user_id ? { ...item, max_workspaces: newMax } : item
+      ))
+      setEditingId(null)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to update quota')
+    } finally {
+      setUpdatingId(null)
     }
   }
 
@@ -140,17 +169,54 @@ export default function QuotaManager({ quotas: initialQuotas }: Props) {
                 {q.notes && <p className="text-xs text-white/20 italic truncate">{q.notes}</p>}
               </div>
               <div className="flex items-center gap-3 shrink-0">
-                <span className="text-xs text-white/50">
-                  up to <strong className="text-white">{q.max_workspaces}</strong> workspace{q.max_workspaces !== 1 ? 's' : ''}
-                </span>
-                <button
-                  onClick={() => revoke(q.clerk_user_id)}
-                  disabled={revoking === q.clerk_user_id}
-                  className="text-xs text-white/20 hover:text-red-400 transition-colors disabled:opacity-30"
-                  title="Revoke access"
-                >
-                  {revoking === q.clerk_user_id ? '…' : 'Revoke'}
-                </button>
+                {editingId === q.clerk_user_id ? (
+                  <>
+                    <input
+                      type="number"
+                      min={1}
+                      max={50}
+                      autoFocus
+                      value={editValue}
+                      onChange={(e) => setEditValue(Math.max(1, parseInt(e.target.value) || 1))}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') updateQuota(q, editValue)
+                        if (e.key === 'Escape') setEditingId(null)
+                      }}
+                      className="w-16 text-center bg-white/10 border border-indigo-500 rounded-lg px-2 py-1 text-sm text-white focus:outline-none"
+                    />
+                    <button
+                      onClick={() => updateQuota(q, editValue)}
+                      disabled={updatingId === q.clerk_user_id}
+                      className="text-xs text-indigo-400 hover:text-indigo-300 transition-colors disabled:opacity-40"
+                    >
+                      {updatingId === q.clerk_user_id ? '…' : 'Save'}
+                    </button>
+                    <button
+                      onClick={() => setEditingId(null)}
+                      className="text-xs text-white/30 hover:text-white transition-colors"
+                    >
+                      Cancel
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <button
+                      onClick={() => { setEditingId(q.clerk_user_id); setEditValue(q.max_workspaces) }}
+                      className="text-xs text-white/50 hover:text-white transition-colors tabular-nums"
+                      title="Click to edit"
+                    >
+                      up to <strong className="text-white">{q.max_workspaces}</strong> workspace{q.max_workspaces !== 1 ? 's' : ''} ✎
+                    </button>
+                    <button
+                      onClick={() => revoke(q.clerk_user_id)}
+                      disabled={revoking === q.clerk_user_id}
+                      className="text-xs text-white/20 hover:text-red-400 transition-colors disabled:opacity-30"
+                      title="Revoke access"
+                    >
+                      {revoking === q.clerk_user_id ? '…' : 'Revoke'}
+                    </button>
+                  </>
+                )}
               </div>
             </li>
           ))}
