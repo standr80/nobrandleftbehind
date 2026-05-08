@@ -4,15 +4,25 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { UserButton } from '@clerk/nextjs'
 
-const navItems = [
+interface Props {
+  isSuperAdmin: boolean
+  canCreateWorkspace: boolean
+}
+
+const coreNavItems = [
   { href: '/dashboard', label: 'Dashboard', icon: '▦' },
   { href: '/author', label: 'Author', icon: '✎' },
   { href: '/settings', label: 'Settings', icon: '⚙' },
-  { href: '/admin', label: 'Admin', icon: '◈' },
 ]
 
-export default function DashboardNav() {
+export default function DashboardNav({ isSuperAdmin, canCreateWorkspace }: Props) {
   const pathname = usePathname()
+
+  const navItems = [
+    ...coreNavItems,
+    ...(canCreateWorkspace ? [{ href: '/setup', label: 'Create workspace', icon: '+' }] : []),
+    ...(isSuperAdmin ? [{ href: '/admin', label: 'Admin', icon: '◈' }] : []),
+  ]
 
   return (
     <aside className="w-56 shrink-0 border-r border-white/10 flex flex-col px-4 py-6 gap-1">
@@ -35,7 +45,7 @@ export default function DashboardNav() {
                   : 'text-white/50 hover:text-white hover:bg-white/5'
               }`}
             >
-              <span className="text-base">{icon}</span>
+              <span className="text-base leading-none">{icon}</span>
               {label}
             </Link>
           )
