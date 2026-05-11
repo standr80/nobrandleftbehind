@@ -81,8 +81,13 @@ export default function UserList({ users }: Props) {
                 </div>
 
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium text-white truncate">{u.name ?? '(no name)'}</p>
-                  <p className="text-xs text-white/40 truncate">{u.email ?? u.clerkUserId}</p>
+                  {/* Show name if set, otherwise email is the primary identifier */}
+                  <p className="text-sm font-medium text-white truncate">
+                    {u.name ?? u.email ?? '—'}
+                  </p>
+                  {u.name && (
+                    <p className="text-xs text-white/40 truncate">{u.email ?? u.clerkUserId}</p>
+                  )}
                 </div>
 
                 {/* Workspaces badge */}
@@ -116,6 +121,14 @@ export default function UserList({ users }: Props) {
               {expanded === u.clerkUserId && (
                 <div className="px-6 pb-4 pt-1 bg-white/[0.02] border-t border-white/5">
                   <div className="grid grid-cols-2 gap-3 mb-3 text-xs">
+                    <div>
+                      <p className="text-white/30 mb-0.5">Email</p>
+                      <p className="text-white/60 truncate">{u.email ?? '—'}</p>
+                    </div>
+                    <div>
+                      <p className="text-white/30 mb-0.5">Name</p>
+                      <p className="text-white/60">{u.name ?? <span className="italic text-white/20">not set</span>}</p>
+                    </div>
                     <div>
                       <p className="text-white/30 mb-0.5">Clerk ID</p>
                       <p className="font-mono text-white/50 text-[10px] break-all">{u.clerkUserId}</p>
