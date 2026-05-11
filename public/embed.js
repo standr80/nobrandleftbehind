@@ -10,7 +10,7 @@ function initWidget(sc){
   var showImg=sc.getAttribute('data-show-images')!=='false';
   var showAuth=sc.getAttribute('data-show-author')!=='false';
   var slugAttr=sc.getAttribute('data-slug')||'';
-  var openMode=sc.getAttribute('data-open')||'same-tab';
+  var openMode=sc.getAttribute('data-open')||'modal';
   var font=sc.getAttribute('data-font')||'inherit';
   var base=sc.src.replace(/\/embed\.js(\?.*)?$/,'');
 

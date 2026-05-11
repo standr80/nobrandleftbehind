@@ -78,7 +78,7 @@ export default function SettingsForm({ tenant, members: initialMembers, isAdmin 
   const [embedLimit, setEmbedLimit] = useState('6')
   const [embedShowImages, setEmbedShowImages] = useState(true)
   const [embedShowAuthor, setEmbedShowAuthor] = useState(true)
-  const [embedOpen, setEmbedOpen] = useState('same-tab')
+  const [embedOpen, setEmbedOpen] = useState('modal')
   const [embedCopied, setEmbedCopied] = useState(false)
 
   const [name, setName] = useState(tenant.name)
