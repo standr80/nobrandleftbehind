@@ -18,9 +18,10 @@ interface Workspace {
 interface Props {
   workspaces: Workspace[]
   activeId: string
+  canCreateWorkspace?: boolean
 }
 
-export default function WorkspaceSwitcher({ workspaces, activeId }: Props) {
+export default function WorkspaceSwitcher({ workspaces, activeId, canCreateWorkspace = false }: Props) {
   const [open, setOpen] = useState(false)
   const [switching, setSwitching] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
@@ -123,15 +124,17 @@ export default function WorkspaceSwitcher({ workspaces, activeId }: Props) {
             </>
           )}
 
-          <div className="border-t border-white/5 p-2">
-            <a
-              href="/setup"
-              className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-white/5 transition-colors text-sm text-white/50 hover:text-white/80"
-            >
-              <span className="text-base leading-none">+</span>
-              <span>New workspace</span>
-            </a>
-          </div>
+          {canCreateWorkspace && (
+            <div className="border-t border-white/5 p-2">
+              <a
+                href="/setup"
+                className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-white/5 transition-colors text-sm text-white/50 hover:text-white/80"
+              >
+                <span className="text-base leading-none">+</span>
+                <span>New workspace</span>
+              </a>
+            </div>
+          )}
         </div>
       )}
     </div>

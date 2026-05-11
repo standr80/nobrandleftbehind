@@ -77,6 +77,14 @@ export default function SetupWizard() {
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error ?? 'Setup failed')
+      // Set the new workspace as the active one before navigating
+      if (data.tenantId) {
+        await fetch('/api/workspace/switch', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ tenantId: data.tenantId }),
+        })
+      }
       router.push('/dashboard')
       router.refresh()
     } catch (err) {

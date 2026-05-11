@@ -6,6 +6,8 @@ import SuggestionsList from '@/components/dashboard/SuggestionsList'
 import WorkspaceSwitcher from '@/components/dashboard/WorkspaceSwitcher'
 import { getActiveWorkspace, getAllWorkspaces } from '@/lib/workspace/active'
 
+const PLATFORM_ADMIN_ID = process.env.PLATFORM_ADMIN_CLERK_USER_ID
+
 async function getDashboardStats(tenantId: string) {
   const db = createAdminClient()
 
@@ -76,10 +78,19 @@ export default async function DashboardPage() {
   const { userId } = await auth()
   if (!userId) return null
 
-  const [workspace, allWorkspaces] = await Promise.all([
+  const isSuperAdmin = userId === PLATFORM_ADMIN_ID
+  const db = createAdminClient()
+
+  const [workspace, allWorkspaces, quotaRes] = await Promise.all([
     getActiveWorkspace(userId),
     getAllWorkspaces(userId),
+    isSuperAdmin
+      ? Promise.resolve({ data: null })
+      : db.from('workspace_quotas').select('max_workspaces').eq('clerk_user_id', userId).maybeSingle(),
   ])
+
+  const quota = isSuperAdmin ? Infinity : (quotaRes.data?.max_workspaces ?? 0)
+  const canCreateWorkspace = isSuperAdmin || (quota > 0 && allWorkspaces.length < quota)
 
   // No workspace linked yet — show setup prompt
   if (!workspace) {
@@ -108,6 +119,7 @@ export default async function DashboardPage() {
           <WorkspaceSwitcher
             workspaces={allWorkspaces}
             activeId={workspace.tenantId}
+            canCreateWorkspace={canCreateWorkspace}
           />
         </div>
       )}
@@ -187,12 +199,10 @@ export default async function DashboardPage() {
         </div>
       )}
 
-      {/* Pending suggestions list */}
-      {stats.suggestions.length > 0 && (
-        <div className="mb-8">
-          <SuggestionsList suggestions={stats.suggestions} tenantId={tenant.id} />
-        </div>
-      )}
+      {/* Pending suggestions list — always visible so Add your own is accessible */}
+      <div className="mb-8">
+        <SuggestionsList suggestions={stats.suggestions} tenantId={tenant.id} />
+      </div>
 
       {/* Publish log */}
       {stats.publishLog.length > 0 && (

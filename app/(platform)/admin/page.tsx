@@ -1,10 +1,11 @@
-import { auth } from '@clerk/nextjs/server'
+import { auth, clerkClient } from '@clerk/nextjs/server'
 import { redirect } from 'next/navigation'
 import { createAdminClient } from '@/lib/supabase/admin'
 import AdminTriggers from './AdminTriggers'
 import CreateWorkspaceForm from './CreateWorkspaceForm'
 import WorkspaceManage from './WorkspaceManage'
 import QuotaManager from './QuotaManager'
+import UserList from './UserList'
 
 const PLATFORM_ADMIN_ID = process.env.PLATFORM_ADMIN_CLERK_USER_ID
 
@@ -44,16 +45,83 @@ export default async function AdminPage() {
   }))
 
   // Fetch members for all workspaces in one go
-  const { data: allMembers } = await db
+  const { data: rawMembers } = await db
     .from('tenant_members')
     .select('id, tenant_id, name, email, role, clerk_user_id, created_at')
     .order('created_at', { ascending: true })
 
+  // Enrich members with live Clerk data (name + primary email + last sign-in)
+  const uniqueClerkIds = [...new Set((rawMembers ?? []).map((m) => m.clerk_user_id))]
+  type ClerkUserInfo = { name: string | null; email: string | null; lastSignInAt: number | null }
+  const clerkInfoMap: Record<string, ClerkUserInfo> = {}
+  if (uniqueClerkIds.length > 0) {
+    try {
+      const clerk = await clerkClient()
+      const BATCH = 100
+      for (let i = 0; i < uniqueClerkIds.length; i += BATCH) {
+        const batch = uniqueClerkIds.slice(i, i + BATCH)
+        const res = await clerk.users.getUserList({ userId: batch, limit: BATCH })
+        for (const u of res.data) {
+          clerkInfoMap[u.id] = {
+            name: [u.firstName, u.lastName].filter(Boolean).join(' ') || null,
+            email: u.emailAddresses.find((e) => e.id === u.primaryEmailAddressId)?.emailAddress
+              ?? u.emailAddresses[0]?.emailAddress
+              ?? null,
+            lastSignInAt: u.lastSignInAt ?? null,
+          }
+        }
+      }
+    } catch (err) {
+      console.error('[admin] Failed to fetch Clerk user info:', err)
+    }
+  }
+
+  const allMembers = (rawMembers ?? []).map((m) => {
+    const ci = clerkInfoMap[m.clerk_user_id]
+    return {
+      ...m,
+      name: m.name ?? ci?.name ?? null,
+      email: m.email ?? ci?.email ?? null,
+      lastSignInAt: ci?.lastSignInAt ?? null,
+    }
+  })
+
+  // Build per-workspace member lists (for WorkspaceManage panels)
   const membersByTenant: Record<string, typeof allMembers> = {}
-  for (const m of allMembers ?? []) {
+  for (const m of allMembers) {
     if (!membersByTenant[m.tenant_id]) membersByTenant[m.tenant_id] = []
     membersByTenant[m.tenant_id]!.push(m)
   }
+
+  // Build user list data (for UserList section)
+  const tenantNameMap = Object.fromEntries((tenants ?? []).map((t) => [t.id, t.name]))
+  type UserRow = {
+    clerkUserId: string
+    name: string | null
+    email: string | null
+    lastSignInAt: number | null
+    memberships: Array<{ tenantId: string; tenantName: string; role: string }>
+  }
+  const userRowMap: Record<string, UserRow> = {}
+  for (const m of allMembers) {
+    if (!userRowMap[m.clerk_user_id]) {
+      userRowMap[m.clerk_user_id] = {
+        clerkUserId: m.clerk_user_id,
+        name: m.name,
+        email: m.email,
+        lastSignInAt: m.lastSignInAt,
+        memberships: [],
+      }
+    }
+    userRowMap[m.clerk_user_id]!.memberships.push({
+      tenantId: m.tenant_id,
+      tenantName: tenantNameMap[m.tenant_id] ?? m.tenant_id,
+      role: m.role,
+    })
+  }
+  const userRows = Object.values(userRowMap).sort((a, b) =>
+    (b.lastSignInAt ?? 0) - (a.lastSignInAt ?? 0),
+  )
 
   const statsPromises = (tenants ?? []).map(async (t) => {
     const [postsRes, publishedRes, suggestionsRes] = await Promise.all([
@@ -151,6 +219,9 @@ export default async function AdminPage() {
       </div>
       {/* Workspace creation quotas */}
       <QuotaManager quotas={quotas} />
+
+      {/* User list */}
+      <UserList users={userRows} />
     </div>
   )
 }

@@ -222,10 +222,11 @@ export default function WorkspaceManage({ workspaceId, workspaceName, members: i
                 {admins.map((m) => (
                   <li key={m.id} className="flex items-center gap-3 bg-white/5 rounded-xl px-4 py-2.5">
                     <div className="min-w-0 flex-1">
-                      <p className="text-sm text-white truncate">{m.name ?? m.email ?? m.clerk_user_id}</p>
-                      {m.email && m.name && (
-                        <p className="text-xs text-white/30 truncate">{m.email}</p>
+                      <p className="text-sm text-white truncate">{m.name ?? m.email ?? '—'}</p>
+                      {m.email && (
+                        <p className="text-xs text-white/40 truncate">{m.email}</p>
                       )}
+                      <p className="text-[10px] text-white/20 font-mono truncate">{m.clerk_user_id}</p>
                     </div>
                     <span className="text-xs px-2.5 py-0.5 rounded-full bg-indigo-500/10 text-indigo-300 border border-indigo-500/20 shrink-0">
                       admin
