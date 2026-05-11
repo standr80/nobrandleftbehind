@@ -239,7 +239,7 @@ export default function PostReviewClient({ post, tenantId }: Props) {
     }
   }
 
-  async function takeAction(action: 'submit_review' | 'approve' | 'request_changes' | 'reject') {
+  async function takeAction(action: 'submit_review' | 'approve' | 'request_changes' | 'reject' | 'publish_now') {
     setActionLoading(action)
     const payload: Record<string, unknown> = {
       action,
