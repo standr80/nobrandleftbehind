@@ -27,7 +27,8 @@ export default async function PlatformLayout({ children }: { children: React.Rea
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 flex">
       <DashboardNav isSuperAdmin={isSuperAdmin} canCreateWorkspace={canCreateWorkspace} />
-      <main className="flex-1 min-w-0 p-4 md:p-8 pt-4">{children}</main>
+      {/* pt-[57px] clears the fixed mobile top bar; md overrides to 0 */}
+      <main className="flex-1 min-w-0 p-4 pt-[73px] md:pt-8 md:p-8">{children}</main>
     </div>
   )
 }

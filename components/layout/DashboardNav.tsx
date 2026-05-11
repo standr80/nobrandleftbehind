@@ -123,8 +123,6 @@ export default function DashboardNav({ isSuperAdmin, canCreateWorkspace }: Props
         </div>
       </div>
 
-      {/* ── Mobile content spacer (pushes page content below top bar) ── */}
-      <div className="md:hidden h-[57px] shrink-0 w-full" />
     </>
   )
 }
