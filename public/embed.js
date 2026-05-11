@@ -131,16 +131,17 @@ function initWidget(sc){
   }
 }
 
-// ── Bootstrap ────────────────────────────────────────────────────────────────
-// If currentScript is available (synchronous load), initialise just this one.
-// If null (async/dynamic injection by a CMS), all instances are already in the
-// DOM so we initialise every uninitialised embed script in one pass.
 var cur=document.currentScript;
-if(cur){
+if(cur&&!cur.getAttribute('data-clem-init')){
   cur.setAttribute('data-clem-init','1');
   initWidget(cur);
-}else{
-  var all=document.querySelectorAll('script[src*="embed.js"][data-tenant]:not([data-clem-init])');
-  for(var i=0;i<all.length;i++){all[i].setAttribute('data-clem-init','1');initWidget(all[i]);}
+}else if(!cur){
+  for(var _i=0,_s;_i<document.scripts.length;_i++){
+    _s=document.scripts[_i];
+    if(_s.src.indexOf('embed.js')!==-1&&_s.getAttribute('data-tenant')&&!_s.getAttribute('data-clem-init')){
+      _s.setAttribute('data-clem-init','1');
+      initWidget(_s);
+    }
+  }
 }
 })();
