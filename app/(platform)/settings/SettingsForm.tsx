@@ -209,7 +209,8 @@ export default function SettingsForm({ tenant, members: initialMembers, isAdmin 
   const tenantSlug = domainToSlug(tenant.domain)
 
   const embedSnippet = useCallback(() => {
-    return `<script\n  src="https://nobrandleftbehind.com/embed.js"\n  data-tenant="${tenantSlug}"\n  data-theme="${embedTheme}"\n  data-accent="${embedAccent}"\n  data-mode="${embedMode}"\n  data-limit="${embedLimit}"\n  data-open="${embedOpen}"\n  data-show-images="${embedShowImages}"\n  data-show-author="${embedShowAuthor}">\n</script>`
+    const origin = typeof window !== 'undefined' ? window.location.origin : ''
+    return `<script\n  src="${origin}/embed.js"\n  data-tenant="${tenantSlug}"\n  data-theme="${embedTheme}"\n  data-accent="${embedAccent}"\n  data-mode="${embedMode}"\n  data-limit="${embedLimit}"\n  data-open="${embedOpen}"\n  data-show-images="${embedShowImages}"\n  data-show-author="${embedShowAuthor}">\n</script>`
   }, [tenantSlug, embedTheme, embedAccent, embedMode, embedLimit, embedOpen, embedShowImages, embedShowAuthor])
 
   function copyEmbed() {
