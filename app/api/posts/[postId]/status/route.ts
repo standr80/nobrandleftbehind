@@ -7,7 +7,7 @@ interface Params {
   params: Promise<{ postId: string }>
 }
 
-type Action = 'submit_review' | 'approve' | 'request_changes' | 'reject'
+type Action = 'submit_review' | 'approve' | 'request_changes' | 'reject' | 'publish_now'
 
 export async function POST(request: Request, { params }: Params) {
   const { userId } = await auth()
@@ -114,6 +114,20 @@ export async function POST(request: Request, { params }: Params) {
       await db
         .from('blog_posts')
         .update({ status: 'rejected', reviewer_notes: reviewerNotes ?? null })
+        .eq('id', postId)
+      break
+    }
+
+    case 'publish_now': {
+      await db
+        .from('blog_posts')
+        .update({
+          status: 'published',
+          published_at: now,
+          approved_at: now,
+          approved_by: member.id,
+          reviewer_notes: reviewerNotes ?? null,
+        })
         .eq('id', postId)
       break
     }
