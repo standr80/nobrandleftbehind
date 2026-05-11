@@ -93,6 +93,8 @@ export default function PostReviewClient({ post, tenantId }: Props) {
   const [saving, setSaving] = useState(false)
   const [actionLoading, setActionLoading] = useState<string | null>(null)
   const [saveMsg, setSaveMsg] = useState('')
+  const [htmlCopied, setHtmlCopied] = useState(false)
+  const [htmlLoading, setHtmlLoading] = useState(false)
   const [imageSearching, setImageSearching] = useState(false)
   const [imageError, setImageError] = useState('')
   const [imageQuery, setImageQuery] = useState(
@@ -108,6 +110,45 @@ export default function PostReviewClient({ post, tenantId }: Props) {
   const [uploadError, setUploadError] = useState('')
 
   const handleBodyChange = useCallback((md: string) => setBody(md), [])
+
+  async function fetchHtml(wrap: boolean): Promise<string> {
+    const res = await fetch(`/api/posts/${post.id}/html${wrap ? '?wrap=1' : ''}`)
+    const data = await res.json()
+    if (!res.ok) throw new Error(data.error ?? 'Failed to convert HTML')
+    return data.html as string
+  }
+
+  async function copyHtml() {
+    setHtmlLoading(true)
+    try {
+      const html = await fetchHtml(false)
+      await navigator.clipboard.writeText(html)
+      setHtmlCopied(true)
+      setTimeout(() => setHtmlCopied(false), 2000)
+    } catch (err) {
+      console.error(err)
+    } finally {
+      setHtmlLoading(false)
+    }
+  }
+
+  async function downloadHtml() {
+    setHtmlLoading(true)
+    try {
+      const html = await fetchHtml(true)
+      const blob = new Blob([html], { type: 'text/html' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `${post.slug ?? 'post'}.html`
+      a.click()
+      URL.revokeObjectURL(url)
+    } catch (err) {
+      console.error(err)
+    } finally {
+      setHtmlLoading(false)
+    }
+  }
 
   async function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
@@ -260,7 +301,23 @@ export default function PostReviewClient({ post, tenantId }: Props) {
           </div>
         </div>
 
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex items-center gap-2 shrink-0 flex-wrap">
+          <button
+            onClick={copyHtml}
+            disabled={htmlLoading}
+            className="px-4 py-2 text-sm bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors disabled:opacity-50"
+            title="Copy post as clean HTML"
+          >
+            {htmlLoading ? 'Converting…' : htmlCopied ? '✓ Copied HTML' : 'Copy HTML'}
+          </button>
+          <button
+            onClick={downloadHtml}
+            disabled={htmlLoading}
+            className="px-4 py-2 text-sm bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors disabled:opacity-50"
+            title="Download as self-contained .html file"
+          >
+            ↓ .html
+          </button>
           <button
             onClick={savePost}
             disabled={saving}

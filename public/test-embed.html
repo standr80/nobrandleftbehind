@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Embed widget test</title>
+  <style>
+    body { font-family: system-ui, sans-serif; background: #f1f5f9; padding: 2rem; }
+    h2 { font-size: .75rem; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; color: #94a3b8; margin: 2rem 0 .5rem; }
+    .sep { border: none; border-top: 1px solid #e2e8f0; margin: 2rem 0; }
+  </style>
+</head>
+<body>
+
+  <h2>Feed (grid · light · blue)</h2>
+  <script
+    src="/embed.js"
+    data-tenant="designsonprint"
+    data-mode="feed"
+    data-theme="light"
+    data-accent="#2563eb"
+    data-limit="6"
+    data-open="modal">
+  </script>
+
+  <hr class="sep" />
+
+  <h2>Latest post (dark · red)</h2>
+  <script
+    src="/embed.js"
+    data-tenant="designsonprint"
+    data-mode="latest"
+    data-theme="dark"
+    data-accent="#E63946">
+  </script>
+
+  <hr class="sep" />
+
+  <h2>Feed (no images · new-tab)</h2>
+  <script
+    src="/embed.js"
+    data-tenant="designsonprint"
+    data-mode="feed"
+    data-theme="light"
+    data-accent="#7c3aed"
+    data-limit="3"
+    data-show-images="false"
+    data-open="new-tab">
+  </script>
+
+</body>
+</html>

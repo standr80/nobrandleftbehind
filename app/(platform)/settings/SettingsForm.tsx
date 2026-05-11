@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 
 const CADENCE_OPTIONS = ['1pw', '2pw', '3pw', '5pw', 'daily']
@@ -47,7 +47,11 @@ interface Props {
   isAdmin: boolean
 }
 
-type Section = 'basics' | 'brand' | 'publishing' | 'team'
+type Section = 'basics' | 'brand' | 'publishing' | 'team' | 'embed'
+
+function domainToSlug(domain: string): string {
+  return domain.replace(/^https?:\/\//, '').replace(/^www\./, '').split('.')[0].toLowerCase()
+}
 
 export default function SettingsForm({ tenant, members: initialMembers, isAdmin }: Props) {
   const router = useRouter()
@@ -66,6 +70,16 @@ export default function SettingsForm({ tenant, members: initialMembers, isAdmin 
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [error, setError] = useState('')
+
+  // Embed builder state
+  const [embedMode, setEmbedMode] = useState('feed')
+  const [embedTheme, setEmbedTheme] = useState('light')
+  const [embedAccent, setEmbedAccent] = useState('#2563eb')
+  const [embedLimit, setEmbedLimit] = useState('6')
+  const [embedShowImages, setEmbedShowImages] = useState(true)
+  const [embedShowAuthor, setEmbedShowAuthor] = useState(true)
+  const [embedOpen, setEmbedOpen] = useState('same-tab')
+  const [embedCopied, setEmbedCopied] = useState(false)
 
   const [name, setName] = useState(tenant.name)
   const [domain, setDomain] = useState(tenant.domain)
@@ -192,11 +206,25 @@ export default function SettingsForm({ tenant, members: initialMembers, isAdmin 
     'w-full bg-white border border-slate-200 rounded-lg px-4 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-indigo-500 transition-colors'
   const labelClass = 'block text-xs text-slate-500 mb-1.5'
 
+  const tenantSlug = domainToSlug(tenant.domain)
+
+  const embedSnippet = useCallback(() => {
+    return `<script\n  src="https://nobrandleftbehind.com/embed.js"\n  data-tenant="${tenantSlug}"\n  data-theme="${embedTheme}"\n  data-accent="${embedAccent}"\n  data-mode="${embedMode}"\n  data-limit="${embedLimit}"\n  data-open="${embedOpen}"\n  data-show-images="${embedShowImages}"\n  data-show-author="${embedShowAuthor}">\n</script>`
+  }, [tenantSlug, embedTheme, embedAccent, embedMode, embedLimit, embedOpen, embedShowImages, embedShowAuthor])
+
+  function copyEmbed() {
+    navigator.clipboard.writeText(embedSnippet()).then(() => {
+      setEmbedCopied(true)
+      setTimeout(() => setEmbedCopied(false), 2000)
+    })
+  }
+
   const sections: { id: Section; label: string }[] = [
     { id: 'basics', label: 'Basics' },
     { id: 'brand', label: 'Brand' },
     { id: 'publishing', label: 'Publishing' },
     { id: 'team', label: 'Team' },
+    { id: 'embed', label: 'Embed' },
   ]
 
   return (
@@ -587,10 +615,144 @@ export default function SettingsForm({ tenant, members: initialMembers, isAdmin 
           </div>
         )}
 
+        {/* Embed */}
+        {section === 'embed' && (
+          <div className="space-y-6">
+            <div>
+              <p className="text-sm font-medium mb-1">Your tenant slug</p>
+              <p className="font-mono text-sm text-indigo-600 bg-indigo-50 border border-indigo-200 rounded-lg px-3 py-2 inline-block">
+                {tenantSlug}
+              </p>
+              <p className="text-xs text-slate-400 mt-1">Derived from <span className="font-mono">{tenant.domain}</span></p>
+            </div>
+
+            {/* Attribute builder */}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className={labelClass}>Mode</label>
+                <select
+                  className={inputClass}
+                  value={embedMode}
+                  onChange={(e) => setEmbedMode(e.target.value)}
+                >
+                  <option value="feed">Feed (grid of cards)</option>
+                  <option value="latest">Latest post</option>
+                  <option value="single">Single post by slug</option>
+                </select>
+              </div>
+              <div>
+                <label className={labelClass}>Theme</label>
+                <select
+                  className={inputClass}
+                  value={embedTheme}
+                  onChange={(e) => setEmbedTheme(e.target.value)}
+                >
+                  <option value="light">Light</option>
+                  <option value="dark">Dark</option>
+                  <option value="auto">Auto (system)</option>
+                </select>
+              </div>
+              <div>
+                <label className={labelClass}>Accent colour</label>
+                <div className="flex gap-2 items-center">
+                  <input
+                    type="color"
+                    value={embedAccent}
+                    onChange={(e) => setEmbedAccent(e.target.value)}
+                    className="w-10 h-10 rounded-lg border border-slate-200 cursor-pointer p-0.5 bg-white"
+                  />
+                  <input
+                    className={`${inputClass} flex-1`}
+                    value={embedAccent}
+                    onChange={(e) => setEmbedAccent(e.target.value)}
+                    placeholder="#2563eb"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className={labelClass}>Post limit</label>
+                <input
+                  type="number"
+                  min={1}
+                  max={50}
+                  className={inputClass}
+                  value={embedLimit}
+                  onChange={(e) => setEmbedLimit(e.target.value)}
+                />
+              </div>
+              <div>
+                <label className={labelClass}>Open posts</label>
+                <select
+                  className={inputClass}
+                  value={embedOpen}
+                  onChange={(e) => setEmbedOpen(e.target.value)}
+                >
+                  <option value="same-tab">Same tab</option>
+                  <option value="new-tab">New tab</option>
+                  <option value="modal">Modal overlay</option>
+                </select>
+              </div>
+              <div className="space-y-3 pt-1">
+                <label className="flex items-center gap-3 cursor-pointer select-none">
+                  <button
+                    type="button"
+                    onClick={() => setEmbedShowImages(!embedShowImages)}
+                    className={`w-10 h-5 rounded-full transition-colors relative ${embedShowImages ? 'bg-indigo-600' : 'bg-slate-200'}`}
+                  >
+                    <span className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${embedShowImages ? 'translate-x-5' : 'translate-x-0.5'}`} />
+                  </button>
+                  <span className="text-sm text-slate-700">Show images</span>
+                </label>
+                <label className="flex items-center gap-3 cursor-pointer select-none">
+                  <button
+                    type="button"
+                    onClick={() => setEmbedShowAuthor(!embedShowAuthor)}
+                    className={`w-10 h-5 rounded-full transition-colors relative ${embedShowAuthor ? 'bg-indigo-600' : 'bg-slate-200'}`}
+                  >
+                    <span className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${embedShowAuthor ? 'translate-x-5' : 'translate-x-0.5'}`} />
+                  </button>
+                  <span className="text-sm text-slate-700">Show author</span>
+                </label>
+              </div>
+            </div>
+
+            {/* Snippet */}
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <label className={labelClass}>Script tag</label>
+                <button
+                  type="button"
+                  onClick={copyEmbed}
+                  className="text-xs px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg transition-colors"
+                >
+                  {embedCopied ? '✓ Copied!' : 'Copy snippet'}
+                </button>
+              </div>
+              <pre className="bg-slate-900 text-slate-100 text-xs rounded-xl p-4 overflow-x-auto leading-relaxed font-mono whitespace-pre">
+                {embedSnippet()}
+              </pre>
+            </div>
+
+            {/* Live preview */}
+            <div>
+              <label className={labelClass}>Live preview</label>
+              <div className="border border-slate-200 rounded-xl overflow-hidden bg-slate-50" style={{ height: 420 }}>
+                <iframe
+                  key={`${tenantSlug}-${embedTheme}-${embedAccent}-${embedMode}-${embedLimit}-${embedOpen}-${embedShowImages}-${embedShowAuthor}`}
+                  src={`/preview/embed/${tenantSlug}?theme=${embedTheme}&accent=${encodeURIComponent(embedAccent)}&mode=${embedMode}&limit=${embedLimit}&open=${embedOpen}&show-images=${embedShowImages}&show-author=${embedShowAuthor}`}
+                  className="w-full h-full border-0"
+                  title="Embed preview"
+                  sandbox="allow-scripts allow-same-origin"
+                />
+              </div>
+            </div>
+          </div>
+        )}
+
         {error && <p className="text-xs text-red-600">{error}</p>}
       </div>
 
-      {section !== 'team' && isAdmin && (
+      {section !== 'team' && section !== 'embed' && isAdmin && (
         <div className="flex justify-end pt-4">
           <button
             onClick={save}
@@ -601,6 +763,7 @@ export default function SettingsForm({ tenant, members: initialMembers, isAdmin 
           </button>
         </div>
       )}
+    
     </div>
   )
 }
