@@ -15,8 +15,6 @@ export async function GET(
   const showImages = q.get('show-images') !== 'false' ? 'true' : 'false'
   const showAuthor = q.get('show-author') !== 'false' ? 'true' : 'false'
 
-  const origin = req.nextUrl.origin
-
   const html = `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -29,7 +27,7 @@ export async function GET(
 </head>
 <body>
 <script
-  src="${origin}/embed.js"
+  src="/embed.js"
   data-tenant="${tenantSlug}"
   data-theme="${theme}"
   data-accent="${accent}"
