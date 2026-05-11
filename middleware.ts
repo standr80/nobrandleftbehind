@@ -9,6 +9,8 @@ const isPublicRoute = createRouteMatcher([
   '/invite(.*)',     // workspace invite acceptance page
   '/api/invite(.*)', // invite API routes (begin, accept)
   '/api/webhooks(.*)', // Inngest + GitHub webhooks are verified internally
+  '/api/feed(.*)',  // public embed feed — no auth, CORS open
+  '/preview/embed(.*)', // iframe preview for embed builder
 ])
 
 // Platform routes where the workspace cookie must be valid
