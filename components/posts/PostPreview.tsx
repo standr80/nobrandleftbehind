@@ -66,7 +66,7 @@ export default function PostPreview({ title, body, excerpt, tags, heroImageUrl, 
       <hr className="border-slate-200 mb-8" />
 
       {/* Body */}
-      <div className="prose prose-invert prose-headings:text-white prose-p:text-slate-800 prose-a:text-indigo-600 prose-strong:text-white prose-code:text-indigo-600 prose-blockquote:border-indigo-500 prose-blockquote:text-slate-600 max-w-none">
+      <div className="prose prose-slate prose-headings:text-slate-900 prose-p:text-slate-700 prose-a:text-indigo-600 prose-strong:text-slate-900 prose-code:text-indigo-600 prose-blockquote:border-indigo-400 prose-blockquote:text-slate-600 max-w-none">
         <ReactMarkdown remarkPlugins={[remarkGfm]}>{body}</ReactMarkdown>
       </div>
     </div>

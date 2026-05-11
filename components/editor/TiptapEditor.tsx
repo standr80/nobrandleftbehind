@@ -377,7 +377,7 @@ export default function TiptapEditor({ content, onChange, editable = true, postI
         </div>
       </BubbleMenu>
 
-      <div className="prose prose-invert prose-sm max-w-none [&_.tiptap]:outline-none">
+      <div className="prose prose-slate prose-sm max-w-none [&_.tiptap]:outline-none [&_.tiptap]:text-slate-900">
         <EditorContent editor={editor} />
       </div>
     </div>
