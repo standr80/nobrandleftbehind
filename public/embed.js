@@ -1,6 +1,8 @@
 (function(){
 'use strict';
-var sc=document.currentScript||(function(){var s=document.scripts;return s[s.length-1];})();
+var sc=document.currentScript;
+if(!sc){var _all=document.querySelectorAll('script[data-tenant]:not([data-clem-init])');sc=_all[0]||null;}
+if(sc)sc.setAttribute('data-clem-init','1');
 var tenant=sc.getAttribute('data-tenant')||'';
 var mode=sc.getAttribute('data-mode')||'feed';
 var limit=parseInt(sc.getAttribute('data-limit')||'10',10);
