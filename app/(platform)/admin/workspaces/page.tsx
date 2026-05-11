@@ -88,7 +88,7 @@ export default async function WorkspacesPage() {
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
-        <p className="text-sm text-white/40">
+        <p className="text-sm text-slate-400">
           {tenants?.length ?? 0} workspace{(tenants?.length ?? 0) !== 1 ? 's' : ''}
           {' · '}
           {totalPosts} posts
@@ -98,8 +98,8 @@ export default async function WorkspacesPage() {
         <CreateWorkspaceForm />
       </div>
 
-      <div className="bg-white/5 border border-white/10 rounded-2xl overflow-hidden">
-        <ul className="divide-y divide-white/5">
+      <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
+        <ul className="divide-y divide-slate-100">
           {(tenants ?? []).map((t) => {
             const s = statsMap[t.id]
             const members = membersByTenant[t.id] ?? []
@@ -109,10 +109,10 @@ export default async function WorkspacesPage() {
                   <div className="flex items-start justify-between gap-4">
                     <div className="min-w-0">
                       <div className="flex items-center gap-3 mb-1">
-                        <p className="text-sm font-medium text-white">{t.name}</p>
-                        <span className="text-xs text-white/30 font-mono">{t.domain}</span>
+                        <p className="text-sm font-medium text-slate-900">{t.name}</p>
+                        <span className="text-xs text-slate-400 font-mono">{t.domain}</span>
                       </div>
-                      <div className="flex items-center gap-4 text-xs text-white/30">
+                      <div className="flex items-center gap-4 text-xs text-slate-400">
                         <span>{s?.totalPosts ?? 0} posts</span>
                         <span>{s?.published ?? 0} published</span>
                         <span>{s?.pendingSuggestions ?? 0} pending</span>
@@ -126,10 +126,10 @@ export default async function WorkspacesPage() {
                       <span
                         className={`text-xs px-2.5 py-0.5 rounded-full border capitalize ${
                           t.billing_tier === 'agency'
-                            ? 'bg-purple-500/10 text-purple-300 border-purple-500/20'
+                            ? 'bg-purple-50 text-purple-700 border-purple-200'
                             : t.billing_tier === 'growth'
-                              ? 'bg-blue-500/10 text-blue-300 border-blue-500/20'
-                              : 'bg-white/5 text-white/40 border-white/10'
+                              ? 'bg-blue-50 text-blue-700 border-blue-200'
+                              : 'bg-white text-slate-400 border-slate-200'
                         }`}
                       >
                         {t.billing_tier}

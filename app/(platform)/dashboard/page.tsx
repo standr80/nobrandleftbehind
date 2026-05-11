@@ -66,12 +66,12 @@ async function getDashboardStats(tenantId: string) {
 }
 
 const STATUS_STYLES: Record<string, string> = {
-  draft: 'bg-yellow-500/10 text-yellow-300',
-  in_review: 'bg-blue-500/10 text-blue-300',
+  draft: 'bg-amber-50 text-amber-700',
+  in_review: 'bg-blue-50 text-blue-700',
   approved: 'bg-green-500/10 text-green-300',
-  scheduled: 'bg-purple-500/10 text-purple-300',
-  published: 'bg-emerald-500/10 text-emerald-300',
-  rejected: 'bg-red-500/10 text-red-300',
+  scheduled: 'bg-purple-50 text-purple-700',
+  published: 'bg-emerald-50 text-emerald-700',
+  rejected: 'bg-red-50 text-red-600',
 }
 
 export default async function DashboardPage() {
@@ -97,11 +97,11 @@ export default async function DashboardPage() {
     return (
       <div className="max-w-2xl">
         <h1 className="text-2xl font-bold mb-2">Dashboard</h1>
-        <div className="bg-white/5 border border-white/10 rounded-2xl p-12 text-center mt-8">
-          <p className="text-white/60 mb-4">Your account isn&apos;t linked to a workspace yet.</p>
-          <p className="text-white/30 text-sm max-w-sm mx-auto">
+        <div className="bg-white border border-slate-200 rounded-2xl p-12 text-center mt-8">
+          <p className="text-slate-600 mb-4">Your account isn&apos;t linked to a workspace yet.</p>
+          <p className="text-slate-400 text-sm max-w-sm mx-auto">
             Ask your workspace admin to send you an invite, or{' '}
-            <Link href="/setup" className="text-indigo-400 hover:text-indigo-300">set up a new workspace</Link>.
+            <Link href="/setup" className="text-indigo-600 hover:text-indigo-600">set up a new workspace</Link>.
           </p>
         </div>
       </div>
@@ -127,10 +127,10 @@ export default async function DashboardPage() {
       {/* Header */}
       <div className="flex items-start justify-between mb-8">
         <div>
-          <p className="text-sm text-white/40 mb-1">{tenant.domain}</p>
+          <p className="text-sm text-slate-400 mb-1">{tenant.domain}</p>
           <h1 className="text-2xl font-bold">{tenant.name}</h1>
         </div>
-        <span className="text-xs bg-indigo-500/15 text-indigo-300 border border-indigo-500/20 px-3 py-1 rounded-full capitalize">
+        <span className="text-xs bg-indigo-500/15 text-indigo-600 border border-indigo-200 px-3 py-1 rounded-full capitalize">
           {tenant.billing_tier}
         </span>
       </div>
@@ -143,35 +143,35 @@ export default async function DashboardPage() {
           { label: 'Scheduled posts', value: stats.scheduled },
           { label: 'Published this month', value: stats.publishedThisMonth },
         ].map(({ label, value }) => (
-          <div key={label} className="bg-white/5 border border-white/10 rounded-xl p-4">
-            <p className="text-2xl font-bold text-white">{value}</p>
-            <p className="text-xs text-white/40 mt-1">{label}</p>
+          <div key={label} className="bg-white border border-slate-200 rounded-xl p-4">
+            <p className="text-2xl font-bold text-slate-900">{value}</p>
+            <p className="text-xs text-slate-400 mt-1">{label}</p>
           </div>
         ))}
       </div>
 
       {/* Recent posts */}
       {stats.recentPosts.length > 0 ? (
-        <div className="bg-white/5 border border-white/10 rounded-2xl overflow-hidden mb-8">
-          <div className="px-6 py-4 border-b border-white/10 flex items-center justify-between">
-            <h2 className="text-sm font-medium text-white/70">Recent posts</h2>
+        <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden mb-8">
+          <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between">
+            <h2 className="text-sm font-medium text-slate-700">Recent posts</h2>
             <Link
               href="/author"
-              className="text-xs text-indigo-400 hover:text-indigo-300 transition-colors"
+              className="text-xs text-indigo-600 hover:text-indigo-600 transition-colors"
             >
               View all →
             </Link>
           </div>
-          <ul className="divide-y divide-white/5">
+          <ul className="divide-y divide-slate-100">
             {stats.recentPosts.map((post) => (
               <li key={post.id}>
                 <Link
                   href={`/author/${post.id}`}
-                  className="flex items-center justify-between px-6 py-3.5 hover:bg-white/5 transition-colors"
+                  className="flex items-center justify-between px-6 py-3.5 hover:bg-white transition-colors"
                 >
-                  <span className="text-sm text-white/80 truncate mr-4">{post.title}</span>
+                  <span className="text-sm text-slate-800 truncate mr-4">{post.title}</span>
                   <span
-                    className={`shrink-0 text-xs px-2.5 py-0.5 rounded-full ${post.status ? (STATUS_STYLES[post.status] ?? 'bg-white/10 text-white/50') : 'bg-white/10 text-white/50'}`}
+                    className={`shrink-0 text-xs px-2.5 py-0.5 rounded-full ${post.status ? (STATUS_STYLES[post.status] ?? 'bg-slate-100 text-slate-500') : 'bg-slate-100 text-slate-500'}`}
                   >
                     {post.status?.replace('_', ' ') ?? 'draft'}
                   </span>
@@ -182,17 +182,17 @@ export default async function DashboardPage() {
         </div>
       ) : (
         /* Empty state */
-        <div className="bg-white/5 border border-white/10 rounded-2xl p-12 flex flex-col items-center text-center">
-          <div className="w-16 h-16 rounded-2xl bg-indigo-600/20 border border-indigo-500/20 flex items-center justify-center text-3xl mb-6">
+        <div className="bg-white border border-slate-200 rounded-2xl p-12 flex flex-col items-center text-center">
+          <div className="w-16 h-16 rounded-2xl bg-indigo-50 border border-indigo-200 flex items-center justify-center text-3xl mb-6">
             ✦
           </div>
           <h2 className="text-xl font-semibold mb-2">Clem is ready</h2>
-          <p className="text-white/40 text-sm max-w-sm mb-8">
+          <p className="text-slate-400 text-sm max-w-sm mb-8">
             Generate topic suggestions and Clem will research, write, and queue them for your
             review.
           </p>
           <TriggerSuggestButton tenantId={tenant.id} />
-          <p className="text-xs text-white/20 mt-6">
+          <p className="text-xs text-slate-300 mt-6">
             Cadence: {tenant.publish_cadence} · {tenant.publish_days?.join(', ')} at{' '}
             {tenant.publish_time}
           </p>
@@ -206,11 +206,11 @@ export default async function DashboardPage() {
 
       {/* Publish log */}
       {stats.publishLog.length > 0 && (
-        <div className="bg-white/5 border border-white/10 rounded-2xl overflow-hidden mb-8">
-          <div className="px-6 py-4 border-b border-white/10">
-            <h2 className="text-sm font-medium text-white/70">Publish log</h2>
+        <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden mb-8">
+          <div className="px-6 py-4 border-b border-slate-200">
+            <h2 className="text-sm font-medium text-slate-700">Publish log</h2>
           </div>
-          <ul className="divide-y divide-white/5">
+          <ul className="divide-y divide-slate-100">
             {stats.publishLog.map((entry) => {
               const postTitle = Array.isArray(entry.blog_posts)
                 ? entry.blog_posts[0]?.title
@@ -219,11 +219,11 @@ export default async function DashboardPage() {
                 <li key={entry.id} className="flex items-center gap-4 px-6 py-3">
                   <span className={`w-2 h-2 rounded-full shrink-0 ${entry.success ? 'bg-emerald-400' : 'bg-red-400'}`} />
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm text-white/80 truncate">{postTitle ?? 'Unknown post'}</p>
-                    <p className="text-xs text-white/30 mt-0.5">
+                    <p className="text-sm text-slate-800 truncate">{postTitle ?? 'Unknown post'}</p>
+                    <p className="text-xs text-slate-400 mt-0.5">
                       {entry.action?.replace('_', ' ')}
                       {entry.error_message && (
-                        <span className="text-red-400 ml-2">{entry.error_message}</span>
+                        <span className="text-red-600 ml-2">{entry.error_message}</span>
                       )}
                     </p>
                   </div>
@@ -233,12 +233,12 @@ export default async function DashboardPage() {
                         href={entry.git_pr_url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-xs text-indigo-400 hover:text-indigo-300 transition-colors block mb-0.5"
+                        className="text-xs text-indigo-600 hover:text-indigo-600 transition-colors block mb-0.5"
                       >
                         View PR →
                       </a>
                     )}
-                    <span className="text-xs text-white/20">
+                    <span className="text-xs text-slate-300">
                       {new Date(entry.attempted_at!).toLocaleDateString('en-GB', {
                         day: 'numeric',
                         month: 'short',
@@ -254,10 +254,10 @@ export default async function DashboardPage() {
 
       {/* Generate button when posts exist */}
       {stats.recentPosts.length > 0 && (
-        <div className="flex items-center justify-between bg-white/5 border border-white/10 rounded-xl px-6 py-4">
+        <div className="flex items-center justify-between bg-white border border-slate-200 rounded-xl px-6 py-4">
           <div>
             <p className="text-sm font-medium">Generate new topics</p>
-            <p className="text-xs text-white/40 mt-0.5">
+            <p className="text-xs text-slate-400 mt-0.5">
               Clem will crawl {tenant.domain} and suggest 5 new ideas
             </p>
           </div>

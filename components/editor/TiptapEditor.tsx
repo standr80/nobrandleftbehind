@@ -68,7 +68,7 @@ function ToolbarButton({
         onClick()
       }}
       className={`px-2.5 py-1 text-xs rounded transition-colors ${
-        active ? 'bg-indigo-600/40 text-indigo-200' : 'text-white/60 hover:bg-white/10 hover:text-white'
+        active ? 'bg-indigo-600/40 text-indigo-200' : 'text-slate-600 hover:bg-slate-100 hover:text-white'
       }`}
     >
       {children}
@@ -100,8 +100,8 @@ export default function TiptapEditor({ content, onChange, editable = true, postI
 
   const editor = useEditor({
     extensions: [
-      StarterKit.configure({ codeBlock: { HTMLAttributes: { class: 'bg-white/5 rounded p-3 text-sm font-mono' } } }),
-      Link.configure({ openOnClick: false, HTMLAttributes: { class: 'text-indigo-400 underline' } }),
+      StarterKit.configure({ codeBlock: { HTMLAttributes: { class: 'bg-white rounded p-3 text-sm font-mono' } } }),
+      Link.configure({ openOnClick: false, HTMLAttributes: { class: 'text-indigo-600 underline' } }),
       AlignableImage,
       Placeholder.configure({ placeholder: 'Start writing…' }),
       Markdown.configure({ html: false, transformCopiedText: true }),
@@ -213,9 +213,9 @@ export default function TiptapEditor({ content, onChange, editable = true, postI
   if (!editor) return null
 
   return (
-    <div className="bg-white/5 border border-white/10 rounded-xl overflow-hidden">
+    <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
       {editable && (
-        <div className="border-b border-white/10">
+        <div className="border-b border-slate-200">
           <div className="flex flex-wrap gap-0.5 px-3 py-2">
             <ToolbarButton active={editor.isActive('bold')} onClick={() => editor.chain().focus().toggleBold().run()}>
               <strong>B</strong>
@@ -229,21 +229,21 @@ export default function TiptapEditor({ content, onChange, editable = true, postI
             <ToolbarButton active={editor.isActive('heading', { level: 3 })} onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()}>
               H3
             </ToolbarButton>
-            <span className="w-px bg-white/10 mx-1" />
+            <span className="w-px bg-slate-100 mx-1" />
             <ToolbarButton active={editor.isActive('bulletList')} onClick={() => editor.chain().focus().toggleBulletList().run()}>
               • List
             </ToolbarButton>
             <ToolbarButton active={editor.isActive('orderedList')} onClick={() => editor.chain().focus().toggleOrderedList().run()}>
               1. List
             </ToolbarButton>
-            <span className="w-px bg-white/10 mx-1" />
+            <span className="w-px bg-slate-100 mx-1" />
             <ToolbarButton active={editor.isActive('blockquote')} onClick={() => editor.chain().focus().toggleBlockquote().run()}>
               &ldquo; Quote
             </ToolbarButton>
             <ToolbarButton active={editor.isActive('code')} onClick={() => editor.chain().focus().toggleCode().run()}>
               {'</>'}
             </ToolbarButton>
-            <span className="w-px bg-white/10 mx-1" />
+            <span className="w-px bg-slate-100 mx-1" />
             <ToolbarButton active={editor.isActive('link')} onClick={openLinkPopover}>
               🔗 Link
             </ToolbarButton>
@@ -271,7 +271,7 @@ export default function TiptapEditor({ content, onChange, editable = true, postI
                 />
               </>
             )}
-            <span className="w-px bg-white/10 mx-1" />
+            <span className="w-px bg-slate-100 mx-1" />
             <ToolbarButton active={false} onClick={() => editor.chain().focus().undo().run()}>
               ↩ Undo
             </ToolbarButton>
@@ -282,8 +282,8 @@ export default function TiptapEditor({ content, onChange, editable = true, postI
 
           {/* Link popover */}
           {linkPopover && (
-            <div className="flex items-center gap-2 px-3 py-2 border-t border-white/10 bg-white/5">
-              <span className="text-xs text-white/40 shrink-0">URL</span>
+            <div className="flex items-center gap-2 px-3 py-2 border-t border-slate-200 bg-white">
+              <span className="text-xs text-slate-400 shrink-0">URL</span>
               <input
                 ref={linkInputRef}
                 value={linkUrl}
@@ -293,7 +293,7 @@ export default function TiptapEditor({ content, onChange, editable = true, postI
                   if (e.key === 'Escape') setLinkPopover(false)
                 }}
                 placeholder="https://example.com"
-                className="flex-1 bg-transparent text-sm text-white placeholder-white/20 outline-none"
+                className="flex-1 bg-transparent text-sm text-slate-900 placeholder-slate-400 outline-none"
               />
               <button
                 type="button"
@@ -306,7 +306,7 @@ export default function TiptapEditor({ content, onChange, editable = true, postI
                 <button
                   type="button"
                   onMouseDown={(e) => { e.preventDefault(); removeLink() }}
-                  className="px-3 py-1 text-xs text-white/40 hover:text-red-400 hover:bg-red-500/10 rounded transition-colors shrink-0"
+                  className="px-3 py-1 text-xs text-slate-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors shrink-0"
                 >
                   Remove
                 </button>
@@ -314,14 +314,14 @@ export default function TiptapEditor({ content, onChange, editable = true, postI
               <button
                 type="button"
                 onMouseDown={(e) => { e.preventDefault(); setLinkPopover(false) }}
-                className="text-white/30 hover:text-white text-sm transition-colors shrink-0"
+                className="text-slate-400 hover:text-white text-sm transition-colors shrink-0"
               >
                 ✕
               </button>
             </div>
           )}
         {imageUploadError && (
-          <div className="px-3 py-2 border-t border-white/10 text-xs text-red-400">
+          <div className="px-3 py-2 border-t border-slate-200 text-xs text-red-600">
             {imageUploadError}
           </div>
         )}
@@ -336,7 +336,7 @@ export default function TiptapEditor({ content, onChange, editable = true, postI
         <div className="flex flex-col gap-1.5 bg-[#1e1e2e] border border-white/15 rounded-xl shadow-xl p-3 min-w-[280px]">
           {/* Alt text */}
           <div className="flex items-center gap-2">
-            <span className="text-xs text-white/40 shrink-0 w-6">Alt</span>
+            <span className="text-xs text-slate-400 shrink-0 w-6">Alt</span>
             <input
               ref={altInputRef}
               value={altText}
@@ -344,13 +344,13 @@ export default function TiptapEditor({ content, onChange, editable = true, postI
               onBlur={applyAlt}
               onKeyDown={(e) => { if (e.key === 'Enter') { applyAlt(); e.currentTarget.blur() } }}
               placeholder="Describe this image for screen readers"
-              className="flex-1 bg-white/5 border border-white/10 rounded px-2.5 py-1 text-xs text-white placeholder-white/20 focus:outline-none focus:border-indigo-500"
+              className="flex-1 bg-white border border-slate-200 rounded px-2.5 py-1 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:border-indigo-500"
             />
           </div>
 
           {/* Alignment + delete */}
           <div className="flex items-center gap-1 pt-0.5">
-            <span className="text-xs text-white/40 w-6 shrink-0">↔</span>
+            <span className="text-xs text-slate-400 w-6 shrink-0">↔</span>
             {((['center', 'left', 'right', 'full'] as Alignment[])).map((a) => {
               const labels: Record<Alignment, string> = { center: '⊞ Centre', left: '⇤ Left', right: '⇥ Right', full: '⟺ Full' }
               const active = getActiveAlignment() === a
@@ -359,7 +359,7 @@ export default function TiptapEditor({ content, onChange, editable = true, postI
                   key={a}
                   type="button"
                   onMouseDown={(e) => { e.preventDefault(); setAlignment(a) }}
-                  className={`px-2 py-1 text-xs rounded transition-colors ${active ? 'bg-indigo-600/50 text-indigo-200' : 'text-white/50 hover:bg-white/10 hover:text-white'}`}
+                  className={`px-2 py-1 text-xs rounded transition-colors ${active ? 'bg-indigo-600/50 text-indigo-200' : 'text-slate-500 hover:bg-slate-100 hover:text-white'}`}
                 >
                   {labels[a]}
                 </button>
@@ -369,7 +369,7 @@ export default function TiptapEditor({ content, onChange, editable = true, postI
             <button
               type="button"
               onMouseDown={(e) => { e.preventDefault(); deleteImage() }}
-              className="px-2 py-1 text-xs text-white/30 hover:text-red-400 hover:bg-red-500/10 rounded transition-colors"
+              className="px-2 py-1 text-xs text-slate-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
             >
               ✕ Remove
             </button>

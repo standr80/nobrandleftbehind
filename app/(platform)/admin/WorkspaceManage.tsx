@@ -103,10 +103,10 @@ export default function WorkspaceManage({ workspaceId, workspaceName, members: i
   }
 
   return (
-    <div className="border-t border-white/5">
+    <div className="border-t border-slate-100">
       <button
         onClick={() => setOpen((v) => !v)}
-        className="w-full flex items-center justify-between px-6 py-2.5 text-xs text-white/30 hover:text-white/60 transition-colors"
+        className="w-full flex items-center justify-between px-6 py-2.5 text-xs text-slate-400 hover:text-slate-600 transition-colors"
       >
         <span>{open ? 'Hide' : 'Manage'} workspace</span>
         <svg
@@ -120,7 +120,7 @@ export default function WorkspaceManage({ workspaceId, workspaceName, members: i
       {open && (
         <div className="px-6 pb-5 space-y-5">
           {error && (
-            <p className="text-xs text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2">
+            <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
               {error}
             </p>
           )}
@@ -128,11 +128,11 @@ export default function WorkspaceManage({ workspaceId, workspaceName, members: i
           {/* Workspace admins */}
           <div>
             <div className="flex items-center justify-between mb-2">
-              <p className="text-xs font-semibold text-white/30 uppercase tracking-wider">Workspace admins</p>
+              <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Workspace admins</p>
               {!showAddAdmin && (
                 <button
                   onClick={() => { setShowAddAdmin(true); setAddAdminResult(null) }}
-                  className="text-xs text-indigo-400 hover:text-indigo-300 transition-colors"
+                  className="text-xs text-indigo-600 hover:text-indigo-600 transition-colors"
                 >
                   + Add admin
                 </button>
@@ -141,24 +141,24 @@ export default function WorkspaceManage({ workspaceId, workspaceName, members: i
 
             {/* Add admin form */}
             {showAddAdmin && (
-              <div className="bg-indigo-500/5 border border-indigo-500/20 rounded-xl p-4 mb-3 space-y-3">
+              <div className="bg-indigo-500/5 border border-indigo-200 rounded-xl p-4 mb-3 space-y-3">
                 {addAdminResult ? (
                   <div className="space-y-2">
                     {addAdminResult.direct ? (
-                      <p className="text-sm text-emerald-400 font-medium">✓ Admin added directly</p>
+                      <p className="text-sm text-emerald-700 font-medium">✓ Admin added directly</p>
                     ) : (
                       <>
-                        <p className="text-sm text-yellow-400 font-medium">Invite sent (or copy link if email failed)</p>
+                        <p className="text-sm text-amber-700 font-medium">Invite sent (or copy link if email failed)</p>
                         {addAdminResult.inviteUrl && (
                           <div className="flex items-center gap-2">
                             <input
                               readOnly
                               value={addAdminResult.inviteUrl}
-                              className="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-xs text-white/70 font-mono truncate"
+                              className="flex-1 bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-xs text-slate-700 font-mono truncate"
                             />
                             <button
                               onClick={() => navigator.clipboard.writeText(addAdminResult.inviteUrl!)}
-                              className="shrink-0 px-3 py-1.5 text-xs bg-white/10 hover:bg-white/20 text-white rounded-lg transition-colors"
+                              className="shrink-0 px-3 py-1.5 text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition-colors"
                             >
                               Copy
                             </button>
@@ -175,7 +175,7 @@ export default function WorkspaceManage({ workspaceId, workspaceName, members: i
                       </button>
                       <button
                         onClick={() => { setShowAddAdmin(false); setAddAdminResult(null) }}
-                        className="px-3 py-1.5 text-xs text-white/40 hover:text-white rounded-lg transition-colors"
+                        className="px-3 py-1.5 text-xs text-slate-400 hover:text-slate-900 rounded-lg transition-colors"
                       >
                         Done
                       </button>
@@ -183,7 +183,7 @@ export default function WorkspaceManage({ workspaceId, workspaceName, members: i
                   </div>
                 ) : (
                   <>
-                    <p className="text-xs text-white/40">
+                    <p className="text-xs text-slate-400">
                       Enter an email address. If they have a Clem account they&apos;ll be added directly; otherwise an invite will be sent.
                     </p>
                     <div className="flex gap-2">
@@ -194,7 +194,7 @@ export default function WorkspaceManage({ workspaceId, workspaceName, members: i
                         onChange={(e) => setAdminEmail(e.target.value)}
                         onKeyDown={(e) => e.key === 'Enter' && addAdmin()}
                         placeholder="admin@theirdomain.com"
-                        className="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-white/30 focus:outline-none focus:border-indigo-500 transition-colors"
+                        className="flex-1 bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-indigo-500 transition-colors"
                       />
                       <button
                         onClick={addAdmin}
@@ -205,7 +205,7 @@ export default function WorkspaceManage({ workspaceId, workspaceName, members: i
                       </button>
                       <button
                         onClick={() => { setShowAddAdmin(false); setAdminEmail(''); setError('') }}
-                        className="px-3 py-2 text-xs text-white/40 hover:text-white rounded-lg transition-colors"
+                        className="px-3 py-2 text-xs text-slate-400 hover:text-slate-900 rounded-lg transition-colors"
                       >
                         Cancel
                       </button>
@@ -216,25 +216,25 @@ export default function WorkspaceManage({ workspaceId, workspaceName, members: i
             )}
 
             {admins.length === 0 ? (
-              <p className="text-xs text-white/20 italic">No admins assigned yet.</p>
+              <p className="text-xs text-slate-300 italic">No admins assigned yet.</p>
             ) : (
               <ul className="space-y-1.5">
                 {admins.map((m) => (
-                  <li key={m.id} className="flex items-center gap-3 bg-white/5 rounded-xl px-4 py-2.5">
+                  <li key={m.id} className="flex items-center gap-3 bg-white rounded-xl px-4 py-2.5">
                     <div className="min-w-0 flex-1">
-                      <p className="text-sm text-white truncate">{m.name ?? m.email ?? '—'}</p>
+                      <p className="text-sm text-slate-900 truncate">{m.name ?? m.email ?? '—'}</p>
                       {m.email && (
-                        <p className="text-xs text-white/40 truncate">{m.email}</p>
+                        <p className="text-xs text-slate-400 truncate">{m.email}</p>
                       )}
-                      <p className="text-[10px] text-white/20 font-mono truncate">{m.clerk_user_id}</p>
+                      <p className="text-[10px] text-slate-300 font-mono truncate">{m.clerk_user_id}</p>
                     </div>
-                    <span className="text-xs px-2.5 py-0.5 rounded-full bg-indigo-500/10 text-indigo-300 border border-indigo-500/20 shrink-0">
+                    <span className="text-xs px-2.5 py-0.5 rounded-full bg-indigo-50 text-indigo-600 border border-indigo-200 shrink-0">
                       admin
                     </span>
                     <button
                       onClick={() => removeAdmin(m.id)}
                       disabled={removingId === m.id}
-                      className="text-white/20 hover:text-red-400 transition-colors text-sm disabled:opacity-30 shrink-0"
+                      className="text-slate-300 hover:text-red-600 transition-colors text-sm disabled:opacity-30 shrink-0"
                       title="Remove admin"
                     >
                       {removingId === m.id ? '…' : '✕'}
@@ -244,21 +244,21 @@ export default function WorkspaceManage({ workspaceId, workspaceName, members: i
               </ul>
             )}
 
-            <p className="text-xs text-white/20 mt-2">
+            <p className="text-xs text-slate-300 mt-2">
               Workspace members (authors, reviewers) are managed by the workspace admin via Settings → Team.
             </p>
           </div>
 
           {/* Danger zone */}
-          <div className="border border-red-500/20 bg-red-500/5 rounded-xl p-4">
-            <p className="text-xs font-semibold text-red-400 mb-1">Danger zone</p>
-            <p className="text-xs text-white/40 mb-3">
+          <div className="border border-red-200 bg-red-500/5 rounded-xl p-4">
+            <p className="text-xs font-semibold text-red-600 mb-1">Danger zone</p>
+            <p className="text-xs text-slate-400 mb-3">
               Permanently delete this workspace, all its posts, suggestions, and member access. Cannot be undone.
             </p>
             <button
               onClick={deleteWorkspace}
               disabled={deleting}
-              className="px-4 py-1.5 text-xs bg-red-600/20 hover:bg-red-600/40 border border-red-500/30 text-red-300 rounded-lg transition-colors disabled:opacity-50"
+              className="px-4 py-1.5 text-xs bg-red-50 hover:bg-red-100 border border-red-200 text-red-600 rounded-lg transition-colors disabled:opacity-50"
             >
               {deleting ? 'Deleting…' : `Delete "${workspaceName}"`}
             </button>

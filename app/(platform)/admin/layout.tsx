@@ -13,7 +13,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     <div className="max-w-5xl">
       <div className="mb-6">
         <h1 className="text-2xl font-bold mb-1">Platform admin</h1>
-        <p className="text-white/40 text-sm">Superadmin access only.</p>
+        <p className="text-slate-400 text-sm">Superadmin access only.</p>
       </div>
       <AdminSubNav />
       {children}

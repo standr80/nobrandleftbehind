@@ -36,10 +36,10 @@ export default async function SetupPage() {
         <div className="mb-8">
           <h1 className="text-2xl font-bold mb-2">Create a workspace</h1>
         </div>
-        <div className="bg-white/5 border border-white/10 rounded-2xl p-12 text-center">
+        <div className="bg-white border border-slate-200 rounded-2xl p-12 text-center">
           <div className="text-3xl mb-4">🔒</div>
-          <p className="text-white/60 mb-2">Workspace creation is invite-only.</p>
-          <p className="text-white/30 text-sm max-w-sm mx-auto">
+          <p className="text-slate-600 mb-2">Workspace creation is invite-only.</p>
+          <p className="text-slate-400 text-sm max-w-sm mx-auto">
             Contact your platform admin to be granted workspace creation access,
             or ask to be invited to an existing workspace.
           </p>
@@ -54,10 +54,10 @@ export default async function SetupPage() {
         <h1 className="text-2xl font-bold mb-2">
           {current === 0 ? 'Set up your workspace' : 'Create another workspace'}
         </h1>
-        <p className="text-white/40 text-sm">
+        <p className="text-slate-400 text-sm">
           Tell Clem about your website so it can write content that sounds like you.
           {quota !== Infinity && (
-            <span className="ml-1 text-white/20">
+            <span className="ml-1 text-slate-300">
               ({current}/{quota} workspace{quota !== 1 ? 's' : ''} used)
             </span>
           )}

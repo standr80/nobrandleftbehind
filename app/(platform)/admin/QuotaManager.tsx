@@ -101,21 +101,21 @@ export default function QuotaManager({ quotas: initialQuotas }: Props) {
     }
   }
 
-  const inputClass = 'bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-sm text-white placeholder-white/30 focus:outline-none focus:border-indigo-500 transition-colors'
+  const inputClass = 'bg-white border border-slate-200 rounded-lg px-4 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-indigo-500 transition-colors'
 
   return (
-    <div className="bg-white/5 border border-white/10 rounded-2xl overflow-hidden mb-8">
-      <div className="px-6 py-4 border-b border-white/10">
-        <h2 className="text-sm font-medium text-white/70">Workspace creation access</h2>
-        <p className="text-xs text-white/30 mt-0.5">
+    <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden mb-8">
+      <div className="px-6 py-4 border-b border-slate-200">
+        <h2 className="text-sm font-medium text-slate-700">Workspace creation access</h2>
+        <p className="text-xs text-slate-400 mt-0.5">
           Grant specific users the ability to create their own workspaces via /setup.
           By default, new users cannot create workspaces.
         </p>
       </div>
 
       {/* Grant form */}
-      <div className="px-6 py-4 border-b border-white/10 space-y-3">
-        <p className="text-xs font-semibold text-white/40 uppercase tracking-wider">Grant access</p>
+      <div className="px-6 py-4 border-b border-slate-200 space-y-3">
+        <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Grant access</p>
         <div className="flex gap-3 flex-wrap">
           <input
             type="email"
@@ -126,7 +126,7 @@ export default function QuotaManager({ quotas: initialQuotas }: Props) {
             placeholder="user@theirdomain.com"
           />
           <div className="flex items-center gap-2 shrink-0">
-            <label className="text-xs text-white/40">Max workspaces</label>
+            <label className="text-xs text-slate-400">Max workspaces</label>
             <input
               type="number"
               min={1}
@@ -150,23 +150,23 @@ export default function QuotaManager({ quotas: initialQuotas }: Props) {
             {saving ? 'Granting…' : 'Grant'}
           </button>
         </div>
-        {error && <p className="text-xs text-red-400">{error}</p>}
-        {success && <p className="text-xs text-emerald-400">{success}</p>}
+        {error && <p className="text-xs text-red-600">{error}</p>}
+        {success && <p className="text-xs text-emerald-700">{success}</p>}
       </div>
 
       {/* Existing quotas */}
       {quotas.length === 0 ? (
         <div className="px-6 py-8 text-center">
-          <p className="text-sm text-white/20">No workspace creation access granted yet.</p>
+          <p className="text-sm text-slate-300">No workspace creation access granted yet.</p>
         </div>
       ) : (
-        <ul className="divide-y divide-white/5">
+        <ul className="divide-y divide-slate-100">
           {quotas.map((q) => (
             <li key={q.id} className="flex items-center justify-between px-6 py-3.5 gap-4">
               <div className="min-w-0">
-                <p className="text-sm text-white truncate">{q.email ?? q.clerk_user_id}</p>
-                {q.name && <p className="text-xs text-white/30 truncate">{q.name}</p>}
-                {q.notes && <p className="text-xs text-white/20 italic truncate">{q.notes}</p>}
+                <p className="text-sm text-slate-900 truncate">{q.email ?? q.clerk_user_id}</p>
+                {q.name && <p className="text-xs text-slate-400 truncate">{q.name}</p>}
+                {q.notes && <p className="text-xs text-slate-300 italic truncate">{q.notes}</p>}
               </div>
               <div className="flex items-center gap-3 shrink-0">
                 {editingId === q.clerk_user_id ? (
@@ -182,18 +182,18 @@ export default function QuotaManager({ quotas: initialQuotas }: Props) {
                         if (e.key === 'Enter') updateQuota(q, editValue)
                         if (e.key === 'Escape') setEditingId(null)
                       }}
-                      className="w-16 text-center bg-white/10 border border-indigo-500 rounded-lg px-2 py-1 text-sm text-white focus:outline-none"
+                      className="w-16 text-center bg-slate-100 border border-indigo-500 rounded-lg px-2 py-1 text-sm text-slate-900 focus:outline-none"
                     />
                     <button
                       onClick={() => updateQuota(q, editValue)}
                       disabled={updatingId === q.clerk_user_id}
-                      className="text-xs text-indigo-400 hover:text-indigo-300 transition-colors disabled:opacity-40"
+                      className="text-xs text-indigo-600 hover:text-indigo-600 transition-colors disabled:opacity-40"
                     >
                       {updatingId === q.clerk_user_id ? '…' : 'Save'}
                     </button>
                     <button
                       onClick={() => setEditingId(null)}
-                      className="text-xs text-white/30 hover:text-white transition-colors"
+                      className="text-xs text-slate-400 hover:text-slate-900 transition-colors"
                     >
                       Cancel
                     </button>
@@ -202,15 +202,15 @@ export default function QuotaManager({ quotas: initialQuotas }: Props) {
                   <>
                     <button
                       onClick={() => { setEditingId(q.clerk_user_id); setEditValue(q.max_workspaces) }}
-                      className="text-xs text-white/50 hover:text-white transition-colors tabular-nums"
+                      className="text-xs text-slate-500 hover:text-slate-900 transition-colors tabular-nums"
                       title="Click to edit"
                     >
-                      up to <strong className="text-white">{q.max_workspaces}</strong> workspace{q.max_workspaces !== 1 ? 's' : ''} ✎
+                      up to <strong className="text-slate-900">{q.max_workspaces}</strong> workspace{q.max_workspaces !== 1 ? 's' : ''} ✎
                     </button>
                     <button
                       onClick={() => revoke(q.clerk_user_id)}
                       disabled={revoking === q.clerk_user_id}
-                      className="text-xs text-white/20 hover:text-red-400 transition-colors disabled:opacity-30"
+                      className="text-xs text-slate-300 hover:text-red-600 transition-colors disabled:opacity-30"
                       title="Revoke access"
                     >
                       {revoking === q.clerk_user_id ? '…' : 'Revoke'}

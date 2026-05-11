@@ -14,8 +14,8 @@ export default function SchedulePicker({ value, onChange }: Props) {
           onClick={() => onChange({ ...value, mode: 'auto' })}
           className={`flex-1 py-2.5 px-4 rounded-lg border text-sm transition-colors ${
             value.mode === 'auto'
-              ? 'bg-indigo-600/20 border-indigo-500/50 text-indigo-300'
-              : 'bg-white/5 border-white/10 text-white/50 hover:border-white/30 hover:text-white'
+              ? 'bg-indigo-50 border-indigo-300 text-indigo-600'
+              : 'bg-white border-slate-200 text-slate-500 hover:border-white/30 hover:text-slate-900'
           }`}
         >
           ✦ Let Clem decide
@@ -25,8 +25,8 @@ export default function SchedulePicker({ value, onChange }: Props) {
           onClick={() => onChange({ ...value, mode: 'manual' })}
           className={`flex-1 py-2.5 px-4 rounded-lg border text-sm transition-colors ${
             value.mode === 'manual'
-              ? 'bg-indigo-600/20 border-indigo-500/50 text-indigo-300'
-              : 'bg-white/5 border-white/10 text-white/50 hover:border-white/30 hover:text-white'
+              ? 'bg-indigo-50 border-indigo-300 text-indigo-600'
+              : 'bg-white border-slate-200 text-slate-500 hover:border-white/30 hover:text-slate-900'
           }`}
         >
           📅 Pick a date
@@ -34,7 +34,7 @@ export default function SchedulePicker({ value, onChange }: Props) {
       </div>
 
       {value.mode === 'auto' && (
-        <p className="text-xs text-white/30">
+        <p className="text-xs text-slate-400">
           Clem will schedule this for the next available slot based on your publish cadence.
         </p>
       )}
@@ -44,7 +44,7 @@ export default function SchedulePicker({ value, onChange }: Props) {
           type="datetime-local"
           value={value.datetime}
           onChange={(e) => onChange({ ...value, datetime: e.target.value })}
-          className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500"
+          className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-900 focus:outline-none focus:border-indigo-500"
         />
       )}
     </div>

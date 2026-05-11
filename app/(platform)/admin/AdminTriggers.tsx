@@ -38,12 +38,12 @@ export default function AdminTriggers({ tenantId, tenantName }: Props) {
 
   return (
     <div className="flex items-center gap-1">
-      {result && <span className="text-xs text-white/40 mr-2 max-w-[160px] truncate">{result}</span>}
+      {result && <span className="text-xs text-slate-400 mr-2 max-w-[160px] truncate">{result}</span>}
       <button
         onClick={() => trigger('crawl')}
         disabled={running !== null}
         title="Re-crawl site"
-        className="px-2.5 py-1.5 text-xs bg-white/5 border border-white/10 hover:bg-white/10 disabled:opacity-40 text-white/50 hover:text-white rounded-lg transition-colors"
+        className="px-2.5 py-1.5 text-xs bg-white border border-slate-200 hover:bg-slate-100 disabled:opacity-40 text-slate-500 hover:text-white rounded-lg transition-colors"
       >
         {running === 'crawl' ? '…' : '↺ Crawl'}
       </button>
@@ -51,7 +51,7 @@ export default function AdminTriggers({ tenantId, tenantName }: Props) {
         onClick={() => trigger('suggest')}
         disabled={running !== null}
         title="Generate topic suggestions"
-        className="px-2.5 py-1.5 text-xs bg-white/5 border border-white/10 hover:bg-white/10 disabled:opacity-40 text-white/50 hover:text-white rounded-lg transition-colors"
+        className="px-2.5 py-1.5 text-xs bg-white border border-slate-200 hover:bg-slate-100 disabled:opacity-40 text-slate-500 hover:text-white rounded-lg transition-colors"
       >
         {running === 'suggest' ? '…' : '✦ Suggest'}
       </button>

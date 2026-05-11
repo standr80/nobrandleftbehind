@@ -33,12 +33,12 @@ export default async function InvitePage({ params }: Props) {
         <div className="max-w-md w-full mx-auto px-4 text-center">
           <div className="text-4xl mb-4">🔍</div>
           <h1 className="text-2xl font-bold text-white mb-2">Invite not found</h1>
-          <p className="text-white/50 mb-6">
+          <p className="text-slate-500 mb-6">
             This invite link is invalid or has already been used.
           </p>
           <a
             href="/dashboard"
-            className="text-indigo-400 hover:text-indigo-300 text-sm transition-colors"
+            className="text-indigo-600 hover:text-indigo-600 text-sm transition-colors"
           >
             Go to dashboard →
           </a>
@@ -53,7 +53,7 @@ export default async function InvitePage({ params }: Props) {
         <div className="max-w-md w-full mx-auto px-4 text-center">
           <div className="text-4xl mb-4">✓</div>
           <h1 className="text-2xl font-bold text-white mb-2">Already accepted</h1>
-          <p className="text-white/50 mb-6">This invite has already been used.</p>
+          <p className="text-slate-500 mb-6">This invite has already been used.</p>
           <a
             href="/dashboard"
             className="inline-block bg-indigo-600 hover:bg-indigo-500 text-white px-6 py-2.5 rounded-xl text-sm font-medium transition-colors"
@@ -71,7 +71,7 @@ export default async function InvitePage({ params }: Props) {
         <div className="max-w-md w-full mx-auto px-4 text-center">
           <div className="text-4xl mb-4">⏰</div>
           <h1 className="text-2xl font-bold text-white mb-2">Invite expired</h1>
-          <p className="text-white/50 mb-6">
+          <p className="text-slate-500 mb-6">
             This invite link expired on{' '}
             {new Date(invite.expires_at).toLocaleDateString('en-GB', {
               day: 'numeric',

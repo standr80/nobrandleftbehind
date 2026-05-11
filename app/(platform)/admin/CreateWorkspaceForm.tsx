@@ -53,8 +53,8 @@ export default function CreateWorkspaceForm() {
     }
   }
 
-  const inputClass = 'w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-sm text-white placeholder-white/30 focus:outline-none focus:border-indigo-500 transition-colors'
-  const labelClass = 'block text-xs text-white/50 mb-1.5'
+  const inputClass = 'w-full bg-white border border-slate-200 rounded-lg px-4 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-indigo-500 transition-colors'
+  const labelClass = 'block text-xs text-slate-500 mb-1.5'
 
   if (!open) {
     return (
@@ -68,12 +68,12 @@ export default function CreateWorkspaceForm() {
   }
 
   return (
-    <div className="bg-white/5 border border-white/10 rounded-2xl p-6 mb-8">
+    <div className="bg-white border border-slate-200 rounded-2xl p-6 mb-8">
       <div className="flex items-center justify-between mb-5">
-        <h2 className="text-sm font-semibold text-white">Create new workspace</h2>
+        <h2 className="text-sm font-semibold text-slate-900">Create new workspace</h2>
         <button
           onClick={() => setOpen(false)}
-          className="text-white/30 hover:text-white text-lg transition-colors leading-none"
+          className="text-slate-400 hover:text-slate-900 text-lg transition-colors leading-none"
         >
           ✕
         </button>
@@ -81,10 +81,10 @@ export default function CreateWorkspaceForm() {
 
       {success ? (
         <div className="text-center py-4">
-          <p className="text-sm text-emerald-400 font-medium">✓ {success}</p>
+          <p className="text-sm text-emerald-700 font-medium">✓ {success}</p>
           <button
             onClick={() => { setSuccess(''); setOpen(false) }}
-            className="mt-4 text-xs text-white/40 hover:text-white transition-colors"
+            className="mt-4 text-xs text-slate-400 hover:text-slate-900 transition-colors"
           >
             Done
           </button>
@@ -111,7 +111,7 @@ export default function CreateWorkspaceForm() {
               onChange={(e) => setAdminEmail(e.target.value)}
               placeholder="admin@workspace-domain.com"
             />
-            <p className="text-xs text-white/30 mt-1">
+            <p className="text-xs text-slate-400 mt-1">
               If this user already has a Clem account they&apos;ll be added directly; otherwise an invite will be sent.
             </p>
           </div>
@@ -127,7 +127,7 @@ export default function CreateWorkspaceForm() {
                   className={`px-3 py-1.5 text-xs rounded-lg border transition-colors ${
                     cadence === opt
                       ? 'bg-indigo-600 border-indigo-500 text-white'
-                      : 'bg-white/5 border-white/10 text-white/50 hover:text-white'
+                      : 'bg-white border-slate-200 text-slate-500 hover:text-slate-900'
                   }`}
                 >
                   {opt === '1pw' ? '1×/wk' : opt === '2pw' ? '2×/wk' : opt === '3pw' ? '3×/wk' : opt === '5pw' ? '5×/wk' : 'Daily'}
@@ -147,7 +147,7 @@ export default function CreateWorkspaceForm() {
             />
           </div>
 
-          {error && <p className="text-xs text-red-400">{error}</p>}
+          {error && <p className="text-xs text-red-600">{error}</p>}
 
           <div className="flex gap-2 pt-1">
             <button
@@ -159,7 +159,7 @@ export default function CreateWorkspaceForm() {
             </button>
             <button
               onClick={() => { setOpen(false); setError('') }}
-              className="px-5 py-2.5 text-sm text-white/40 hover:text-white rounded-xl transition-colors"
+              className="px-5 py-2.5 text-sm text-slate-400 hover:text-slate-900 rounded-xl transition-colors"
             >
               Cancel
             </button>

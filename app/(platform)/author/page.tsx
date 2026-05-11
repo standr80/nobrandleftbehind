@@ -4,12 +4,12 @@ import { getActiveWorkspace } from '@/lib/workspace/active'
 import Link from 'next/link'
 
 const STATUS_STYLES: Record<string, string> = {
-  draft: 'bg-yellow-500/10 text-yellow-300',
-  in_review: 'bg-blue-500/10 text-blue-300',
+  draft: 'bg-amber-50 text-amber-700',
+  in_review: 'bg-blue-50 text-blue-700',
   approved: 'bg-green-500/10 text-green-300',
-  scheduled: 'bg-purple-500/10 text-purple-300',
-  published: 'bg-emerald-500/10 text-emerald-300',
-  rejected: 'bg-red-500/10 text-red-400',
+  scheduled: 'bg-purple-50 text-purple-700',
+  published: 'bg-emerald-50 text-emerald-700',
+  rejected: 'bg-red-50 text-red-600',
 }
 
 const STATUS_ORDER = ['in_review', 'draft', 'approved', 'scheduled', 'published', 'rejected']
@@ -24,8 +24,8 @@ export default async function AuthorPage() {
     return (
       <div className="max-w-5xl">
         <h1 className="text-2xl font-bold mb-8">Author</h1>
-        <div className="bg-white/5 border border-white/10 rounded-2xl p-12 text-center">
-          <p className="text-white/30 text-sm">No workspace linked to your account.</p>
+        <div className="bg-white border border-slate-200 rounded-2xl p-12 text-center">
+          <p className="text-slate-400 text-sm">No workspace linked to your account.</p>
         </div>
       </div>
     )
@@ -53,18 +53,18 @@ export default async function AuthorPage() {
       <div className="flex items-center justify-between mb-8">
         <div>
           <h1 className="text-2xl font-bold">Author</h1>
-          <p className="text-sm text-white/40 mt-1">
+          <p className="text-sm text-slate-400 mt-1">
             {totalActive} post{totalActive !== 1 ? 's' : ''} in progress
           </p>
         </div>
       </div>
 
       {!posts?.length ? (
-        <div className="bg-white/5 border border-white/10 rounded-2xl p-12 text-center">
-          <p className="text-white/30 text-sm mb-2">No posts yet.</p>
-          <p className="text-white/20 text-xs">
+        <div className="bg-white border border-slate-200 rounded-2xl p-12 text-center">
+          <p className="text-slate-400 text-sm mb-2">No posts yet.</p>
+          <p className="text-slate-300 text-xs">
             Generate topics from the{' '}
-            <Link href="/dashboard" className="text-indigo-400 hover:text-indigo-300">
+            <Link href="/dashboard" className="text-indigo-600 hover:text-indigo-600">
               dashboard
             </Link>{' '}
             and draft a post to get started.
@@ -77,26 +77,26 @@ export default async function AuthorPage() {
             if (!group.length) return null
             return (
               <section key={status}>
-                <h2 className="text-xs font-semibold text-white/40 uppercase tracking-wider mb-3">
+                <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">
                   {status.replace('_', ' ')} ({group.length})
                 </h2>
-                <div className="bg-white/5 border border-white/10 rounded-xl overflow-hidden">
-                  <ul className="divide-y divide-white/5">
+                <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+                  <ul className="divide-y divide-slate-100">
                     {group.map((post) => (
                       <li key={post.id}>
                         <Link
                           href={`/author/${post.id}`}
-                          className="flex items-center justify-between px-5 py-4 hover:bg-white/5 transition-colors group"
+                          className="flex items-center justify-between px-5 py-4 hover:bg-white transition-colors group"
                         >
                           <div className="min-w-0">
-                            <p className="text-sm font-medium text-white truncate group-hover:text-indigo-300 transition-colors">
+                            <p className="text-sm font-medium text-slate-900 truncate group-hover:text-indigo-600 transition-colors">
                               {post.title}
                             </p>
-                            <p className="text-xs text-white/30 mt-0.5 font-mono">{post.slug}</p>
+                            <p className="text-xs text-slate-400 mt-0.5 font-mono">{post.slug}</p>
                           </div>
                           <div className="flex items-center gap-3 shrink-0 ml-4">
                             {post.scheduled_for && (
-                              <span className="text-xs text-white/30 hidden sm:block">
+                              <span className="text-xs text-slate-400 hidden sm:block">
                                 {new Date(post.scheduled_for).toLocaleDateString('en-GB', {
                                   day: 'numeric',
                                   month: 'short',
@@ -104,11 +104,11 @@ export default async function AuthorPage() {
                               </span>
                             )}
                             <span
-                              className={`text-xs px-2.5 py-0.5 rounded-full ${STATUS_STYLES[post.status ?? 'draft'] ?? 'bg-white/10 text-white/50'}`}
+                              className={`text-xs px-2.5 py-0.5 rounded-full ${STATUS_STYLES[post.status ?? 'draft'] ?? 'bg-slate-100 text-slate-500'}`}
                             >
                               {post.status?.replace('_', ' ')}
                             </span>
-                            <span className="text-white/20 group-hover:text-white/60 transition-colors">→</span>
+                            <span className="text-slate-300 group-hover:text-slate-600 transition-colors">→</span>
                           </div>
                         </Link>
                       </li>

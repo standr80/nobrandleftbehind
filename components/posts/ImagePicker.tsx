@@ -20,7 +20,7 @@ interface Props {
 export default function ImagePicker({ candidates, selectedId, onSelect }: Props) {
   if (!candidates.length) {
     return (
-      <p className="text-white/30 text-sm py-4 text-center">
+      <p className="text-slate-400 text-sm py-4 text-center">
         No image candidates — run the image search first.
       </p>
     )
@@ -37,7 +37,7 @@ export default function ImagePicker({ candidates, selectedId, onSelect }: Props)
             className={`relative aspect-video rounded-lg overflow-hidden border-2 transition-all ${
               selectedId === img.unsplash_id
                 ? 'border-indigo-500 ring-2 ring-indigo-500/30'
-                : 'border-white/10 hover:border-white/30'
+                : 'border-slate-200 hover:border-white/30'
             }`}
           >
             <Image
@@ -48,7 +48,7 @@ export default function ImagePicker({ candidates, selectedId, onSelect }: Props)
               sizes="(max-width: 640px) 50vw, 33vw"
             />
             {selectedId === img.unsplash_id && (
-              <div className="absolute inset-0 bg-indigo-600/20 flex items-center justify-center">
+              <div className="absolute inset-0 bg-indigo-50 flex items-center justify-center">
                 <span className="text-white text-xl">✓</span>
               </div>
             )}
@@ -57,13 +57,13 @@ export default function ImagePicker({ candidates, selectedId, onSelect }: Props)
       </div>
 
       {selectedId && (
-        <p className="text-xs text-white/30">
+        <p className="text-xs text-slate-400">
           Photo by{' '}
           <a
             href={candidates.find((c) => c.unsplash_id === selectedId)?.photographer_url}
             target="_blank"
             rel="noopener noreferrer"
-            className="text-white/50 hover:text-white underline"
+            className="text-slate-500 hover:text-slate-900 underline"
           >
             {candidates.find((c) => c.unsplash_id === selectedId)?.photographer_name}
           </a>{' '}

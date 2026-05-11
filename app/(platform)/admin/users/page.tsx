@@ -88,7 +88,7 @@ export default async function UsersPage() {
 
   return (
     <div>
-      <p className="text-sm text-white/40 mb-6">
+      <p className="text-sm text-slate-400 mb-6">
         All accounts that have joined Clem, sorted by most recent sign-in.
       </p>
       <UserList users={userRows} />

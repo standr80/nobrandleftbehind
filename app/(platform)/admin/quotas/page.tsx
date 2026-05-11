@@ -60,7 +60,7 @@ export default async function QuotasPage() {
 
   return (
     <div>
-      <p className="text-sm text-white/40 mb-6">
+      <p className="text-sm text-slate-400 mb-6">
         Control which users can create their own workspaces and how many.
       </p>
       <QuotaManager quotas={quotas} />

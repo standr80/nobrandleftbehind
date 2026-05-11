@@ -94,23 +94,23 @@ export default function SetupWizard() {
   }
 
   const inputClass =
-    'w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-sm text-white placeholder-white/30 focus:outline-none focus:border-indigo-500 transition-colors'
-  const labelClass = 'block text-xs text-white/50 mb-1.5'
+    'w-full bg-white border border-slate-200 rounded-lg px-4 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-indigo-500 transition-colors'
+  const labelClass = 'block text-xs text-slate-500 mb-1.5'
 
   return (
-    <div className="bg-white/5 border border-white/10 rounded-2xl overflow-hidden">
+    <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
       {/* Step indicator */}
-      <div className="flex border-b border-white/10">
+      <div className="flex border-b border-slate-200">
         {(['basics', 'brand', 'publishing'] as Step[]).map((s, i) => (
           <button
             key={s}
             onClick={() => stepIndex > i && setStep(s)}
             className={`flex-1 py-3 text-xs font-medium capitalize transition-colors ${
               step === s
-                ? 'text-indigo-300 border-b-2 border-indigo-500'
+                ? 'text-indigo-600 border-b-2 border-indigo-500'
                 : stepIndex > i
-                  ? 'text-white/50 hover:text-white cursor-pointer'
-                  : 'text-white/20 cursor-default'
+                  ? 'text-slate-500 hover:text-slate-900 cursor-pointer'
+                  : 'text-slate-300 cursor-default'
             }`}
           >
             {i + 1}. {s}
@@ -139,7 +139,7 @@ export default function SetupWizard() {
                 value={form.domain}
                 onChange={(e) => set('domain', e.target.value)}
               />
-              <p className="text-xs text-white/20 mt-1">Without https:// or trailing slash</p>
+              <p className="text-xs text-slate-300 mt-1">Without https:// or trailing slash</p>
             </div>
           </>
         )}
@@ -156,7 +156,7 @@ export default function SetupWizard() {
                 value={form.brand_voice}
                 onChange={(e) => set('brand_voice', e.target.value)}
               />
-              <p className="text-xs text-white/20 mt-1">
+              <p className="text-xs text-slate-300 mt-1">
                 Describe the tone Clem should write in. Be specific.
               </p>
             </div>
@@ -178,7 +178,7 @@ export default function SetupWizard() {
                 value={form.forbidden_words}
                 onChange={(e) => set('forbidden_words', e.target.value)}
               />
-              <p className="text-xs text-white/20 mt-1">Words or phrases Clem must never use</p>
+              <p className="text-xs text-slate-300 mt-1">Words or phrases Clem must never use</p>
             </div>
           </>
         )}
@@ -196,7 +196,7 @@ export default function SetupWizard() {
                     className={`px-4 py-1.5 text-xs rounded-lg border transition-colors ${
                       form.publish_cadence === opt
                         ? 'bg-indigo-600 border-indigo-500 text-white'
-                        : 'bg-white/5 border-white/10 text-white/50 hover:text-white'
+                        : 'bg-white border-slate-200 text-slate-500 hover:text-slate-900'
                     }`}
                   >
                     {opt === '1pw' ? '1× per week' :
@@ -218,7 +218,7 @@ export default function SetupWizard() {
                     className={`px-3 py-1.5 text-xs rounded-lg border capitalize transition-colors ${
                       form.publish_days.includes(day)
                         ? 'bg-indigo-600 border-indigo-500 text-white'
-                        : 'bg-white/5 border-white/10 text-white/50 hover:text-white'
+                        : 'bg-white border-slate-200 text-slate-500 hover:text-slate-900'
                     }`}
                   >
                     {day.slice(0, 3)}
@@ -246,14 +246,14 @@ export default function SetupWizard() {
                     onClick={() => set('cms_type', opt.value)}
                     className={`w-full flex items-start gap-3 text-left px-4 py-3 rounded-xl border transition-colors ${
                       form.cms_type === opt.value
-                        ? 'bg-indigo-600/20 border-indigo-500/50 text-white'
-                        : 'bg-white/5 border-white/10 text-white/60 hover:text-white hover:border-white/20'
+                        ? 'bg-indigo-50 border-indigo-300 text-white'
+                        : 'bg-white border-slate-200 text-slate-600 hover:text-slate-900 hover:border-white/20'
                     }`}
                   >
                     <span className={`w-3.5 h-3.5 rounded-full border-2 mt-0.5 shrink-0 ${form.cms_type === opt.value ? 'border-indigo-400 bg-indigo-400' : 'border-white/30'}`} />
                     <div>
                       <p className="text-sm font-medium">{opt.label}</p>
-                      <p className="text-xs text-white/40 mt-0.5">{opt.description}</p>
+                      <p className="text-xs text-slate-400 mt-0.5">{opt.description}</p>
                     </div>
                   </button>
                 ))}
@@ -262,7 +262,7 @@ export default function SetupWizard() {
           </>
         )}
 
-        {error && <p className="text-xs text-red-400">{error}</p>}
+        {error && <p className="text-xs text-red-600">{error}</p>}
       </div>
 
       {/* Footer nav */}
@@ -270,7 +270,7 @@ export default function SetupWizard() {
         <button
           onClick={() => setStep(STEPS[stepIndex - 1])}
           disabled={stepIndex === 0}
-          className="px-4 py-2 text-sm text-white/40 hover:text-white disabled:opacity-0 transition-colors"
+          className="px-4 py-2 text-sm text-slate-400 hover:text-slate-900 disabled:opacity-0 transition-colors"
         >
           ← Back
         </button>

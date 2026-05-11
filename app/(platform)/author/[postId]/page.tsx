@@ -38,7 +38,7 @@ export default async function PostReviewPage({ params }: Props) {
       <div className="mb-6">
         <Link
           href="/author"
-          className="text-sm text-white/40 hover:text-white transition-colors inline-flex items-center gap-1"
+          className="text-sm text-slate-400 hover:text-slate-900 transition-colors inline-flex items-center gap-1"
         >
           ← All posts
         </Link>

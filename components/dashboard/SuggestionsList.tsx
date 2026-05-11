@@ -55,12 +55,12 @@ function EditForm({ suggestion, onSave, onCancel }: EditFormProps) {
     }
   }
 
-  const inputClass = 'w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-white/20 focus:outline-none focus:border-indigo-500 transition-colors'
+  const inputClass = 'w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-indigo-500 transition-colors'
 
   return (
     <div className="space-y-3">
       <div>
-        <label className="text-xs text-white/40 mb-1 block">Title</label>
+        <label className="text-xs text-slate-400 mb-1 block">Title</label>
         <input
           autoFocus
           className={inputClass}
@@ -71,7 +71,7 @@ function EditForm({ suggestion, onSave, onCancel }: EditFormProps) {
         />
       </div>
       <div>
-        <label className="text-xs text-white/40 mb-1 block">Rationale</label>
+        <label className="text-xs text-slate-400 mb-1 block">Rationale</label>
         <textarea
           className={`${inputClass} resize-none`}
           rows={2}
@@ -81,7 +81,7 @@ function EditForm({ suggestion, onSave, onCancel }: EditFormProps) {
         />
       </div>
       <div>
-        <label className="text-xs text-white/40 mb-1 block">Keywords (comma-separated)</label>
+        <label className="text-xs text-slate-400 mb-1 block">Keywords (comma-separated)</label>
         <input
           className={inputClass}
           value={keywords}
@@ -89,7 +89,7 @@ function EditForm({ suggestion, onSave, onCancel }: EditFormProps) {
           placeholder="custom print, marketing, small business"
         />
       </div>
-      {error && <p className="text-xs text-red-400">{error}</p>}
+      {error && <p className="text-xs text-red-600">{error}</p>}
       <div className="flex gap-2 pt-1">
         <button
           onClick={save}
@@ -100,7 +100,7 @@ function EditForm({ suggestion, onSave, onCancel }: EditFormProps) {
         </button>
         <button
           onClick={onCancel}
-          className="px-4 py-1.5 text-xs text-white/40 hover:text-white rounded-lg transition-colors"
+          className="px-4 py-1.5 text-xs text-slate-400 hover:text-slate-900 rounded-lg transition-colors"
         >
           Cancel
         </button>
@@ -147,14 +147,14 @@ function AddForm({ onAdd, onCancel }: AddFormProps) {
     }
   }
 
-  const inputClass = 'w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-white/20 focus:outline-none focus:border-indigo-500 transition-colors'
+  const inputClass = 'w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-indigo-500 transition-colors'
 
   return (
-    <li className="px-6 py-4 bg-indigo-500/5 border-b border-white/5">
-      <p className="text-xs font-medium text-indigo-300 mb-3">New suggestion</p>
+    <li className="px-6 py-4 bg-indigo-500/5 border-b border-slate-100">
+      <p className="text-xs font-medium text-indigo-600 mb-3">New suggestion</p>
       <div className="space-y-3">
         <div>
-          <label className="text-xs text-white/40 mb-1 block">Title</label>
+          <label className="text-xs text-slate-400 mb-1 block">Title</label>
           <input
             autoFocus
             className={inputClass}
@@ -165,7 +165,7 @@ function AddForm({ onAdd, onCancel }: AddFormProps) {
           />
         </div>
         <div>
-          <label className="text-xs text-white/40 mb-1 block">Rationale (optional)</label>
+          <label className="text-xs text-slate-400 mb-1 block">Rationale (optional)</label>
           <textarea
             className={`${inputClass} resize-none`}
             rows={2}
@@ -175,7 +175,7 @@ function AddForm({ onAdd, onCancel }: AddFormProps) {
           />
         </div>
         <div>
-          <label className="text-xs text-white/40 mb-1 block">Keywords (optional, comma-separated)</label>
+          <label className="text-xs text-slate-400 mb-1 block">Keywords (optional, comma-separated)</label>
           <input
             className={inputClass}
             value={keywords}
@@ -183,7 +183,7 @@ function AddForm({ onAdd, onCancel }: AddFormProps) {
             placeholder="custom print, marketing"
           />
         </div>
-        {error && <p className="text-xs text-red-400">{error}</p>}
+        {error && <p className="text-xs text-red-600">{error}</p>}
         <div className="flex gap-2 pt-1">
           <button
             onClick={save}
@@ -192,7 +192,7 @@ function AddForm({ onAdd, onCancel }: AddFormProps) {
           >
             {saving ? 'Adding…' : 'Add suggestion'}
           </button>
-          <button onClick={onCancel} className="px-4 py-1.5 text-xs text-white/40 hover:text-white rounded-lg transition-colors">
+          <button onClick={onCancel} className="px-4 py-1.5 text-xs text-slate-400 hover:text-slate-900 rounded-lg transition-colors">
             Cancel
           </button>
         </div>
@@ -216,11 +216,11 @@ export default function SuggestionsList({ suggestions: initialSuggestions, tenan
 
   if (!items.length && !showAddForm) {
     return (
-      <div className="bg-white/5 border border-white/10 rounded-2xl px-6 py-4 flex items-center justify-between">
-        <p className="text-sm text-white/30">No pending suggestions</p>
+      <div className="bg-white border border-slate-200 rounded-2xl px-6 py-4 flex items-center justify-between">
+        <p className="text-sm text-slate-400">No pending suggestions</p>
         <button
           onClick={() => setShowAddForm(true)}
-          className="text-xs text-indigo-400 hover:text-indigo-300 transition-colors"
+          className="text-xs text-indigo-600 hover:text-indigo-600 transition-colors"
         >
           + Add your own
         </button>
@@ -261,26 +261,26 @@ export default function SuggestionsList({ suggestions: initialSuggestions, tenan
   }
 
   return (
-    <div className="bg-white/5 border border-white/10 rounded-2xl overflow-hidden">
+    <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
       {/* Header */}
-      <div className="px-6 py-4 border-b border-white/10 flex items-center justify-between">
-        <h2 className="text-sm font-medium text-white/70">
+      <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between">
+        <h2 className="text-sm font-medium text-slate-700">
           Pending suggestions
-          <span className="ml-2 text-xs bg-indigo-500/20 text-indigo-300 px-2 py-0.5 rounded-full">
+          <span className="ml-2 text-xs bg-indigo-100 text-indigo-600 px-2 py-0.5 rounded-full">
             {items.length}
           </span>
         </h2>
         {!showAddForm && (
           <button
             onClick={() => setShowAddForm(true)}
-            className="text-xs text-indigo-400 hover:text-indigo-300 transition-colors"
+            className="text-xs text-indigo-600 hover:text-indigo-600 transition-colors"
           >
             + Add your own
           </button>
         )}
       </div>
 
-      <ul className="divide-y divide-white/5">
+      <ul className="divide-y divide-slate-100">
         {/* Add form at top */}
         {showAddForm && (
           <AddForm
@@ -300,14 +300,14 @@ export default function SuggestionsList({ suggestions: initialSuggestions, tenan
             ) : (
               <div className="flex items-start justify-between gap-4">
                 <div className="min-w-0">
-                  <p className="text-sm font-medium text-white">{s.proposed_title}</p>
+                  <p className="text-sm font-medium text-slate-900">{s.proposed_title}</p>
                   {s.rationale && (
-                    <p className="text-xs text-white/40 mt-1 line-clamp-2">{s.rationale}</p>
+                    <p className="text-xs text-slate-400 mt-1 line-clamp-2">{s.rationale}</p>
                   )}
                   {s.target_keywords?.length ? (
                     <div className="flex flex-wrap gap-1.5 mt-2">
                       {s.target_keywords.map((kw) => (
-                        <span key={kw} className="text-xs bg-white/5 text-white/40 px-2 py-0.5 rounded">
+                        <span key={kw} className="text-xs bg-white text-slate-400 px-2 py-0.5 rounded">
                           {kw}
                         </span>
                       ))}
@@ -319,14 +319,14 @@ export default function SuggestionsList({ suggestions: initialSuggestions, tenan
                   <button
                     onClick={() => setEditing(s.id)}
                     disabled={drafting === s.id || rejecting === s.id}
-                    className="px-3 py-1.5 text-xs text-white/30 hover:text-white hover:bg-white/10 rounded-lg transition-colors disabled:opacity-30"
+                    className="px-3 py-1.5 text-xs text-slate-400 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors disabled:opacity-30"
                   >
                     Edit
                   </button>
                   <button
                     onClick={() => handleReject(s.id)}
                     disabled={drafting === s.id || rejecting === s.id}
-                    className="px-3 py-1.5 text-xs text-white/30 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors disabled:opacity-30"
+                    className="px-3 py-1.5 text-xs text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-30"
                   >
                     {rejecting === s.id ? '…' : 'Dismiss'}
                   </button>
@@ -352,8 +352,8 @@ export default function SuggestionsList({ suggestions: initialSuggestions, tenan
       </ul>
 
       {error && (
-        <div className="px-6 py-3 border-t border-white/10">
-          <p className="text-xs text-red-400">{error}</p>
+        <div className="px-6 py-3 border-t border-slate-200">
+          <p className="text-xs text-red-600">{error}</p>
         </div>
       )}
     </div>

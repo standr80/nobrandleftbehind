@@ -189,8 +189,8 @@ export default function SettingsForm({ tenant, members: initialMembers, isAdmin 
   }
 
   const inputClass =
-    'w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-sm text-white placeholder-white/30 focus:outline-none focus:border-indigo-500 transition-colors'
-  const labelClass = 'block text-xs text-white/50 mb-1.5'
+    'w-full bg-white border border-slate-200 rounded-lg px-4 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-indigo-500 transition-colors'
+  const labelClass = 'block text-xs text-slate-500 mb-1.5'
 
   const sections: { id: Section; label: string }[] = [
     { id: 'basics', label: 'Basics' },
@@ -209,8 +209,8 @@ export default function SettingsForm({ tenant, members: initialMembers, isAdmin 
             onClick={() => setSection(s.id)}
             className={`px-4 py-2 text-sm rounded-lg transition-colors ${
               section === s.id
-                ? 'bg-indigo-600/20 text-indigo-300 border border-indigo-500/30'
-                : 'text-white/40 hover:text-white'
+                ? 'bg-indigo-50 text-indigo-600 border border-indigo-500/30'
+                : 'text-slate-400 hover:text-slate-900'
             }`}
           >
             {s.label}
@@ -218,7 +218,7 @@ export default function SettingsForm({ tenant, members: initialMembers, isAdmin 
         ))}
       </div>
 
-      <div className="bg-white/5 border border-white/10 rounded-2xl p-8 space-y-5">
+      <div className="bg-white border border-slate-200 rounded-2xl p-8 space-y-5">
         {/* Basics */}
         {section === 'basics' && (
           <>
@@ -236,20 +236,20 @@ export default function SettingsForm({ tenant, members: initialMembers, isAdmin 
             </div>
             <div>
               <label className={labelClass}>Billing tier</label>
-              <p className="text-sm text-white/60 bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 capitalize">
+              <p className="text-sm text-slate-600 bg-white border border-slate-200 rounded-lg px-4 py-2.5 capitalize">
                 {tenant.billing_tier ?? 'starter'}
               </p>
             </div>
 
-            <div className="pt-2 border-t border-white/10">
+            <div className="pt-2 border-t border-slate-200">
               <div className="flex items-start justify-between gap-4">
                 <div>
                   <p className="text-sm font-medium">Site crawl</p>
-                  <p className="text-xs text-white/40 mt-0.5">
+                  <p className="text-xs text-slate-400 mt-0.5">
                     Re-crawl the domain so Clem understands your current content. Always do this after changing the domain.
                   </p>
                   {crawlMsg && (
-                    <p className={`text-xs mt-2 ${crawlMsg.startsWith('✓') ? 'text-emerald-400' : 'text-red-400'}`}>
+                    <p className={`text-xs mt-2 ${crawlMsg.startsWith('✓') ? 'text-emerald-700' : 'text-red-600'}`}>
                       {crawlMsg}
                     </p>
                   )}
@@ -258,7 +258,7 @@ export default function SettingsForm({ tenant, members: initialMembers, isAdmin 
                   type="button"
                   onClick={recrawl}
                   disabled={crawling}
-                  className="shrink-0 inline-flex items-center gap-1.5 px-4 py-2 text-sm bg-white/5 border border-white/10 hover:bg-white/10 disabled:opacity-40 text-white/70 hover:text-white rounded-lg transition-colors"
+                  className="shrink-0 inline-flex items-center gap-1.5 px-4 py-2 text-sm bg-white border border-slate-200 hover:bg-slate-100 disabled:opacity-40 text-slate-700 hover:text-slate-900 rounded-lg transition-colors"
                 >
                   {crawling ? (
                     <>
@@ -286,7 +286,7 @@ export default function SettingsForm({ tenant, members: initialMembers, isAdmin 
                 onChange={(e) => setBrandVoice(e.target.value)}
                 placeholder="Friendly, expert, approachable. Speak to small business owners who want quality custom print without the jargon."
               />
-              <p className="text-xs text-white/20 mt-1">Clem injects this into every prompt. Be specific about tone, style, and what to avoid.</p>
+              <p className="text-xs text-slate-300 mt-1">Clem injects this into every prompt. Be specific about tone, style, and what to avoid.</p>
             </div>
             <div>
               <label className={labelClass}>Target audience</label>
@@ -306,7 +306,7 @@ export default function SettingsForm({ tenant, members: initialMembers, isAdmin 
                 onChange={(e) => setForbiddenWords(e.target.value)}
                 placeholder="synergy, leverage, utilize, game-changer"
               />
-              <p className="text-xs text-white/20 mt-1">Words or phrases Clem must never use</p>
+              <p className="text-xs text-slate-300 mt-1">Words or phrases Clem must never use</p>
             </div>
           </>
         )}
@@ -317,7 +317,7 @@ export default function SettingsForm({ tenant, members: initialMembers, isAdmin 
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium">Automatic publishing</p>
-                <p className="text-xs text-white/40 mt-0.5">Clem auto-schedules posts on your cadence</p>
+                <p className="text-xs text-slate-400 mt-0.5">Clem auto-schedules posts on your cadence</p>
               </div>
               <button
                 onClick={() => setCadenceActive(!cadenceActive)}
@@ -337,7 +337,7 @@ export default function SettingsForm({ tenant, members: initialMembers, isAdmin 
                     className={`px-4 py-1.5 text-xs rounded-lg border transition-colors ${
                       cadence === opt
                         ? 'bg-indigo-600 border-indigo-500 text-white'
-                        : 'bg-white/5 border-white/10 text-white/50 hover:text-white'
+                        : 'bg-white border-slate-200 text-slate-500 hover:text-slate-900'
                     }`}
                   >
                     {opt === '1pw' ? '1× per week' :
@@ -359,7 +359,7 @@ export default function SettingsForm({ tenant, members: initialMembers, isAdmin 
                     className={`px-3 py-1.5 text-xs rounded-lg border capitalize transition-colors ${
                       days.includes(day)
                         ? 'bg-indigo-600 border-indigo-500 text-white'
-                        : 'bg-white/5 border-white/10 text-white/50 hover:text-white'
+                        : 'bg-white border-slate-200 text-slate-500 hover:text-slate-900'
                     }`}
                   >
                     {day.slice(0, 3)}
@@ -378,7 +378,7 @@ export default function SettingsForm({ tenant, members: initialMembers, isAdmin 
               />
             </div>
 
-            <hr className="border-white/10" />
+            <hr className="border-slate-200" />
 
             <div>
               <label className={labelClass}>Export / publish method</label>
@@ -389,14 +389,14 @@ export default function SettingsForm({ tenant, members: initialMembers, isAdmin 
                     onClick={() => setCmsType(opt.value)}
                     className={`w-full flex items-start gap-3 text-left px-4 py-3 rounded-xl border transition-colors ${
                       cmsType === opt.value
-                        ? 'bg-indigo-600/20 border-indigo-500/50 text-white'
-                        : 'bg-white/5 border-white/10 text-white/60 hover:text-white hover:border-white/20'
+                        ? 'bg-indigo-50 border-indigo-300 text-indigo-700'
+                        : 'bg-white border-slate-200 text-slate-600 hover:text-slate-900 hover:border-indigo-200'
                     }`}
                   >
                     <span className={`w-3.5 h-3.5 rounded-full border-2 mt-0.5 shrink-0 ${cmsType === opt.value ? 'border-indigo-400 bg-indigo-400' : 'border-white/30'}`} />
                     <div>
                       <p className="text-sm font-medium">{opt.label}</p>
-                      <p className="text-xs text-white/40 mt-0.5">{opt.description}</p>
+                      <p className="text-xs text-slate-400 mt-0.5">{opt.description}</p>
                     </div>
                   </button>
                 ))}
@@ -432,7 +432,7 @@ export default function SettingsForm({ tenant, members: initialMembers, isAdmin 
               {isAdmin && !showAddMember && (
                 <button
                   onClick={() => { setShowAddMember(true); setInviteResult(null) }}
-                  className="text-xs text-indigo-400 hover:text-indigo-300 transition-colors"
+                  className="text-xs text-indigo-600 hover:text-indigo-600 transition-colors"
                 >
                   + Invite member
                 </button>
@@ -441,36 +441,36 @@ export default function SettingsForm({ tenant, members: initialMembers, isAdmin 
 
             {/* Invite member form */}
             {showAddMember && (
-              <div className="bg-indigo-500/5 border border-indigo-500/20 rounded-xl p-4 space-y-3">
+              <div className="bg-indigo-500/5 border border-indigo-200 rounded-xl p-4 space-y-3">
                 {inviteResult ? (
                   <div className="space-y-3">
                     {inviteResult.emailSent ? (
                       <>
-                        <p className="text-sm text-emerald-400 font-medium">✓ Invite email sent!</p>
-                        <p className="text-xs text-white/40">
+                        <p className="text-sm text-emerald-700 font-medium">✓ Invite email sent!</p>
+                        <p className="text-xs text-slate-400">
                           They&apos;ll receive an email with a link to join this workspace.
                         </p>
                       </>
                     ) : (
                       <>
-                        <p className="text-sm text-yellow-400 font-medium">⚠ Invite created — email failed to send</p>
-                        <p className="text-xs text-white/40">
+                        <p className="text-sm text-amber-700 font-medium">⚠ Invite created — email failed to send</p>
+                        <p className="text-xs text-slate-400">
                           The invite is valid. Share this link manually:
                         </p>
                         <div className="flex items-center gap-2">
                           <input
                             readOnly
                             value={inviteResult.inviteUrl}
-                            className="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-xs text-white/70 font-mono truncate"
+                            className="flex-1 bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-700 font-mono truncate"
                           />
                           <button
                             onClick={() => navigator.clipboard.writeText(inviteResult.inviteUrl)}
-                            className="shrink-0 px-3 py-2 text-xs bg-white/10 hover:bg-white/20 text-white rounded-lg transition-colors"
+                            className="shrink-0 px-3 py-2 text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition-colors"
                           >
                             Copy
                           </button>
                         </div>
-                        <p className="text-xs text-white/30">
+                        <p className="text-xs text-slate-400">
                           To fix email delivery, check your <code>RESEND_API_KEY</code> and <code>RESEND_FROM_EMAIL</code> environment variables in Vercel.
                         </p>
                       </>
@@ -484,7 +484,7 @@ export default function SettingsForm({ tenant, members: initialMembers, isAdmin 
                       </button>
                       <button
                         onClick={() => { setShowAddMember(false); setInviteResult(null) }}
-                        className="px-4 py-1.5 text-xs text-white/40 hover:text-white rounded-lg transition-colors"
+                        className="px-4 py-1.5 text-xs text-slate-400 hover:text-slate-900 rounded-lg transition-colors"
                       >
                         Done
                       </button>
@@ -492,8 +492,8 @@ export default function SettingsForm({ tenant, members: initialMembers, isAdmin 
                   </div>
                 ) : (
                   <>
-                    <p className="text-xs font-medium text-indigo-300">Invite a team member</p>
-                    <p className="text-xs text-white/40">
+                    <p className="text-xs font-medium text-indigo-600">Invite a team member</p>
+                    <p className="text-xs text-slate-400">
                       An email invitation will be sent. If they don&apos;t have a Clem account yet,
                       they&apos;ll be prompted to create one first.
                     </p>
@@ -520,18 +520,18 @@ export default function SettingsForm({ tenant, members: initialMembers, isAdmin 
                             className={`px-4 py-1.5 text-xs rounded-lg border capitalize transition-colors ${
                               addRole === r
                                 ? 'bg-indigo-600 border-indigo-500 text-white'
-                                : 'bg-white/5 border-white/10 text-white/50 hover:text-white'
+                                : 'bg-white border-slate-200 text-slate-500 hover:text-slate-900'
                             }`}
                           >
                             {r}
                           </button>
                         ))}
                       </div>
-                      <p className="text-xs text-white/20 mt-1.5">
+                      <p className="text-xs text-slate-300 mt-1.5">
                         Author — can draft and edit · Reviewer — can approve · Admin — full access
                       </p>
                     </div>
-                    {addMemberError && <p className="text-xs text-red-400">{addMemberError}</p>}
+                    {addMemberError && <p className="text-xs text-red-600">{addMemberError}</p>}
                     <div className="flex gap-2 pt-1">
                       <button
                         onClick={sendInvite}
@@ -542,7 +542,7 @@ export default function SettingsForm({ tenant, members: initialMembers, isAdmin 
                       </button>
                       <button
                         onClick={() => { setShowAddMember(false); setAddEmail(''); setAddMemberError('') }}
-                        className="px-4 py-1.5 text-xs text-white/40 hover:text-white rounded-lg transition-colors"
+                        className="px-4 py-1.5 text-xs text-slate-400 hover:text-slate-900 rounded-lg transition-colors"
                       >
                         Cancel
                       </button>
@@ -555,18 +555,18 @@ export default function SettingsForm({ tenant, members: initialMembers, isAdmin 
             {/* Member list */}
             <ul className="space-y-2">
               {memberList.map((m) => (
-                <li key={m.id} className="flex items-center justify-between px-4 py-3 bg-white/5 rounded-xl border border-white/10">
+                <li key={m.id} className="flex items-center justify-between px-4 py-3 bg-white rounded-xl border border-slate-200">
                   <div>
-                    <p className="text-sm text-white">{m.name ?? m.email ?? m.clerk_user_id}</p>
-                    {m.email && m.name && <p className="text-xs text-white/40 mt-0.5">{m.email}</p>}
+                    <p className="text-sm text-slate-900">{m.name ?? m.email ?? m.clerk_user_id}</p>
+                    {m.email && m.name && <p className="text-xs text-slate-400 mt-0.5">{m.email}</p>}
                   </div>
                   <div className="flex items-center gap-2">
                     <span className={`text-xs px-2.5 py-0.5 rounded-full border capitalize ${
                       m.role === 'admin'
-                        ? 'bg-indigo-500/10 text-indigo-300 border-indigo-500/20'
+                        ? 'bg-indigo-50 text-indigo-600 border-indigo-200'
                         : m.role === 'reviewer'
-                          ? 'bg-blue-500/10 text-blue-300 border-blue-500/20'
-                          : 'bg-white/5 text-white/50 border-white/10'
+                          ? 'bg-blue-50 text-blue-700 border-blue-200'
+                          : 'bg-white text-slate-500 border-slate-200'
                     }`}>
                       {m.role}
                     </span>
@@ -574,7 +574,7 @@ export default function SettingsForm({ tenant, members: initialMembers, isAdmin 
                       <button
                         onClick={() => removeMember(m.id)}
                         disabled={removingId === m.id}
-                        className="text-xs text-white/20 hover:text-red-400 transition-colors disabled:opacity-30 ml-1"
+                        className="text-xs text-slate-300 hover:text-red-600 transition-colors disabled:opacity-30 ml-1"
                         title="Remove member"
                       >
                         {removingId === m.id ? '…' : '✕'}
@@ -587,7 +587,7 @@ export default function SettingsForm({ tenant, members: initialMembers, isAdmin 
           </div>
         )}
 
-        {error && <p className="text-xs text-red-400">{error}</p>}
+        {error && <p className="text-xs text-red-600">{error}</p>}
       </div>
 
       {section !== 'team' && isAdmin && (

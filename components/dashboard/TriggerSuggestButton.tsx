@@ -52,7 +52,7 @@ export default function TriggerSuggestButton({ tenantId }: Props) {
           '✦ Generate topics'
         )}
       </button>
-      {error && <p className="text-xs text-red-400">{error}</p>}
+      {error && <p className="text-xs text-red-600">{error}</p>}
     </div>
   )
 }

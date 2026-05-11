@@ -25,7 +25,7 @@ export default async function SettingsPage() {
     <div className="max-w-2xl">
       <div className="mb-8">
         <h1 className="text-2xl font-bold mb-2">Workspace settings</h1>
-        <p className="text-white/40 text-sm">{tenant.domain}</p>
+        <p className="text-slate-400 text-sm">{tenant.domain}</p>
       </div>
       <SettingsForm
         tenant={tenant}

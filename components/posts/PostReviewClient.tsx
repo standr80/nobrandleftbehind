@@ -48,12 +48,12 @@ function buildMdx(fm: Record<string, string>, body: string): string {
 type Tab = 'editor' | 'preview' | 'images' | 'schedule' | 'meta'
 
 const STATUS_STYLES: Record<string, string> = {
-  draft: 'bg-yellow-500/10 text-yellow-300 border-yellow-500/20',
-  in_review: 'bg-blue-500/10 text-blue-300 border-blue-500/20',
+  draft: 'bg-amber-50 text-amber-700 border-yellow-500/20',
+  in_review: 'bg-blue-50 text-blue-700 border-blue-200',
   approved: 'bg-green-500/10 text-green-300 border-green-500/20',
-  scheduled: 'bg-purple-500/10 text-purple-300 border-purple-500/20',
-  published: 'bg-emerald-500/10 text-emerald-300 border-emerald-500/20',
-  rejected: 'bg-red-500/10 text-red-300 border-red-500/20',
+  scheduled: 'bg-purple-50 text-purple-700 border-purple-200',
+  published: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+  rejected: 'bg-red-50 text-red-600 border-red-200',
 }
 
 // ============================================================
@@ -245,15 +245,15 @@ export default function PostReviewClient({ post, tenantId }: Props) {
           <input
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            className="text-2xl font-bold bg-transparent border-none outline-none w-full text-white placeholder-white/30 truncate"
+            className="text-2xl font-bold bg-transparent border-none outline-none w-full text-slate-900 placeholder-slate-400 truncate"
             placeholder="Post title"
           />
           <div className="flex items-center gap-3 mt-1">
-            <span className={`text-xs px-2.5 py-0.5 rounded-full border ${STATUS_STYLES[statusKey] ?? 'bg-white/10 text-white/50 border-white/10'}`}>
+            <span className={`text-xs px-2.5 py-0.5 rounded-full border ${STATUS_STYLES[statusKey] ?? 'bg-slate-100 text-slate-500 border-slate-200'}`}>
               {statusKey.replace('_', ' ')}
             </span>
             {post.drafted_at && (
-              <span className="text-xs text-white/30">
+              <span className="text-xs text-slate-400">
                 Drafted {new Date(post.drafted_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
               </span>
             )}
@@ -264,14 +264,14 @@ export default function PostReviewClient({ post, tenantId }: Props) {
           <button
             onClick={savePost}
             disabled={saving}
-            className="px-4 py-2 text-sm bg-white/10 hover:bg-white/15 rounded-lg transition-colors disabled:opacity-50"
+            className="px-4 py-2 text-sm bg-slate-100 hover:bg-white/15 rounded-lg transition-colors disabled:opacity-50"
           >
             {saving ? 'Saving…' : saveMsg || 'Save'}
           </button>
           <button
             onClick={handleDelete}
             disabled={actionLoading === 'delete'}
-            className="px-4 py-2 text-sm text-white/40 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors disabled:opacity-50"
+            className="px-4 py-2 text-sm text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
           >
             {actionLoading === 'delete' ? 'Deleting…' : 'Delete'}
           </button>
@@ -279,15 +279,15 @@ export default function PostReviewClient({ post, tenantId }: Props) {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 mb-4 border-b border-white/10 pb-0">
+      <div className="flex gap-1 mb-4 border-b border-slate-200 pb-0">
         {tabs.map((tab) => (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
             className={`px-4 py-2 text-sm rounded-t-lg transition-colors -mb-px ${
               activeTab === tab.id
-                ? 'bg-white/10 text-white border-b-2 border-indigo-500'
-                : 'text-white/40 hover:text-white'
+                ? 'bg-white text-indigo-600 border-b-2 border-indigo-600'
+                : 'text-slate-400 hover:text-slate-900'
             }`}
           >
             {tab.label}
@@ -302,7 +302,7 @@ export default function PostReviewClient({ post, tenantId }: Props) {
         )}
 
         {activeTab === 'preview' && (
-          <div className="bg-white/3 border border-white/10 rounded-2xl p-8">
+          <div className="bg-white/3 border border-slate-200 rounded-2xl p-8">
             <PostPreview
               title={title}
               body={body}
@@ -325,8 +325,8 @@ export default function PostReviewClient({ post, tenantId }: Props) {
           <div className="space-y-6">
             {/* Upload your own */}
             <div className="space-y-3">
-              <p className="text-xs text-white/50 font-medium uppercase tracking-wide">Upload your own</p>
-              <label className={`flex flex-col items-center justify-center gap-2 border-2 border-dashed rounded-xl px-6 py-8 cursor-pointer transition-colors ${uploading ? 'border-white/10 opacity-50' : 'border-white/15 hover:border-indigo-500/50 hover:bg-indigo-500/5'}`}>
+              <p className="text-xs text-slate-500 font-medium uppercase tracking-wide">Upload your own</p>
+              <label className={`flex flex-col items-center justify-center gap-2 border-2 border-dashed rounded-xl px-6 py-8 cursor-pointer transition-colors ${uploading ? 'border-slate-200 opacity-50' : 'border-white/15 hover:border-indigo-300 hover:bg-indigo-500/5'}`}>
                 <input
                   type="file"
                   accept="image/jpeg,image/png,image/webp,image/gif"
@@ -337,17 +337,17 @@ export default function PostReviewClient({ post, tenantId }: Props) {
                 {uploading ? (
                   <>
                     <span className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin" />
-                    <span className="text-sm text-white/40">Uploading…</span>
+                    <span className="text-sm text-slate-400">Uploading…</span>
                   </>
                 ) : (
                   <>
                     <span className="text-2xl">↑</span>
-                    <span className="text-sm text-white/60">Click to upload an image</span>
-                    <span className="text-xs text-white/30">JPEG, PNG, WebP or GIF · max 10 MB</span>
+                    <span className="text-sm text-slate-600">Click to upload an image</span>
+                    <span className="text-xs text-slate-400">JPEG, PNG, WebP or GIF · max 10 MB</span>
                   </>
                 )}
               </label>
-              {uploadError && <p className="text-xs text-red-400">{uploadError}</p>}
+              {uploadError && <p className="text-xs text-red-600">{uploadError}</p>}
               {uploadedImageUrl && (
                 <div className="relative rounded-xl overflow-hidden aspect-[16/7]">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -369,9 +369,9 @@ export default function PostReviewClient({ post, tenantId }: Props) {
             </div>
 
             <div className="flex items-center gap-3">
-              <hr className="flex-1 border-white/10" />
-              <span className="text-xs text-white/20">or search Unsplash</span>
-              <hr className="flex-1 border-white/10" />
+              <hr className="flex-1 border-slate-200" />
+              <span className="text-xs text-slate-300">or search Unsplash</span>
+              <hr className="flex-1 border-slate-200" />
             </div>
 
             {/* Search bar */}
@@ -382,7 +382,7 @@ export default function PostReviewClient({ post, tenantId }: Props) {
                 onChange={(e) => setImageQuery(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && !imageSearching && searchImages()}
                 placeholder="e.g. UK small business printing"
-                className="flex-1 bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-sm text-white placeholder-white/30 focus:outline-none focus:border-indigo-500 transition-colors"
+                className="flex-1 bg-white border border-slate-200 rounded-lg px-4 py-2 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-indigo-500 transition-colors"
               />
               <button
                 onClick={searchImages}
@@ -399,19 +399,19 @@ export default function PostReviewClient({ post, tenantId }: Props) {
                 )}
               </button>
             </div>
-            <p className="text-xs text-white/30">
+            <p className="text-xs text-slate-400">
               Edit the query to refine results — try adding &ldquo;UK&rdquo;, a location, or a more specific term.
             </p>
-            {imageError && <p className="text-xs text-red-400">{imageError}</p>}
+            {imageError && <p className="text-xs text-red-600">{imageError}</p>}
             <ImagePicker
               candidates={candidates}
               selectedId={selectedImage?.unsplash_id ?? null}
               onSelect={setSelectedImage}
             />
             {selectedImage && (
-              <div className="flex items-center gap-3 bg-white/5 border border-white/10 rounded-xl p-3">
+              <div className="flex items-center gap-3 bg-white border border-slate-200 rounded-xl p-3">
                 <span className="text-green-400 text-sm">✓ Selected:</span>
-                <span className="text-sm text-white/70 truncate">{selectedImage.alt_text}</span>
+                <span className="text-sm text-slate-700 truncate">{selectedImage.alt_text}</span>
               </div>
             )}
             </div>{/* end Unsplash section */}
@@ -420,12 +420,12 @@ export default function PostReviewClient({ post, tenantId }: Props) {
 
         {activeTab === 'schedule' && (
           <div className="max-w-md space-y-4">
-            <p className="text-sm text-white/50">
+            <p className="text-sm text-slate-500">
               Choose when this post should be published.
             </p>
             <SchedulePicker value={schedule} onChange={setSchedule} />
             {post.scheduled_for && (
-              <p className="text-xs text-white/30">
+              <p className="text-xs text-slate-400">
                 Currently scheduled:{' '}
                 {new Date(post.scheduled_for).toLocaleString('en-GB', {
                   weekday: 'long',
@@ -443,19 +443,19 @@ export default function PostReviewClient({ post, tenantId }: Props) {
         {activeTab === 'meta' && (
           <div className="max-w-2xl space-y-4">
             <div>
-              <label className="text-xs text-white/50 mb-1 block">Excerpt</label>
+              <label className="text-xs text-slate-500 mb-1 block">Excerpt</label>
               <textarea
                 value={excerpt}
                 onChange={(e) => setExcerpt(e.target.value)}
                 rows={2}
-                className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500 resize-none"
+                className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-900 focus:outline-none focus:border-indigo-500 resize-none"
                 placeholder="One-sentence summary for listings and social sharing"
               />
             </div>
             <div>
-              <label className="text-xs text-white/50 mb-1 block">
+              <label className="text-xs text-slate-500 mb-1 block">
                 Meta description{' '}
-                <span className={metaDescription.length > 160 ? 'text-red-400' : 'text-white/30'}>
+                <span className={metaDescription.length > 160 ? 'text-red-600' : 'text-slate-400'}>
                   ({metaDescription.length}/160)
                 </span>
               </label>
@@ -463,22 +463,22 @@ export default function PostReviewClient({ post, tenantId }: Props) {
                 value={metaDescription}
                 onChange={(e) => setMetaDescription(e.target.value)}
                 rows={2}
-                className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500 resize-none"
+                className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-900 focus:outline-none focus:border-indigo-500 resize-none"
                 placeholder="SEO meta description (under 160 characters)"
               />
             </div>
             <div>
-              <label className="text-xs text-white/50 mb-1 block">Tags (comma-separated)</label>
+              <label className="text-xs text-slate-500 mb-1 block">Tags (comma-separated)</label>
               <input
                 value={tags}
                 onChange={(e) => setTags(e.target.value)}
-                className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500"
+                className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-900 focus:outline-none focus:border-indigo-500"
                 placeholder="print, marketing, small business"
               />
             </div>
             <div>
-              <label className="text-xs text-white/50 mb-1 block">Slug</label>
-              <p className="text-sm text-white/40 font-mono bg-white/5 border border-white/10 rounded-lg px-3 py-2">
+              <label className="text-xs text-slate-500 mb-1 block">Slug</label>
+              <p className="text-sm text-slate-400 font-mono bg-white border border-slate-200 rounded-lg px-3 py-2">
                 {post.slug}
               </p>
             </div>
@@ -487,13 +487,13 @@ export default function PostReviewClient({ post, tenantId }: Props) {
       </div>
 
       {/* Review actions */}
-      <div className="bg-white/5 border border-white/10 rounded-2xl p-6 space-y-4">
-        <h3 className="text-sm font-medium text-white/70">Reviewer notes</h3>
+      <div className="bg-white border border-slate-200 rounded-2xl p-6 space-y-4">
+        <h3 className="text-sm font-medium text-slate-700">Reviewer notes</h3>
         <textarea
           value={reviewerNotes}
           onChange={(e) => setReviewerNotes(e.target.value)}
           rows={3}
-          className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500 resize-none"
+          className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-900 focus:outline-none focus:border-indigo-500 resize-none"
           placeholder="Optional notes for Clem or the team…"
         />
 
@@ -527,7 +527,7 @@ export default function PostReviewClient({ post, tenantId }: Props) {
               <button
                 onClick={() => takeAction('reject')}
                 disabled={actionLoading !== null}
-                className="px-5 py-2.5 bg-white/10 hover:bg-red-600/30 disabled:opacity-50 text-white/60 hover:text-red-300 text-sm rounded-lg transition-colors"
+                className="px-5 py-2.5 bg-slate-100 hover:bg-red-600/30 disabled:opacity-50 text-slate-600 hover:text-red-600 text-sm rounded-lg transition-colors"
               >
                 {actionLoading === 'reject' ? 'Rejecting…' : 'Reject'}
               </button>
@@ -535,7 +535,7 @@ export default function PostReviewClient({ post, tenantId }: Props) {
           )}
 
           {statusKey === 'scheduled' && (
-            <p className="text-sm text-white/40 self-center">
+            <p className="text-sm text-slate-400 self-center">
               ✓ Scheduled for{' '}
               {new Date(post.scheduled_for!).toLocaleString('en-GB', {
                 weekday: 'long',
@@ -548,7 +548,7 @@ export default function PostReviewClient({ post, tenantId }: Props) {
           )}
 
           {statusKey === 'published' && (
-            <p className="text-sm text-emerald-400 self-center">✓ Published</p>
+            <p className="text-sm text-emerald-700 self-center">✓ Published</p>
           )}
         </div>
       </div>
