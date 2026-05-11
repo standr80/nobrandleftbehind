@@ -124,8 +124,9 @@ function initWidget(sc){
       .then(function(p){render([p]);})
       .catch(function(){err('Post not found.');});
   }else{
-    fetch(base+'/api/feed/'+encodeURIComponent(tenant))
-      .then(function(r){if(!r.ok)throw new Error(r.status===404?'Tenant not found.':'Feed unavailable.');return r.json();})
+    var feedUrl=base+'/api/feed/'+encodeURIComponent(tenant);
+    fetch(feedUrl)
+      .then(function(r){if(!r.ok)throw new Error('API error '+r.status+' at '+feedUrl);return r.json();})
       .then(function(d){render(d.posts);})
       .catch(function(e){err(e.message||'Failed to load posts.');});
   }
