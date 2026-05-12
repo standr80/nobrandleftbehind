@@ -258,7 +258,7 @@ export default async function DashboardPage() {
           <div>
             <p className="text-sm font-medium">Generate new topics</p>
             <p className="text-xs text-slate-400 mt-0.5">
-              Clem will crawl {tenant.domain} and suggest 5 new ideas
+              Suggest 5 new ideas based on your last site crawl
             </p>
           </div>
           <TriggerSuggestButton tenantId={tenant.id} />

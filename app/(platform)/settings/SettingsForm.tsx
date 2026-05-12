@@ -560,7 +560,7 @@ export default function SettingsForm({
                     {referenceSummaries.length > 0
                       ? ' and your reference sites'
                       : ''}.
-                    Results appear in the Ideas tab on the Dashboard.
+                    Results appear in the <strong>Pending suggestions</strong> section on the Dashboard.
                   </p>
                   {suggestMsg && (
                     <p className={`text-xs mt-2 ${suggestMsg.startsWith('✓') ? 'text-emerald-700' : 'text-red-600'}`}>
