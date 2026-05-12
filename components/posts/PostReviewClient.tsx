@@ -61,10 +61,10 @@ const STATUS_STYLES: Record<string, string> = {
 
 interface Props {
   post: BlogPost
-  tenantId: string
+  tenantId: string // retained for future use (e.g. tenant-scoped uploads)
 }
 
-export default function PostReviewClient({ post, tenantId }: Props) {
+export default function PostReviewClient({ post, tenantId: _tenantId }: Props) {
   const router = useRouter()
   const fm = parseFrontmatter(post.body_mdx ?? '')
   const initialBody = parseMdxBody(post.body_mdx ?? '')
