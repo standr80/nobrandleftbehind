@@ -24,6 +24,7 @@ export interface ActiveWorkspace {
     git_blog_path: string | null
     logo_url: string | null
     post_cadence_active: boolean | null
+    reference_urls: string[] | null
   }
 }
 
