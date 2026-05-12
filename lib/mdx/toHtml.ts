@@ -11,6 +11,47 @@ function stripFrontmatter(mdx: string): string {
   return mdx.replace(/^---\n[\s\S]*?\n---\n?/, '').trim()
 }
 
+/**
+ * Convert Tailwind alignment/layout classes on <img> tags to equivalent inline
+ * CSS.  The editor stores alignment as class="… float-right …" (Tailwind) and
+ * size as style="width:XX%…".  In exported HTML there is no Tailwind stylesheet,
+ * so we translate the classes to inline styles that work anywhere.
+ */
+function inlineTailwindAlignment(html: string): string {
+  return html.replace(/<img\b([^>]*)>/gi, (full, attrs) => {
+    const classMatch = attrs.match(/\bclass="([^"]*)"/i)
+    if (!classMatch) return full
+
+    const classes = new Set(classMatch[1].split(/\s+/).filter(Boolean))
+    const extra: string[] = []
+
+    if (classes.has('float-right')) {
+      extra.push('float:right', 'margin:1rem 0 1rem 1.5rem')
+    } else if (classes.has('float-left')) {
+      extra.push('float:left', 'margin:1rem 1.5rem 1rem 0')
+    } else if (classes.has('w-full')) {
+      extra.push('display:block', 'width:100%', 'margin:1rem 0')
+    } else {
+      extra.push('display:block', 'margin:1rem auto')
+    }
+    if (classes.has('rounded-lg')) extra.push('border-radius:0.5rem')
+    if (classes.has('max-w-full')) extra.push('max-width:100%')
+
+    // Merge with any existing inline style (e.g. the size set by the editor)
+    const styleMatch = attrs.match(/\bstyle="([^"]*)"/i)
+    const existing = styleMatch ? styleMatch[1].replace(/;\s*$/, '') : ''
+    const merged = [existing, ...extra].filter(Boolean).join(';')
+
+    // Strip class + old style, keep everything else (src, alt, etc.)
+    const cleanAttrs = attrs
+      .replace(/\s*\bclass="[^"]*"/gi, '')
+      .replace(/\s*\bstyle="[^"]*"/gi, '')
+      .trim()
+
+    return `<img${cleanAttrs ? ' ' + cleanAttrs : ''} style="${merged}">`
+  })
+}
+
 /** Convert body_mdx (with optional YAML frontmatter) to an HTML string */
 export async function toHtml(mdx: string): Promise<string> {
   const body = repairMojibake(stripFrontmatter(mdx))
@@ -19,7 +60,7 @@ export async function toHtml(mdx: string): Promise<string> {
     .use(remarkRehype, { allowDangerousHtml: true })
     .use(rehypeStringify, { allowDangerousHtml: true })
     .process(body)
-  return String(file)
+  return inlineTailwindAlignment(String(file))
 }
 
 interface WrapOptions {
