@@ -52,7 +52,8 @@ export async function PATCH(request: Request) {
     .eq('id', membership.tenant_id)
     .single()
 
-  const { error } = await db
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await (db as any)
     .from('tenants')
     .update(updates)
     .eq('id', membership.tenant_id)
