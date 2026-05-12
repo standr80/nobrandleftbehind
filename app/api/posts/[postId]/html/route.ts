@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { toHtml, wrapInDocument } from '@/lib/mdx/toHtml'
+import { repairMojibake } from '@/lib/mdx/repairMojibake'
 
 function escapeAttr(s: string) {
   return s.replace(/&/g, '&amp;').replace(/"/g, '&quot;')
@@ -41,15 +42,22 @@ export async function GET(
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
-  const bodyHtml = post.body_mdx ? await toHtml(post.body_mdx) : ''
+  // Repair mojibake here as well as inside toHtml — belt-and-suspenders since
+  // this data comes straight from the database which may have stored content
+  // with Windows-1252/UTF-8 encoding corruption.
+  const cleanMdx = repairMojibake(post.body_mdx ?? '')
+  const bodyHtml = cleanMdx ? await toHtml(cleanMdx) : ''
   const heroOpts = {
     heroImageUrl: post.hero_image_url ?? undefined,
     heroImageAlt: post.hero_image_alt ?? post.title,
   }
   const wrap = req.nextUrl.searchParams.get('wrap') === '1'
 
+  // Never cache — content must always be fresh and encoding fixes must apply.
+  const noCache = { headers: { 'Cache-Control': 'no-store' } }
+
   if (wrap) {
-    return NextResponse.json({ html: wrapInDocument(post.title, bodyHtml, heroOpts) })
+    return NextResponse.json({ html: wrapInDocument(post.title, bodyHtml, heroOpts) }, noCache)
   }
 
   // For the plain copy, prepend the hero image block so it's included when
@@ -57,5 +65,5 @@ export async function GET(
   const heroBlock = heroOpts.heroImageUrl
     ? `<img src="${heroOpts.heroImageUrl}" alt="${escapeAttr(heroOpts.heroImageAlt ?? '')}" style="width:100%;max-height:400px;object-fit:cover;border-radius:6px;display:block;margin:0 0 1.5em;">\n`
     : ''
-  return NextResponse.json({ html: heroBlock + bodyHtml })
+  return NextResponse.json({ html: heroBlock + bodyHtml }, noCache)
 }
