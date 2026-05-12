@@ -3,7 +3,6 @@
 import { useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import dynamic from 'next/dynamic'
-import ImagePicker, { type ImageCandidate } from './ImagePicker'
 import SchedulePicker from './SchedulePicker'
 import PostPreview from './PostPreview'
 import type { BlogPost } from '@/lib/supabase/aliases'
@@ -76,11 +75,6 @@ export default function PostReviewClient({ post, tenantId }: Props) {
   const [metaDescription, setMetaDescription] = useState(post.meta_description ?? fm.metaDescription ?? '')
   const [tags, setTags] = useState((post.tags ?? []).join(', '))
 
-  const candidates = (post.image_suggestions as unknown as ImageCandidate[]) ?? []
-  const [selectedImage, setSelectedImage] = useState<ImageCandidate | null>(
-    candidates.find((c) => c.url === post.hero_image_url) ?? null,
-  )
-
   const [schedule, setSchedule] = useState<{ mode: 'auto' | 'manual'; datetime: string }>({
     mode: 'auto',
     datetime: post.scheduled_for
@@ -95,16 +89,8 @@ export default function PostReviewClient({ post, tenantId }: Props) {
   const [saveMsg, setSaveMsg] = useState('')
   const [htmlCopied, setHtmlCopied] = useState(false)
   const [htmlLoading, setHtmlLoading] = useState(false)
-  const [imageSearching, setImageSearching] = useState(false)
-  const [imageError, setImageError] = useState('')
-  const [imageQuery, setImageQuery] = useState(
-    [post.title, ...(post.tags ?? []).slice(0, 2)].filter(Boolean).join(' '),
-  )
-  // Uploaded image (overrides Unsplash selection when set)
   const [uploadedImageUrl, setUploadedImageUrl] = useState<string | null>(
-    post.hero_image_url && !candidates.find((c) => c.url === post.hero_image_url)
-      ? post.hero_image_url
-      : null,
+    post.hero_image_url ?? null,
   )
   const [uploading, setUploading] = useState(false)
   const [uploadError, setUploadError] = useState('')
@@ -162,31 +148,12 @@ export default function PostReviewClient({ post, tenantId }: Props) {
       const data = await res.json()
       if (!res.ok) throw new Error(data.error ?? 'Upload failed')
       setUploadedImageUrl(data.url)
-      setSelectedImage(null) // clear Unsplash selection
+
     } catch (err) {
       setUploadError(err instanceof Error ? err.message : 'Upload failed')
     } finally {
       setUploading(false)
       e.target.value = ''
-    }
-  }
-
-  async function searchImages() {
-    setImageSearching(true)
-    setImageError('')
-    try {
-      const res = await fetch('/api/clem/images', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ tenantId, postId: post.id, query: imageQuery }),
-      })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error ?? 'Image search failed')
-      router.refresh()
-    } catch (err) {
-      setImageError(err instanceof Error ? err.message : 'Something went wrong')
-    } finally {
-      setImageSearching(false)
     }
   }
 
@@ -203,13 +170,7 @@ export default function PostReviewClient({ post, tenantId }: Props) {
     const newMdx = buildMdx(updatedFm, body)
     const heroFields = uploadedImageUrl
       ? { hero_image_url: uploadedImageUrl, hero_image_credit: null, hero_image_alt: title }
-      : selectedImage
-        ? {
-            hero_image_url: selectedImage.url,
-            hero_image_credit: `Photo by ${selectedImage.photographer_name} on Unsplash`,
-            hero_image_alt: selectedImage.alt_text,
-          }
-        : {}
+      : {}
 
     const res = await fetch(`/api/posts/${post.id}`, {
       method: 'PATCH',
@@ -253,10 +214,6 @@ export default function PostReviewClient({ post, tenantId }: Props) {
       if (uploadedImageUrl) {
         payload.heroImageUrl = uploadedImageUrl
         payload.heroImageAlt = title
-      } else if (selectedImage) {
-        payload.heroImageUrl = selectedImage.url
-        payload.heroImageCredit = `Photo by ${selectedImage.photographer_name} on Unsplash`
-        payload.heroImageAlt = selectedImage.alt_text
       }
     }
     const res = await fetch(`/api/posts/${post.id}/status`, {
@@ -271,7 +228,7 @@ export default function PostReviewClient({ post, tenantId }: Props) {
   const tabs: { id: Tab; label: string }[] = [
     { id: 'editor', label: 'Editor' },
     { id: 'preview', label: 'Preview' },
-    { id: 'images', label: `Images${candidates.length ? ` (${candidates.length})` : ''}` },
+    { id: 'images', label: 'Hero Image' },
     { id: 'schedule', label: 'Schedule' },
     { id: 'meta', label: 'Meta' },
   ]
@@ -365,113 +322,58 @@ export default function PostReviewClient({ post, tenantId }: Props) {
               body={body}
               excerpt={excerpt}
               tags={tags.split(',').map((t) => t.trim()).filter(Boolean)}
-              heroImageUrl={uploadedImageUrl ?? selectedImage?.thumb_url ?? null}
-              heroImageCredit={
-                uploadedImageUrl
-                  ? null
-                  : selectedImage
-                    ? `Photo by ${selectedImage.photographer_name} on Unsplash`
-                    : null
-              }
+              heroImageUrl={uploadedImageUrl ?? null}
+              heroImageCredit={null}
               draftedAt={post.drafted_at ?? null}
             />
           </div>
         )}
 
         {activeTab === 'images' && (
-          <div className="space-y-6">
-            {/* Upload your own */}
-            <div className="space-y-3">
-              <p className="text-xs text-slate-500 font-medium uppercase tracking-wide">Upload your own</p>
-              <label className={`flex flex-col items-center justify-center gap-2 border-2 border-dashed rounded-xl px-6 py-8 cursor-pointer transition-colors ${uploading ? 'border-slate-200 opacity-50' : 'border-white/15 hover:border-indigo-300 hover:bg-indigo-500/5'}`}>
-                <input
-                  type="file"
-                  accept="image/jpeg,image/png,image/webp,image/gif"
-                  className="sr-only"
-                  disabled={uploading}
-                  onChange={handleFileUpload}
-                />
-                {uploading ? (
-                  <>
-                    <span className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin" />
-                    <span className="text-sm text-slate-400">Uploading…</span>
-                  </>
-                ) : (
-                  <>
-                    <span className="text-2xl">↑</span>
-                    <span className="text-sm text-slate-600">Click to upload an image</span>
-                    <span className="text-xs text-slate-400">JPEG, PNG, WebP or GIF · max 10 MB</span>
-                  </>
-                )}
-              </label>
-              {uploadError && <p className="text-xs text-red-600">{uploadError}</p>}
-              {uploadedImageUrl && (
-                <div className="relative rounded-xl overflow-hidden aspect-[16/7]">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={uploadedImageUrl} alt="Uploaded hero" className="w-full h-full object-cover" />
-                  <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
-                    <button
-                      type="button"
-                      onClick={() => setUploadedImageUrl(null)}
-                      className="px-3 py-1.5 text-xs bg-red-600 hover:bg-red-500 text-white rounded-lg"
-                    >
-                      Remove
-                    </button>
-                  </div>
-                  <div className="absolute top-2 left-2 bg-indigo-600 text-white text-xs px-2 py-0.5 rounded">
-                    ✓ Selected
-                  </div>
-                </div>
-              )}
-            </div>
-
-            <div className="flex items-center gap-3">
-              <hr className="flex-1 border-slate-200" />
-              <span className="text-xs text-slate-300">or search Unsplash</span>
-              <hr className="flex-1 border-slate-200" />
-            </div>
-
-            {/* Search bar */}
-            <div className="space-y-4">
-            <div className="flex gap-2">
-              <input
-                value={imageQuery}
-                onChange={(e) => setImageQuery(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && !imageSearching && searchImages()}
-                placeholder="e.g. UK small business printing"
-                className="flex-1 bg-white border border-slate-200 rounded-lg px-4 py-2 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-indigo-500 transition-colors"
-              />
-              <button
-                onClick={searchImages}
-                disabled={imageSearching || !imageQuery.trim()}
-                className="inline-flex items-center gap-1.5 px-4 py-2 text-sm bg-indigo-600 hover:bg-indigo-500 disabled:bg-indigo-600/40 disabled:cursor-not-allowed text-white rounded-lg transition-colors shrink-0"
-              >
-                {imageSearching ? (
-                  <>
-                    <span className="w-3 h-3 border border-white/30 border-t-white rounded-full animate-spin" />
-                    Searching…
-                  </>
-                ) : (
-                  '⌕ Search'
-                )}
-              </button>
-            </div>
-            <p className="text-xs text-slate-400">
-              Edit the query to refine results — try adding &ldquo;UK&rdquo;, a location, or a more specific term.
+          <div className="max-w-xl space-y-4">
+            <p className="text-sm text-slate-500">
+              Upload a hero image — this appears as the card thumbnail in the embed widget and at the top of the post preview.
             </p>
-            {imageError && <p className="text-xs text-red-600">{imageError}</p>}
-            <ImagePicker
-              candidates={candidates}
-              selectedId={selectedImage?.unsplash_id ?? null}
-              onSelect={setSelectedImage}
-            />
-            {selectedImage && (
-              <div className="flex items-center gap-3 bg-white border border-slate-200 rounded-xl p-3">
-                <span className="text-green-400 text-sm">✓ Selected:</span>
-                <span className="text-sm text-slate-700 truncate">{selectedImage.alt_text}</span>
+            <label className={`flex flex-col items-center justify-center gap-2 border-2 border-dashed rounded-xl px-6 py-10 cursor-pointer transition-colors ${uploading ? 'border-slate-200 opacity-50' : 'border-slate-200 hover:border-indigo-300 hover:bg-indigo-500/5'}`}>
+              <input
+                type="file"
+                accept="image/jpeg,image/png,image/webp,image/gif"
+                className="sr-only"
+                disabled={uploading}
+                onChange={handleFileUpload}
+              />
+              {uploading ? (
+                <>
+                  <span className="w-5 h-5 border-2 border-slate-300 border-t-indigo-600 rounded-full animate-spin" />
+                  <span className="text-sm text-slate-400">Uploading…</span>
+                </>
+              ) : (
+                <>
+                  <span className="text-2xl text-slate-400">↑</span>
+                  <span className="text-sm text-slate-600 font-medium">Click to upload hero image</span>
+                  <span className="text-xs text-slate-400">JPEG, PNG, WebP or GIF · max 10 MB</span>
+                </>
+              )}
+            </label>
+            {uploadError && <p className="text-xs text-red-600">{uploadError}</p>}
+            {uploadedImageUrl && (
+              <div className="relative rounded-xl overflow-hidden aspect-[16/7]">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={uploadedImageUrl} alt="Hero image" className="w-full h-full object-cover" />
+                <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
+                  <button
+                    type="button"
+                    onClick={() => setUploadedImageUrl(null)}
+                    className="px-3 py-1.5 text-xs bg-red-600 hover:bg-red-500 text-white rounded-lg"
+                  >
+                    Remove
+                  </button>
+                </div>
+                <div className="absolute top-2 left-2 bg-indigo-600 text-white text-xs px-2 py-0.5 rounded">
+                  ✓ Hero image set
+                </div>
               </div>
             )}
-            </div>{/* end Unsplash section */}
           </div>
         )}
 

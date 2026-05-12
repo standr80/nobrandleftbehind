@@ -9,7 +9,7 @@ import Placeholder from '@tiptap/extension-placeholder'
 import { Markdown } from 'tiptap-markdown'
 import { useEffect, useCallback, useState, useRef } from 'react'
 
-// Extend Image to support mutable class + alignment.
+// Extend Image to support mutable class + alignment + inline width.
 // We also override `alt` to default to '' (empty string) rather than null,
 // because tiptap-markdown's escapeMarkdown() calls str.replace() on it and
 // crashes if the value is null/undefined.
@@ -32,17 +32,29 @@ const AlignableImage = Image.extend({
         parseHTML: (el) => el.getAttribute('class'),
         renderHTML: (attrs) => ({ class: attrs.class }),
       },
+      style: {
+        default: null,
+        parseHTML: (el) => el.getAttribute('style'),
+        renderHTML: (attrs) => (attrs.style ? { style: attrs.style } : {}),
+      },
     }
   },
 })
 
 const ALIGN = {
   center: 'rounded-lg max-w-full my-4 mx-auto block',
-  left:   'rounded-lg my-4 mr-6 float-left max-w-[45%]',
-  right:  'rounded-lg my-4 ml-6 float-right max-w-[45%]',
+  left:   'rounded-lg my-4 mr-6 float-left',
+  right:  'rounded-lg my-4 ml-6 float-right',
   full:   'rounded-lg my-4 w-full block',
 } as const
 type Alignment = keyof typeof ALIGN
+
+const SIZES: { label: string; style: string | null }[] = [
+  { label: 'S',    style: 'width:25%;max-width:100%;height:auto' },
+  { label: 'M',    style: 'width:50%;max-width:100%;height:auto' },
+  { label: 'L',    style: 'width:75%;max-width:100%;height:auto' },
+  { label: 'Full', style: null },
+]
 
 interface Props {
   content: string
@@ -177,6 +189,14 @@ export default function TiptapEditor({ content, onChange, editable = true, postI
     if (cls.includes('float-right')) return 'right'
     if (cls.includes('w-full'))      return 'full'
     return 'center'
+  }
+
+  function setSize(style: string | null) {
+    editor?.chain().focus().updateAttributes('image', { style }).run()
+  }
+
+  function getActiveSize(): string | null {
+    return editor?.getAttributes('image').style ?? null
   }
 
   function deleteImage() {
@@ -348,8 +368,26 @@ export default function TiptapEditor({ content, onChange, editable = true, postI
             />
           </div>
 
-          {/* Alignment + delete */}
+          {/* Size */}
           <div className="flex items-center gap-1 pt-0.5">
+            <span className="text-xs text-slate-400 w-6 shrink-0">⇔</span>
+            {SIZES.map(({ label, style }) => {
+              const active = getActiveSize() === style
+              return (
+                <button
+                  key={label}
+                  type="button"
+                  onMouseDown={(e) => { e.preventDefault(); setSize(style) }}
+                  className={`px-2 py-1 text-xs rounded transition-colors ${active ? 'bg-indigo-600/50 text-indigo-200' : 'text-slate-500 hover:bg-slate-100 hover:text-white'}`}
+                >
+                  {label}
+                </button>
+              )
+            })}
+          </div>
+
+          {/* Alignment + delete */}
+          <div className="flex items-center gap-1">
             <span className="text-xs text-slate-400 w-6 shrink-0">↔</span>
             {((['center', 'left', 'right', 'full'] as Alignment[])).map((a) => {
               const labels: Record<Alignment, string> = { center: '⊞ Centre', left: '⇤ Left', right: '⇥ Right', full: '⟺ Full' }
