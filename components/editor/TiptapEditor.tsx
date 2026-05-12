@@ -13,6 +13,10 @@ import { useEffect, useCallback, useState, useRef } from 'react'
 // We also override `alt` to default to '' (empty string) rather than null,
 // because tiptap-markdown's escapeMarkdown() calls str.replace() on it and
 // crashes if the value is null/undefined.
+//
+// IMPORTANT: when class or style are set we serialise to a raw <img> HTML tag
+// so that those attributes survive the markdown round-trip.  The Markdown
+// extension must be configured with html:true for this to work.
 const AlignableImage = Image.extend({
   addAttributes() {
     return {
@@ -36,6 +40,29 @@ const AlignableImage = Image.extend({
         default: null,
         parseHTML: (el) => el.getAttribute('style'),
         renderHTML: (attrs) => (attrs.style ? { style: attrs.style } : {}),
+      },
+    }
+  },
+
+  addStorage() {
+    return {
+      markdown: {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        serialize(state: any, node: any) {
+          const { src, alt, class: cls, style } = node.attrs
+          if (cls || style) {
+            // Emit raw HTML so class/style survive the markdown round-trip
+            let tag = '<img'
+            if (src)   tag += ` src="${src}"`
+            if (alt)   tag += ` alt="${alt}"`
+            if (cls)   tag += ` class="${cls}"`
+            if (style) tag += ` style="${style}"`
+            tag += '>'
+            state.write(tag)
+          } else {
+            state.write(`![${alt || ''}](${src || ''})`)
+          }
+        },
       },
     }
   },
@@ -116,7 +143,7 @@ export default function TiptapEditor({ content, onChange, editable = true, postI
       Link.configure({ openOnClick: false, HTMLAttributes: { class: 'text-indigo-600 underline' } }),
       AlignableImage,
       Placeholder.configure({ placeholder: 'Start writing…' }),
-      Markdown.configure({ html: false, transformCopiedText: true }),
+      Markdown.configure({ html: true, transformCopiedText: true }),
     ],
     content,
     editable,
