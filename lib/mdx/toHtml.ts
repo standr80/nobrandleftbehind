@@ -19,11 +19,19 @@ export async function toHtml(mdx: string): Promise<string> {
   return String(file)
 }
 
+interface WrapOptions {
+  heroImageUrl?: string
+  heroImageAlt?: string
+}
+
 /**
  * Wrap converted HTML in a minimal self-contained HTML document.
  * No class names, no external CSS — safe to paste into emails or basic HTML pages.
  */
-export function wrapInDocument(title: string, bodyHtml: string): string {
+export function wrapInDocument(title: string, bodyHtml: string, opts: WrapOptions = {}): string {
+  const heroBlock = opts.heroImageUrl
+    ? `<img src="${opts.heroImageUrl}" alt="${escapeHtml(opts.heroImageAlt ?? title)}" style="width:100%;max-height:400px;object-fit:cover;border-radius:6px;display:block;margin:0 0 1.5em;" />`
+    : ''
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -49,7 +57,7 @@ export function wrapInDocument(title: string, bodyHtml: string): string {
 </style>
 </head>
 <body>
-<h1 style="font-size:2em;font-family:system-ui,sans-serif;line-height:1.3;margin:0 0 0.5em;">${escapeHtml(title)}</h1>
+${heroBlock}<h1 style="font-size:2em;font-family:system-ui,sans-serif;line-height:1.3;margin:0 0 0.5em;">${escapeHtml(title)}</h1>
 ${bodyHtml}
 </body>
 </html>`

@@ -17,7 +17,7 @@ export async function GET(
 
   const { data: post, error } = await db
     .from('blog_posts')
-    .select('id, title, body_mdx, tenant_id')
+    .select('id, title, body_mdx, tenant_id, hero_image_url, hero_image_alt')
     .eq('id', postId)
     .maybeSingle()
 
@@ -41,7 +41,12 @@ export async function GET(
   const wrap = req.nextUrl.searchParams.get('wrap') === '1'
 
   if (wrap) {
-    return NextResponse.json({ html: wrapInDocument(post.title, bodyHtml) })
+    return NextResponse.json({
+      html: wrapInDocument(post.title, bodyHtml, {
+        heroImageUrl: post.hero_image_url ?? undefined,
+        heroImageAlt: post.hero_image_alt ?? post.title,
+      }),
+    })
   }
 
   return NextResponse.json({ html: bodyHtml })

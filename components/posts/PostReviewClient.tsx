@@ -108,11 +108,32 @@ export default function PostReviewClient({ post, tenantId: _tenantId }: Props) {
     setHtmlLoading(true)
     try {
       const html = await fetchHtml(false)
-      await navigator.clipboard.writeText(html)
+      // navigator.clipboard may lose transient activation after the async fetch
+      // (Safari is strict about this), so fall back to the execCommand approach.
+      let ok = false
+      if (navigator.clipboard?.writeText) {
+        try {
+          await navigator.clipboard.writeText(html)
+          ok = true
+        } catch {
+          // fall through to execCommand fallback
+        }
+      }
+      if (!ok) {
+        const ta = document.createElement('textarea')
+        ta.value = html
+        ta.style.cssText = 'position:fixed;opacity:0;pointer-events:none'
+        document.body.appendChild(ta)
+        ta.focus()
+        ta.select()
+        document.execCommand('copy')
+        document.body.removeChild(ta)
+      }
       setHtmlCopied(true)
       setTimeout(() => setHtmlCopied(false), 2000)
     } catch (err) {
-      console.error(err)
+      console.error('Copy HTML failed:', err)
+      alert('Could not copy to clipboard. Please try again.')
     } finally {
       setHtmlLoading(false)
     }
