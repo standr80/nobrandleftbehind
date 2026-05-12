@@ -40,7 +40,7 @@ export default async function SettingsPage() {
         members={members ?? []}
         isAdmin={role === 'admin'}
         crawledAt={crawlCache?.crawled_at ?? null}
-        referenceSummaries={(crawlCache?.reference_summaries as ReferenceSummary[]) ?? []}
+        referenceSummaries={(crawlCache?.reference_summaries as unknown as ReferenceSummary[]) ?? []}
       />
     </div>
   )

@@ -205,7 +205,7 @@ ${rawContent}`,
     .eq('tenant_id', tenantId)
     .maybeSingle()
 
-  const existing: ReferenceSummary[] = (cache?.reference_summaries as ReferenceSummary[]) ?? []
+  const existing: ReferenceSummary[] = (cache?.reference_summaries as unknown as ReferenceSummary[]) ?? []
   const updated: ReferenceSummary[] = [
     ...existing.filter((r) => r.url !== url && r.url !== normalisedUrl),
     { url, summary: parsed.summary, crawled_at: new Date().toISOString() },
@@ -251,7 +251,7 @@ export async function runSuggestions(tenantId: string): Promise<void> {
     .maybeSingle()
 
   const existingTopics: string[] = cache?.existing_topics ?? []
-  const referenceSummaries: ReferenceSummary[] = (cache?.reference_summaries as ReferenceSummary[]) ?? []
+  const referenceSummaries: ReferenceSummary[] = (cache?.reference_summaries as unknown as ReferenceSummary[]) ?? []
 
   // Build optional competitor context block
   const referenceContext =
