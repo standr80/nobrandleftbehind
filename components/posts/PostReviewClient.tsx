@@ -89,6 +89,7 @@ export default function PostReviewClient({ post, tenantId: _tenantId }: Props) {
   const [saveMsg, setSaveMsg] = useState('')
   const [htmlCopied, setHtmlCopied] = useState(false)
   const [htmlLoading, setHtmlLoading] = useState(false)
+  const [htmlModalContent, setHtmlModalContent] = useState<string | null>(null)
   const [uploadedImageUrl, setUploadedImageUrl] = useState<string | null>(
     post.hero_image_url ?? null,
   )
@@ -108,35 +109,41 @@ export default function PostReviewClient({ post, tenantId: _tenantId }: Props) {
     setHtmlLoading(true)
     try {
       const html = await fetchHtml(false)
-      // navigator.clipboard may lose transient activation after the async fetch
-      // (Safari is strict about this), so fall back to the execCommand approach.
-      let ok = false
-      if (navigator.clipboard?.writeText) {
-        try {
-          await navigator.clipboard.writeText(html)
-          ok = true
-        } catch {
-          // fall through to execCommand fallback
-        }
-      }
-      if (!ok) {
-        const ta = document.createElement('textarea')
-        ta.value = html
-        ta.style.cssText = 'position:fixed;opacity:0;pointer-events:none'
-        document.body.appendChild(ta)
-        ta.focus()
-        ta.select()
-        document.execCommand('copy')
-        document.body.removeChild(ta)
-      }
-      setHtmlCopied(true)
-      setTimeout(() => setHtmlCopied(false), 2000)
+      // Show a modal with the HTML pre-selected so the user can copy it with
+      // a synchronous button click (bypassing browser transient-activation
+      // restrictions that break navigator.clipboard after an async fetch).
+      setHtmlModalContent(html)
     } catch (err) {
       console.error('Copy HTML failed:', err)
-      alert('Could not copy to clipboard. Please try again.')
+      alert('Could not fetch HTML. Please try again.')
     } finally {
       setHtmlLoading(false)
     }
+  }
+
+  function copyHtmlFromModal() {
+    if (!htmlModalContent) return
+    if (navigator.clipboard?.writeText) {
+      navigator.clipboard.writeText(htmlModalContent).then(() => {
+        setHtmlCopied(true)
+        setTimeout(() => { setHtmlCopied(false); setHtmlModalContent(null) }, 1500)
+      }).catch(() => fallbackCopy(htmlModalContent))
+    } else {
+      fallbackCopy(htmlModalContent)
+    }
+  }
+
+  function fallbackCopy(text: string) {
+    const ta = document.createElement('textarea')
+    ta.value = text
+    ta.style.cssText = 'position:fixed;top:0;left:0;width:2px;height:2px;opacity:0.001'
+    document.body.appendChild(ta)
+    ta.focus()
+    ta.select()
+    document.execCommand('copy')
+    document.body.removeChild(ta)
+    setHtmlCopied(true)
+    setTimeout(() => { setHtmlCopied(false); setHtmlModalContent(null) }, 1500)
   }
 
   async function downloadHtml() {
@@ -548,5 +555,44 @@ export default function PostReviewClient({ post, tenantId: _tenantId }: Props) {
         </div>
       </div>
     </div>
+
+    {/* Copy HTML modal — shown after HTML is fetched so the Copy button fires synchronously */}
+    {htmlModalContent !== null && (
+      <div
+        className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+        onClick={(e) => { if (e.target === e.currentTarget) setHtmlModalContent(null) }}
+      >
+        <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl flex flex-col gap-4 p-6">
+          <div className="flex items-center justify-between">
+            <h2 className="text-base font-semibold text-slate-800">Copy HTML</h2>
+            <button
+              onClick={() => setHtmlModalContent(null)}
+              className="text-slate-400 hover:text-slate-600 text-xl leading-none"
+              aria-label="Close"
+            >×</button>
+          </div>
+          <textarea
+            readOnly
+            value={htmlModalContent}
+            rows={12}
+            className="w-full text-xs font-mono bg-slate-50 border border-slate-200 rounded-lg p-3 resize-none focus:outline-none"
+            onFocus={(e) => e.target.select()}
+            onClick={(e) => (e.target as HTMLTextAreaElement).select()}
+          />
+          <div className="flex justify-end gap-3">
+            <button
+              onClick={() => setHtmlModalContent(null)}
+              className="px-4 py-2 text-sm text-slate-600 hover:text-slate-800 transition-colors"
+            >Cancel</button>
+            <button
+              onClick={copyHtmlFromModal}
+              className="px-5 py-2 text-sm bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg transition-colors"
+            >
+              {htmlCopied ? '✓ Copied!' : 'Copy to clipboard'}
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
   )
 }
