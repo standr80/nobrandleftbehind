@@ -229,7 +229,7 @@ export default function PostReviewClient({ post, tenantId: _tenantId }: Props) {
     }
   }
 
-  async function takeAction(action: 'submit_review' | 'approve' | 'request_changes' | 'reject' | 'publish_now') {
+  async function takeAction(action: 'submit_review' | 'approve' | 'request_changes' | 'reject' | 'publish_now' | 'unpublish') {
     setActionLoading(action)
     const payload: Record<string, unknown> = {
       action,
@@ -552,7 +552,16 @@ export default function PostReviewClient({ post, tenantId: _tenantId }: Props) {
           )}
 
           {statusKey === 'published' && (
-            <p className="text-sm text-emerald-700 self-center">✓ Published</p>
+            <div className="flex items-center gap-4">
+              <p className="text-sm text-emerald-700">✓ Published</p>
+              <button
+                onClick={() => takeAction('unpublish')}
+                disabled={actionLoading !== null}
+                className="px-4 py-2 text-sm bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg transition-colors disabled:opacity-50"
+              >
+                {actionLoading === 'unpublish' ? 'Unpublishing…' : 'Unpublish'}
+              </button>
+            </div>
           )}
         </div>
       </div>
