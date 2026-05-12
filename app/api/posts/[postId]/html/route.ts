@@ -3,6 +3,10 @@ import { auth } from '@clerk/nextjs/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { toHtml, wrapInDocument } from '@/lib/mdx/toHtml'
 
+function escapeAttr(s: string) {
+  return s.replace(/&/g, '&amp;').replace(/"/g, '&quot;')
+}
+
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ postId: string }> },
@@ -38,16 +42,20 @@ export async function GET(
   }
 
   const bodyHtml = post.body_mdx ? await toHtml(post.body_mdx) : ''
+  const heroOpts = {
+    heroImageUrl: post.hero_image_url ?? undefined,
+    heroImageAlt: post.hero_image_alt ?? post.title,
+  }
   const wrap = req.nextUrl.searchParams.get('wrap') === '1'
 
   if (wrap) {
-    return NextResponse.json({
-      html: wrapInDocument(post.title, bodyHtml, {
-        heroImageUrl: post.hero_image_url ?? undefined,
-        heroImageAlt: post.hero_image_alt ?? post.title,
-      }),
-    })
+    return NextResponse.json({ html: wrapInDocument(post.title, bodyHtml, heroOpts) })
   }
 
-  return NextResponse.json({ html: bodyHtml })
+  // For the plain copy, prepend the hero image block so it's included when
+  // pasting into emails or a CMS.
+  const heroBlock = heroOpts.heroImageUrl
+    ? `<img src="${heroOpts.heroImageUrl}" alt="${escapeAttr(heroOpts.heroImageAlt ?? '')}" style="width:100%;max-height:400px;object-fit:cover;border-radius:6px;display:block;margin:0 0 1.5em;">\n`
+    : ''
+  return NextResponse.json({ html: heroBlock + bodyHtml })
 }
