@@ -1,10 +1,11 @@
 import { serve } from 'inngest/next'
 import { inngest } from '@/lib/inngest/client'
-import { weeklySuggest } from '@/lib/inngest/functions/weekly-suggest'
-import { weeklyCrawl } from '@/lib/inngest/functions/weekly-crawl'
 import { scheduledPublish } from '@/lib/inngest/functions/scheduled-publish'
+
+// weekly-crawl and weekly-suggest have been removed — crawls are now
+// triggered manually by users from the Settings → Clem page.
 
 export const { GET, POST, PUT } = serve({
   client: inngest,
-  functions: [weeklySuggest, weeklyCrawl, scheduledPublish],
+  functions: [scheduledPublish],
 })

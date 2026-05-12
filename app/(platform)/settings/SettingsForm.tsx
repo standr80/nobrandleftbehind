@@ -2,6 +2,7 @@
 
 import { useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
+import type { ReferenceSummary } from '@/lib/clem/suggest'
 
 const CADENCE_OPTIONS = ['1pw', '2pw', '3pw', '5pw', 'daily']
 const DAYS_OPTIONS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
@@ -30,6 +31,7 @@ interface Tenant {
   publish_time: string | null
   post_cadence_active: boolean | null
   billing_tier: string | null
+  reference_urls: string[] | null
 }
 
 interface Member {
@@ -45,20 +47,58 @@ interface Props {
   tenant: Tenant
   members: Member[]
   isAdmin: boolean
+  crawledAt: string | null
+  referenceSummaries: ReferenceSummary[]
 }
 
-type Section = 'basics' | 'brand' | 'publishing' | 'team' | 'embed'
+type Section = 'basics' | 'clem' | 'brand' | 'publishing' | 'team' | 'embed'
 
 function domainToSlug(domain: string): string {
   return domain.replace(/^https?:\/\//, '').replace(/^www\./, '').split('.')[0].toLowerCase()
 }
 
-export default function SettingsForm({ tenant, members: initialMembers, isAdmin }: Props) {
+function formatTimestamp(iso: string | null): string {
+  if (!iso) return 'Never'
+  return new Date(iso).toLocaleString('en-GB', {
+    day: 'numeric', month: 'short', year: 'numeric',
+    hour: '2-digit', minute: '2-digit',
+  })
+}
+
+export default function SettingsForm({
+  tenant,
+  members: initialMembers,
+  isAdmin,
+  crawledAt: initialCrawledAt,
+  referenceSummaries: initialReferenceSummaries,
+}: Props) {
   const router = useRouter()
   const [section, setSection] = useState<Section>('basics')
+
+  // ── Crawl state ──────────────────────────────────────────────
   const [crawling, setCrawling] = useState(false)
   const [crawlMsg, setCrawlMsg] = useState('')
-  // Team state
+  const [crawledAt, setCrawledAt] = useState<string | null>(initialCrawledAt)
+
+  // ── Reference URLs state ─────────────────────────────────────
+  const [referenceUrls, setReferenceUrls] = useState<string[]>(
+    tenant.reference_urls?.filter(Boolean) ?? []
+  )
+  const [newRefUrl, setNewRefUrl] = useState('')
+  const [savingRefUrls, setSavingRefUrls] = useState(false)
+  const [refUrlMsg, setRefUrlMsg] = useState('')
+  // key = URL string, value = loading / success msg
+  const [refCrawling, setRefCrawling] = useState<Record<string, boolean>>({})
+  const [refCrawlMsgs, setRefCrawlMsgs] = useState<Record<string, string>>({})
+  const [referenceSummaries, setReferenceSummaries] = useState<ReferenceSummary[]>(
+    initialReferenceSummaries
+  )
+
+  // ── Suggest state ────────────────────────────────────────────
+  const [suggesting, setSuggesting] = useState(false)
+  const [suggestMsg, setSuggestMsg] = useState('')
+
+  // ── Team state ───────────────────────────────────────────────
   const [memberList, setMemberList] = useState<Member[]>(initialMembers)
   const [showAddMember, setShowAddMember] = useState(false)
   const [addEmail, setAddEmail] = useState('')
@@ -67,11 +107,13 @@ export default function SettingsForm({ tenant, members: initialMembers, isAdmin 
   const [addMemberError, setAddMemberError] = useState('')
   const [inviteResult, setInviteResult] = useState<{ emailSent: boolean; inviteUrl: string } | null>(null)
   const [removingId, setRemovingId] = useState<string | null>(null)
+
+  // ── General form state ───────────────────────────────────────
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [error, setError] = useState('')
 
-  // Embed builder state
+  // ── Embed builder state ──────────────────────────────────────
   const [embedMode, setEmbedMode] = useState('feed')
   const [embedTheme, setEmbedTheme] = useState('light')
   const [embedAccent, setEmbedAccent] = useState('#2563eb')
@@ -81,6 +123,7 @@ export default function SettingsForm({ tenant, members: initialMembers, isAdmin 
   const [embedOpen, setEmbedOpen] = useState('modal')
   const [embedCopied, setEmbedCopied] = useState(false)
 
+  // ── Basics form fields ───────────────────────────────────────
   const [name, setName] = useState(tenant.name)
   const [domain, setDomain] = useState(tenant.domain)
   const [logoUrl, setLogoUrl] = useState(tenant.logo_url ?? '')
@@ -102,6 +145,7 @@ export default function SettingsForm({ tenant, members: initialMembers, isAdmin 
     )
   }
 
+  // ── Save basic settings ───────────────────────────────────────
   async function save() {
     setSaving(true)
     setError('')
@@ -141,6 +185,7 @@ export default function SettingsForm({ tenant, members: initialMembers, isAdmin 
     }
   }
 
+  // ── Main site re-crawl ────────────────────────────────────────
   async function recrawl() {
     setCrawling(true)
     setCrawlMsg('')
@@ -152,7 +197,9 @@ export default function SettingsForm({ tenant, members: initialMembers, isAdmin 
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error ?? 'Crawl failed')
-      setCrawlMsg('✓ Site crawled — new suggestions will use fresh content')
+      const now = new Date().toISOString()
+      setCrawledAt(now)
+      setCrawlMsg('✓ Site crawled successfully')
     } catch (err) {
       setCrawlMsg(err instanceof Error ? err.message : 'Crawl failed')
     } finally {
@@ -160,6 +207,89 @@ export default function SettingsForm({ tenant, members: initialMembers, isAdmin 
     }
   }
 
+  // ── Reference URL management ──────────────────────────────────
+  function addReferenceUrl() {
+    const trimmed = newRefUrl.trim().replace(/^https?:\/\//i, '').replace(/\/$/, '')
+    if (!trimmed || referenceUrls.includes(trimmed) || referenceUrls.length >= 3) return
+    setReferenceUrls((prev) => [...prev, trimmed])
+    setNewRefUrl('')
+  }
+
+  function removeReferenceUrl(url: string) {
+    setReferenceUrls((prev) => prev.filter((u) => u !== url))
+    setReferenceSummaries((prev) => prev.filter((r) => r.url !== url))
+    setRefCrawlMsgs((prev) => { const next = { ...prev }; delete next[url]; return next })
+  }
+
+  async function saveReferenceUrls() {
+    setSavingRefUrls(true)
+    setRefUrlMsg('')
+    try {
+      const res = await fetch('/api/tenant', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reference_urls: referenceUrls }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error ?? 'Save failed')
+      setRefUrlMsg('✓ Reference URLs saved')
+      router.refresh()
+      setTimeout(() => setRefUrlMsg(''), 2500)
+    } catch (err) {
+      setRefUrlMsg(err instanceof Error ? err.message : 'Save failed')
+    } finally {
+      setSavingRefUrls(false)
+    }
+  }
+
+  async function crawlReferenceUrl(url: string) {
+    setRefCrawling((prev) => ({ ...prev, [url]: true }))
+    setRefCrawlMsgs((prev) => ({ ...prev, [url]: '' }))
+    try {
+      const res = await fetch('/api/clem/crawl', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tenantId: tenant.id, url }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error ?? 'Crawl failed')
+      const now = new Date().toISOString()
+      setReferenceSummaries((prev) => [
+        ...prev.filter((r) => r.url !== url),
+        { url, summary: '', crawled_at: now },
+      ])
+      setRefCrawlMsgs((prev) => ({ ...prev, [url]: '✓ Crawled' }))
+    } catch (err) {
+      setRefCrawlMsgs((prev) => ({
+        ...prev,
+        [url]: err instanceof Error ? err.message : 'Crawl failed',
+      }))
+    } finally {
+      setRefCrawling((prev) => ({ ...prev, [url]: false }))
+    }
+  }
+
+  // ── Generate suggestions ──────────────────────────────────────
+  async function generateSuggestions() {
+    setSuggesting(true)
+    setSuggestMsg('')
+    try {
+      const res = await fetch('/api/clem/suggest', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tenantId: tenant.id }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error ?? 'Suggestion generation failed')
+      setSuggestMsg('✓ New suggestions generated — check the Ideas tab')
+    } catch (err) {
+      setSuggestMsg(err instanceof Error ? err.message : 'Failed to generate suggestions')
+    } finally {
+      setSuggesting(false)
+    }
+  }
+
+  // ── Team management ───────────────────────────────────────────
   async function sendInvite() {
     if (!addEmail.trim()) return
     setAddingMember(true)
@@ -202,10 +332,7 @@ export default function SettingsForm({ tenant, members: initialMembers, isAdmin 
     }
   }
 
-  const inputClass =
-    'w-full bg-white border border-slate-200 rounded-lg px-4 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-indigo-500 transition-colors'
-  const labelClass = 'block text-xs text-slate-500 mb-1.5'
-
+  // ── Embed snippet ─────────────────────────────────────────────
   const tenantSlug = domainToSlug(tenant.domain)
 
   const embedSnippet = useCallback(() => {
@@ -220,8 +347,14 @@ export default function SettingsForm({ tenant, members: initialMembers, isAdmin 
     })
   }
 
+  // ─────────────────────────────────────────────────────────────
+  const inputClass =
+    'w-full bg-white border border-slate-200 rounded-lg px-4 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-indigo-500 transition-colors'
+  const labelClass = 'block text-xs text-slate-500 mb-1.5'
+
   const sections: { id: Section; label: string }[] = [
     { id: 'basics', label: 'Basics' },
+    { id: 'clem', label: 'Clem AI' },
     { id: 'brand', label: 'Brand' },
     { id: 'publishing', label: 'Publishing' },
     { id: 'team', label: 'Team' },
@@ -231,7 +364,7 @@ export default function SettingsForm({ tenant, members: initialMembers, isAdmin 
   return (
     <div className="space-y-1">
       {/* Section nav */}
-      <div className="flex gap-1 mb-6">
+      <div className="flex flex-wrap gap-1 mb-6">
         {sections.map((s) => (
           <button
             key={s.id}
@@ -248,7 +381,8 @@ export default function SettingsForm({ tenant, members: initialMembers, isAdmin 
       </div>
 
       <div className="bg-white border border-slate-200 rounded-2xl p-8 space-y-5">
-        {/* Basics */}
+
+        {/* ── Basics ── */}
         {section === 'basics' && (
           <>
             <div>
@@ -269,13 +403,24 @@ export default function SettingsForm({ tenant, members: initialMembers, isAdmin 
                 {tenant.billing_tier ?? 'starter'}
               </p>
             </div>
+          </>
+        )}
 
-            <div className="pt-2 border-t border-slate-200">
+        {/* ── Clem AI ── */}
+        {section === 'clem' && (
+          <div className="space-y-6">
+
+            {/* Main site crawl */}
+            <div>
               <div className="flex items-start justify-between gap-4">
                 <div>
-                  <p className="text-sm font-medium">Site crawl</p>
+                  <p className="text-sm font-medium">Your site crawl</p>
                   <p className="text-xs text-slate-400 mt-0.5">
-                    Re-crawl the domain so Clem understands your current content. Always do this after changing the domain.
+                    Re-crawl your domain so Clem understands your current content and writing style.
+                    Always re-crawl after making significant changes to your site.
+                  </p>
+                  <p className="text-xs text-slate-400 mt-1.5">
+                    Last crawled: <span className="text-slate-600 font-medium">{formatTimestamp(crawledAt)}</span>
                   </p>
                   {crawlMsg && (
                     <p className={`text-xs mt-2 ${crawlMsg.startsWith('✓') ? 'text-emerald-700' : 'text-red-600'}`}>
@@ -287,11 +432,11 @@ export default function SettingsForm({ tenant, members: initialMembers, isAdmin 
                   type="button"
                   onClick={recrawl}
                   disabled={crawling}
-                  className="shrink-0 inline-flex items-center gap-1.5 px-4 py-2 text-sm bg-white border border-slate-200 hover:bg-slate-100 disabled:opacity-40 text-slate-700 hover:text-slate-900 rounded-lg transition-colors"
+                  className="shrink-0 inline-flex items-center gap-1.5 px-4 py-2 text-sm bg-white border border-slate-200 hover:bg-slate-50 disabled:opacity-40 text-slate-700 hover:text-slate-900 rounded-lg transition-colors"
                 >
                   {crawling ? (
                     <>
-                      <span className="w-3 h-3 border border-white/30 border-t-white rounded-full animate-spin" />
+                      <span className="w-3 h-3 border border-slate-300 border-t-slate-600 rounded-full animate-spin" />
                       Crawling…
                     </>
                   ) : (
@@ -300,10 +445,156 @@ export default function SettingsForm({ tenant, members: initialMembers, isAdmin 
                 </button>
               </div>
             </div>
-          </>
+
+            <hr className="border-slate-100" />
+
+            {/* Reference URLs */}
+            <div>
+              <p className="text-sm font-medium mb-1">Reference sites</p>
+              <p className="text-xs text-slate-400 mb-4">
+                Add up to 3 competitor or inspiration sites. Clem crawls these and uses them
+                to identify content gaps and differentiated angles for your blog suggestions.
+                Crawls are billed against your Firecrawl quota — only crawl when needed.
+              </p>
+
+              {/* Existing reference URLs */}
+              <div className="space-y-3 mb-4">
+                {referenceUrls.map((url) => {
+                  const summary = referenceSummaries.find((r) => r.url === url)
+                  const isCrawling = refCrawling[url] ?? false
+                  const msg = refCrawlMsgs[url] ?? ''
+                  return (
+                    <div key={url} className="flex items-start gap-3 bg-slate-50 border border-slate-200 rounded-xl px-4 py-3">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm text-slate-800 font-mono truncate">{url}</p>
+                        <p className="text-xs text-slate-400 mt-0.5">
+                          Last crawled:{' '}
+                          <span className="text-slate-600">{formatTimestamp(summary?.crawled_at ?? null)}</span>
+                        </p>
+                        {msg && (
+                          <p className={`text-xs mt-1 ${msg.startsWith('✓') ? 'text-emerald-700' : 'text-red-600'}`}>
+                            {msg}
+                          </p>
+                        )}
+                      </div>
+                      <div className="flex gap-2 shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => crawlReferenceUrl(url)}
+                          disabled={isCrawling}
+                          className="inline-flex items-center gap-1 px-3 py-1.5 text-xs bg-white border border-slate-200 hover:bg-slate-50 disabled:opacity-40 text-slate-700 rounded-lg transition-colors"
+                        >
+                          {isCrawling ? (
+                            <>
+                              <span className="w-2.5 h-2.5 border border-slate-300 border-t-slate-600 rounded-full animate-spin" />
+                              Crawling…
+                            </>
+                          ) : (
+                            '↺ Crawl'
+                          )}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => removeReferenceUrl(url)}
+                          className="px-2 py-1.5 text-xs text-slate-300 hover:text-red-500 transition-colors rounded-lg"
+                          title="Remove"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+
+              {/* Add reference URL */}
+              {referenceUrls.length < 3 ? (
+                <div className="flex gap-2">
+                  <input
+                    className={`${inputClass} flex-1`}
+                    value={newRefUrl}
+                    onChange={(e) => setNewRefUrl(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && addReferenceUrl()}
+                    placeholder="competitor.com"
+                  />
+                  <button
+                    type="button"
+                    onClick={addReferenceUrl}
+                    disabled={!newRefUrl.trim()}
+                    className="px-4 py-2 text-sm bg-white border border-slate-200 hover:bg-slate-50 disabled:opacity-40 text-slate-700 rounded-lg transition-colors shrink-0"
+                  >
+                    + Add
+                  </button>
+                </div>
+              ) : (
+                <p className="text-xs text-slate-400">Maximum of 3 reference sites reached.</p>
+              )}
+
+              {/* Save reference URLs */}
+              <div className="flex items-center gap-3 mt-3">
+                <button
+                  type="button"
+                  onClick={saveReferenceUrls}
+                  disabled={savingRefUrls}
+                  className="px-4 py-2 text-sm bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 text-white rounded-lg transition-colors"
+                >
+                  {savingRefUrls ? 'Saving…' : 'Save reference URLs'}
+                </button>
+                {refUrlMsg && (
+                  <p className={`text-xs ${refUrlMsg.startsWith('✓') ? 'text-emerald-700' : 'text-red-600'}`}>
+                    {refUrlMsg}
+                  </p>
+                )}
+              </div>
+            </div>
+
+            <hr className="border-slate-100" />
+
+            {/* Generate suggestions */}
+            <div>
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <p className="text-sm font-medium">Generate blog suggestions</p>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    Ask Clem to propose 5 new article ideas based on your site crawl
+                    {referenceSummaries.length > 0
+                      ? ' and your reference sites'
+                      : ''}.
+                    Results appear in the Ideas tab on the Dashboard.
+                  </p>
+                  {suggestMsg && (
+                    <p className={`text-xs mt-2 ${suggestMsg.startsWith('✓') ? 'text-emerald-700' : 'text-red-600'}`}>
+                      {suggestMsg}
+                    </p>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  onClick={generateSuggestions}
+                  disabled={suggesting || !crawledAt}
+                  className="shrink-0 inline-flex items-center gap-1.5 px-4 py-2 text-sm bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 text-white rounded-lg transition-colors"
+                  title={!crawledAt ? 'Crawl your site first' : undefined}
+                >
+                  {suggesting ? (
+                    <>
+                      <span className="w-3 h-3 border border-white/30 border-t-white rounded-full animate-spin" />
+                      Generating…
+                    </>
+                  ) : (
+                    '✦ Generate suggestions'
+                  )}
+                </button>
+              </div>
+              {!crawledAt && (
+                <p className="text-xs text-amber-600 mt-2">
+                  Crawl your site first so Clem has content to work from.
+                </p>
+              )}
+            </div>
+          </div>
         )}
 
-        {/* Brand */}
+        {/* ── Brand ── */}
         {section === 'brand' && (
           <>
             <div>
@@ -340,7 +631,7 @@ export default function SettingsForm({ tenant, members: initialMembers, isAdmin 
           </>
         )}
 
-        {/* Publishing */}
+        {/* ── Publishing ── */}
         {section === 'publishing' && (
           <>
             <div className="flex items-center justify-between">
@@ -453,7 +744,7 @@ export default function SettingsForm({ tenant, members: initialMembers, isAdmin 
           </>
         )}
 
-        {/* Team */}
+        {/* ── Team ── */}
         {section === 'team' && (
           <div className="space-y-4">
             <div className="flex items-center justify-between">
@@ -468,7 +759,6 @@ export default function SettingsForm({ tenant, members: initialMembers, isAdmin 
               )}
             </div>
 
-            {/* Invite member form */}
             {showAddMember && (
               <div className="bg-indigo-500/5 border border-indigo-200 rounded-xl p-4 space-y-3">
                 {inviteResult ? (
@@ -581,7 +871,6 @@ export default function SettingsForm({ tenant, members: initialMembers, isAdmin 
               </div>
             )}
 
-            {/* Member list */}
             <ul className="space-y-2">
               {memberList.map((m) => (
                 <li key={m.id} className="flex items-center justify-between px-4 py-3 bg-white rounded-xl border border-slate-200">
@@ -616,7 +905,7 @@ export default function SettingsForm({ tenant, members: initialMembers, isAdmin 
           </div>
         )}
 
-        {/* Embed */}
+        {/* ── Embed ── */}
         {section === 'embed' && (
           <div className="space-y-6">
             <div>
@@ -627,15 +916,10 @@ export default function SettingsForm({ tenant, members: initialMembers, isAdmin 
               <p className="text-xs text-slate-400 mt-1">Derived from <span className="font-mono">{tenant.domain}</span></p>
             </div>
 
-            {/* Attribute builder */}
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className={labelClass}>Mode</label>
-                <select
-                  className={inputClass}
-                  value={embedMode}
-                  onChange={(e) => setEmbedMode(e.target.value)}
-                >
+                <select className={inputClass} value={embedMode} onChange={(e) => setEmbedMode(e.target.value)}>
                   <option value="feed">Feed (grid of cards)</option>
                   <option value="latest">Latest post</option>
                   <option value="single">Single post by slug</option>
@@ -643,11 +927,7 @@ export default function SettingsForm({ tenant, members: initialMembers, isAdmin 
               </div>
               <div>
                 <label className={labelClass}>Theme</label>
-                <select
-                  className={inputClass}
-                  value={embedTheme}
-                  onChange={(e) => setEmbedTheme(e.target.value)}
-                >
+                <select className={inputClass} value={embedTheme} onChange={(e) => setEmbedTheme(e.target.value)}>
                   <option value="light">Light</option>
                   <option value="dark">Dark</option>
                   <option value="auto">Auto (system)</option>
@@ -656,38 +936,17 @@ export default function SettingsForm({ tenant, members: initialMembers, isAdmin 
               <div>
                 <label className={labelClass}>Accent colour</label>
                 <div className="flex gap-2 items-center">
-                  <input
-                    type="color"
-                    value={embedAccent}
-                    onChange={(e) => setEmbedAccent(e.target.value)}
-                    className="w-10 h-10 rounded-lg border border-slate-200 cursor-pointer p-0.5 bg-white"
-                  />
-                  <input
-                    className={`${inputClass} flex-1`}
-                    value={embedAccent}
-                    onChange={(e) => setEmbedAccent(e.target.value)}
-                    placeholder="#2563eb"
-                  />
+                  <input type="color" value={embedAccent} onChange={(e) => setEmbedAccent(e.target.value)} className="w-10 h-10 rounded-lg border border-slate-200 cursor-pointer p-0.5 bg-white" />
+                  <input className={`${inputClass} flex-1`} value={embedAccent} onChange={(e) => setEmbedAccent(e.target.value)} placeholder="#2563eb" />
                 </div>
               </div>
               <div>
                 <label className={labelClass}>Post limit</label>
-                <input
-                  type="number"
-                  min={1}
-                  max={50}
-                  className={inputClass}
-                  value={embedLimit}
-                  onChange={(e) => setEmbedLimit(e.target.value)}
-                />
+                <input type="number" min={1} max={50} className={inputClass} value={embedLimit} onChange={(e) => setEmbedLimit(e.target.value)} />
               </div>
               <div>
                 <label className={labelClass}>Open posts</label>
-                <select
-                  className={inputClass}
-                  value={embedOpen}
-                  onChange={(e) => setEmbedOpen(e.target.value)}
-                >
+                <select className={inputClass} value={embedOpen} onChange={(e) => setEmbedOpen(e.target.value)}>
                   <option value="same-tab">Same tab</option>
                   <option value="new-tab">New tab</option>
                   <option value="modal">Modal overlay</option>
@@ -695,21 +954,13 @@ export default function SettingsForm({ tenant, members: initialMembers, isAdmin 
               </div>
               <div className="space-y-3 pt-1">
                 <label className="flex items-center gap-3 cursor-pointer select-none">
-                  <button
-                    type="button"
-                    onClick={() => setEmbedShowImages(!embedShowImages)}
-                    className={`w-10 h-5 rounded-full transition-colors relative ${embedShowImages ? 'bg-indigo-600' : 'bg-slate-200'}`}
-                  >
+                  <button type="button" onClick={() => setEmbedShowImages(!embedShowImages)} className={`w-10 h-5 rounded-full transition-colors relative ${embedShowImages ? 'bg-indigo-600' : 'bg-slate-200'}`}>
                     <span className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${embedShowImages ? 'translate-x-5' : 'translate-x-0.5'}`} />
                   </button>
                   <span className="text-sm text-slate-700">Show images</span>
                 </label>
                 <label className="flex items-center gap-3 cursor-pointer select-none">
-                  <button
-                    type="button"
-                    onClick={() => setEmbedShowAuthor(!embedShowAuthor)}
-                    className={`w-10 h-5 rounded-full transition-colors relative ${embedShowAuthor ? 'bg-indigo-600' : 'bg-slate-200'}`}
-                  >
+                  <button type="button" onClick={() => setEmbedShowAuthor(!embedShowAuthor)} className={`w-10 h-5 rounded-full transition-colors relative ${embedShowAuthor ? 'bg-indigo-600' : 'bg-slate-200'}`}>
                     <span className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${embedShowAuthor ? 'translate-x-5' : 'translate-x-0.5'}`} />
                   </button>
                   <span className="text-sm text-slate-700">Show author</span>
@@ -717,15 +968,10 @@ export default function SettingsForm({ tenant, members: initialMembers, isAdmin 
               </div>
             </div>
 
-            {/* Snippet */}
             <div>
               <div className="flex items-center justify-between mb-2">
                 <label className={labelClass}>Script tag</label>
-                <button
-                  type="button"
-                  onClick={copyEmbed}
-                  className="text-xs px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg transition-colors"
-                >
+                <button type="button" onClick={copyEmbed} className="text-xs px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg transition-colors">
                   {embedCopied ? '✓ Copied!' : 'Copy snippet'}
                 </button>
               </div>
@@ -734,7 +980,6 @@ export default function SettingsForm({ tenant, members: initialMembers, isAdmin 
               </pre>
             </div>
 
-            {/* Live preview */}
             <div>
               <label className={labelClass}>Live preview</label>
               <div className="border border-slate-200 rounded-xl overflow-hidden bg-slate-50" style={{ height: 420 }}>
@@ -753,7 +998,8 @@ export default function SettingsForm({ tenant, members: initialMembers, isAdmin 
         {error && <p className="text-xs text-red-600">{error}</p>}
       </div>
 
-      {section !== 'team' && section !== 'embed' && isAdmin && (
+      {/* Save button — shown for settings sections that use the main save */}
+      {(section === 'basics' || section === 'brand' || section === 'publishing') && isAdmin && (
         <div className="flex justify-end pt-4">
           <button
             onClick={save}
@@ -764,7 +1010,6 @@ export default function SettingsForm({ tenant, members: initialMembers, isAdmin 
           </button>
         </div>
       )}
-    
     </div>
   )
 }

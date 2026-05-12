@@ -32,12 +32,14 @@ export async function PATCH(request: Request) {
     publish_days?: string[] | null
     publish_time?: string | null
     post_cadence_active?: boolean | null
+    reference_urls?: string[]
   } = {}
 
   const allowed = [
     'name', 'domain', 'logo_url', 'brand_voice', 'target_audience', 'forbidden_words',
     'cms_type', 'git_repo', 'git_branch', 'git_blog_path',
     'publish_cadence', 'publish_days', 'publish_time', 'post_cadence_active',
+    'reference_urls',
   ] as const
   for (const key of allowed) {
     if (key in body) (updates as Record<string, unknown>)[key] = body[key]

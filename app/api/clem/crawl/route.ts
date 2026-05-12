@@ -1,16 +1,26 @@
 import { auth } from '@clerk/nextjs/server'
 import { NextResponse } from 'next/server'
-import { runCrawl } from '@/lib/clem/suggest'
+import { runCrawl, runReferenceCrawl } from '@/lib/clem/suggest'
+
+// POST /api/clem/crawl
+// Body: { tenantId: string }              → re-crawl the main tenant domain
+// Body: { tenantId: string, url: string } → crawl a reference/competitor URL
 
 export async function POST(request: Request) {
   const { userId } = await auth()
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { tenantId } = await request.json()
+  const body = await request.json()
+  const { tenantId, url } = body
+
   if (!tenantId) return NextResponse.json({ error: 'tenantId required' }, { status: 400 })
 
   try {
-    await runCrawl(tenantId)
+    if (url) {
+      await runReferenceCrawl(tenantId, url)
+    } else {
+      await runCrawl(tenantId)
+    }
     return NextResponse.json({ ok: true })
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
