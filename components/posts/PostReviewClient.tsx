@@ -6,6 +6,7 @@ import dynamic from 'next/dynamic'
 import SchedulePicker from './SchedulePicker'
 import PostPreview from './PostPreview'
 import type { BlogPost } from '@/lib/supabase/aliases'
+import { repairMojibake } from '@/lib/mdx/toHtml'
 
 const TiptapEditor = dynamic(() => import('@/components/editor/TiptapEditor'), { ssr: false })
 
@@ -67,7 +68,7 @@ interface Props {
 export default function PostReviewClient({ post, tenantId: _tenantId }: Props) {
   const router = useRouter()
   const fm = parseFrontmatter(post.body_mdx ?? '')
-  const initialBody = parseMdxBody(post.body_mdx ?? '')
+  const initialBody = repairMojibake(parseMdxBody(post.body_mdx ?? ''))
 
   const [body, setBody] = useState(initialBody)
   const [title, setTitle] = useState(post.title)
