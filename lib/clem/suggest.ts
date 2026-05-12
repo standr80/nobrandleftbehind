@@ -211,10 +211,13 @@ ${rawContent}`,
     { url, summary: parsed.summary, crawled_at: new Date().toISOString() },
   ]
 
+  // Cast to Json satisfies the Supabase schema type (jsonb column)
+  const updatedJson = updated as unknown as import('../supabase/types').Json
+
   if (cache) {
     await db
       .from('site_crawl_cache')
-      .update({ reference_summaries: updated })
+      .update({ reference_summaries: updatedJson })
       .eq('tenant_id', tenantId)
   } else {
     // No main crawl row yet — create one so we can store the reference summary
@@ -222,7 +225,7 @@ ${rawContent}`,
       tenant_id: tenantId,
       crawled_at: new Date().toISOString(),
       expires_at: new Date(0).toISOString(), // expired so main crawl still runs when needed
-      reference_summaries: updated,
+      reference_summaries: updatedJson,
     })
   }
 }
