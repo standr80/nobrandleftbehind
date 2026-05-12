@@ -6,7 +6,7 @@ import dynamic from 'next/dynamic'
 import SchedulePicker from './SchedulePicker'
 import PostPreview from './PostPreview'
 import type { BlogPost } from '@/lib/supabase/aliases'
-import { repairMojibake } from '@/lib/mdx/toHtml'
+import { repairMojibake } from '@/lib/mdx/repairMojibake'
 
 const TiptapEditor = dynamic(() => import('@/components/editor/TiptapEditor'), { ssr: false })
 
