@@ -200,6 +200,7 @@ export type Database = {
           expires_at: string | null
           id: string
           page_count: number | null
+          reference_summaries: Json
           summary: string | null
           tenant_id: string
         }
@@ -209,6 +210,7 @@ export type Database = {
           expires_at?: string | null
           id?: string
           page_count?: number | null
+          reference_summaries?: Json
           summary?: string | null
           tenant_id: string
         }
@@ -218,6 +220,7 @@ export type Database = {
           expires_at?: string | null
           id?: string
           page_count?: number | null
+          reference_summaries?: Json
           summary?: string | null
           tenant_id?: string
         }
@@ -327,6 +330,7 @@ export type Database = {
           publish_cadence: string | null
           publish_days: string[] | null
           publish_time: string | null
+          reference_urls: string[]
           stripe_customer_id: string | null
           target_audience: string | null
           white_label: boolean | null
@@ -351,6 +355,7 @@ export type Database = {
           publish_cadence?: string | null
           publish_days?: string[] | null
           publish_time?: string | null
+          reference_urls?: string[]
           stripe_customer_id?: string | null
           target_audience?: string | null
           white_label?: boolean | null
@@ -375,6 +380,7 @@ export type Database = {
           publish_cadence?: string | null
           publish_days?: string[] | null
           publish_time?: string | null
+          reference_urls?: string[]
           stripe_customer_id?: string | null
           target_audience?: string | null
           white_label?: boolean | null

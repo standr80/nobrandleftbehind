@@ -22,13 +22,11 @@ export default async function SettingsPage() {
       .select('id, name, email, role, clerk_user_id, created_at')
       .eq('tenant_id', tenant.id)
       .order('created_at', { ascending: true }),
-    // Cast to any to bypass Supabase generated types until migration 005 is applied
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (db as any)
+    db
       .from('site_crawl_cache')
       .select('crawled_at, reference_summaries')
       .eq('tenant_id', tenant.id)
-      .maybeSingle() as Promise<{ data: { crawled_at: string; reference_summaries: unknown } | null; error: unknown }>,
+      .maybeSingle(),
   ])
 
   return (
