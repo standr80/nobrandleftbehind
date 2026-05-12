@@ -199,7 +199,9 @@ ${rawContent}`,
   }
 
   // Merge into the existing reference_summaries array, replacing any prior entry for this URL
-  const { data: cache } = await db
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const anyDb = db as any
+  const { data: cache } = await anyDb
     .from('site_crawl_cache')
     .select('reference_summaries')
     .eq('tenant_id', tenantId)
@@ -212,13 +214,13 @@ ${rawContent}`,
   ]
 
   if (cache) {
-    await db
+    await anyDb
       .from('site_crawl_cache')
       .update({ reference_summaries: updated })
       .eq('tenant_id', tenantId)
   } else {
     // No main crawl row yet — create one so we can store the reference summary
-    await db.from('site_crawl_cache').insert({
+    await anyDb.from('site_crawl_cache').insert({
       tenant_id: tenantId,
       crawled_at: new Date().toISOString(),
       expires_at: new Date(0).toISOString(), // expired so main crawl still runs when needed
@@ -244,7 +246,8 @@ export async function runSuggestions(tenantId: string): Promise<void> {
 
   const crawlSummary = await crawlAndSummarise(tenant)
 
-  const { data: cache } = await db
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: cache } = await (db as any)
     .from('site_crawl_cache')
     .select('existing_topics, reference_summaries')
     .eq('tenant_id', tenantId)
