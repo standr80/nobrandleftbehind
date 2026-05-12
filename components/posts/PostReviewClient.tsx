@@ -264,6 +264,7 @@ export default function PostReviewClient({ post, tenantId: _tenantId }: Props) {
   const statusKey = post.status ?? 'draft'
 
   return (
+    <>
     <div className="max-w-5xl">
       {/* Header */}
       <div className="flex items-start justify-between mb-6 gap-4">
@@ -594,5 +595,6 @@ export default function PostReviewClient({ post, tenantId: _tenantId }: Props) {
         </div>
       </div>
     )}
+    </>
   )
 }
