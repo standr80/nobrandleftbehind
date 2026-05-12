@@ -2,6 +2,7 @@
 
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
+import rehypeRaw from 'rehype-raw'
 interface Props {
   title: string
   body: string
@@ -67,7 +68,7 @@ export default function PostPreview({ title, body, excerpt, tags, heroImageUrl, 
 
       {/* Body */}
       <div className="prose prose-slate prose-headings:text-slate-900 prose-p:text-slate-700 prose-a:text-indigo-600 prose-strong:text-slate-900 prose-code:text-indigo-600 prose-blockquote:border-indigo-400 prose-blockquote:text-slate-600 max-w-none">
-        <ReactMarkdown remarkPlugins={[remarkGfm]}>{body}</ReactMarkdown>
+        <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]}>{body}</ReactMarkdown>
       </div>
     </div>
   )
