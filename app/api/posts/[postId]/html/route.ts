@@ -60,10 +60,12 @@ export async function GET(
     return NextResponse.json({ html: wrapInDocument(post.title, bodyHtml, heroOpts) }, noCache)
   }
 
-  // For the plain copy, prepend the hero image block so it's included when
-  // pasting into emails or a CMS.
+  // For the plain copy: prepend a charset declaration so the fragment is safe
+  // to save and open directly in a browser without a full HTML wrapper, then
+  // the hero image block.
   const heroBlock = heroOpts.heroImageUrl
-    ? `<img src="${heroOpts.heroImageUrl}" alt="${escapeAttr(heroOpts.heroImageAlt ?? '')}" style="width:100%;max-height:400px;object-fit:cover;border-radius:6px;display:block;margin:0 0 1.5em;">\n`
+    ? `<img src="${escapeAttr(heroOpts.heroImageUrl)}" alt="${escapeAttr(heroOpts.heroImageAlt ?? '')}" style="width:100%;max-height:400px;object-fit:cover;border-radius:6px;display:block;margin:0 0 1.5em;">\n`
     : ''
-  return NextResponse.json({ html: heroBlock + bodyHtml }, noCache)
+  const copyHtml = `<meta charset="UTF-8">\n${heroBlock}${bodyHtml}`
+  return NextResponse.json({ html: copyHtml }, noCache)
 }
