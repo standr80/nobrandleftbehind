@@ -364,6 +364,43 @@ export default function PostReviewClient({ post, tenantId: _tenantId }: Props) {
             <p className="text-sm text-slate-500">
               Upload a hero image — this appears as the card thumbnail in the embed widget and at the top of the post preview.
             </p>
+
+            {/* Spec guidance */}
+            <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 space-y-3">
+              <p className="text-xs font-semibold text-slate-600 uppercase tracking-wide">Recommended image spec</p>
+              <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-xs text-slate-600">
+                <div>
+                  <span className="text-slate-400 block">Aspect ratio</span>
+                  <span className="font-medium">16 : 7 (landscape banner)</span>
+                </div>
+                <div>
+                  <span className="text-slate-400 block">Minimum size</span>
+                  <span className="font-medium">1200 × 525 px</span>
+                </div>
+                <div>
+                  <span className="text-slate-400 block">Recommended size</span>
+                  <span className="font-medium">1600 × 700 px</span>
+                </div>
+                <div>
+                  <span className="text-slate-400 block">Max file size</span>
+                  <span className="font-medium">500 KB</span>
+                </div>
+                <div>
+                  <span className="text-slate-400 block">Format</span>
+                  <span className="font-medium">JPG for photos · PNG for graphics</span>
+                </div>
+              </div>
+              {/* Visual ratio swatch */}
+              <div className="mt-1">
+                <div className="w-full bg-slate-200 rounded" style={{ aspectRatio: '16/7' }}>
+                  <div className="w-full h-full rounded flex items-center justify-center text-xs text-slate-400">
+                    16 : 7 preview area
+                  </div>
+                </div>
+                <p className="text-xs text-slate-400 mt-1">Images are cropped to this ratio in the embed widget and preview.</p>
+              </div>
+            </div>
+
             <label className={`flex flex-col items-center justify-center gap-2 border-2 border-dashed rounded-xl px-6 py-10 cursor-pointer transition-colors ${uploading ? 'border-slate-200 opacity-50' : 'border-slate-200 hover:border-indigo-300 hover:bg-indigo-500/5'}`}>
               <input
                 type="file"
