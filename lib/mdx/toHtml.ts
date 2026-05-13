@@ -1,6 +1,8 @@
 import { unified } from 'unified'
 import remarkParse from 'remark-parse'
+import remarkGfm from 'remark-gfm'
 import remarkRehype from 'remark-rehype'
+import rehypeRaw from 'rehype-raw'
 import rehypeStringify from 'rehype-stringify'
 import { repairMojibake } from './repairMojibake'
 
@@ -57,7 +59,9 @@ export async function toHtml(mdx: string): Promise<string> {
   const body = repairMojibake(stripFrontmatter(mdx))
   const file = await unified()
     .use(remarkParse)
+    .use(remarkGfm)
     .use(remarkRehype, { allowDangerousHtml: true })
+    .use(rehypeRaw)
     .use(rehypeStringify, { allowDangerousHtml: true })
     .process(body)
   return inlineTailwindAlignment(String(file))
@@ -98,6 +102,12 @@ export function wrapInDocument(title: string, bodyHtml: string, opts: WrapOption
   ul,ol { margin: 0 0 1em; padding-left: 1.5em; }
   li { margin-bottom: 0.25em; }
   hr { border: none; border-top: 1px solid #e5e7eb; margin: 2em 0; }
+  mark { background: #fef08a; padding: 0.1em 0.2em; border-radius: 2px; }
+  u { text-decoration: underline; }
+  table { border-collapse: collapse; width: 100%; margin: 1.5em 0; font-size: 0.9em; }
+  th, td { border: 1px solid #d1d5db; padding: 0.5em 0.75em; text-align: left; }
+  th { background: #f9fafb; font-weight: 600; }
+  tr:nth-child(even) td { background: #f9fafb; }
 </style>
 </head>
 <body>
