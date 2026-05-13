@@ -425,8 +425,10 @@ export default function SettingsForm({
                 placeholder="blog.designsonprint.com"
               />
               <p className="text-xs text-slate-400 mt-1">
-                The subdomain where your Clem-hosted blog lives. Point a CNAME DNS record for this
-                subdomain to <span className="font-mono text-slate-600">cname.vercel-dns.com</span> then enter it here.
+                The subdomain where your Clem-hosted blog lives (e.g. <span className="font-mono text-slate-300">blog.designsonprint.com</span>).
+                First add the subdomain in Vercel → your project → Settings → Domains — Vercel will
+                show you a unique CNAME target (e.g. <span className="font-mono text-slate-300">be549e9ea49c997c.vercel-dns-016.com</span>).
+                Add that as a CNAME record in your DNS, then enter the subdomain here.
               </p>
             </div>
             <div>
