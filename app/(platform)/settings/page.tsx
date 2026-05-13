@@ -4,6 +4,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { getActiveWorkspace } from '@/lib/workspace/active'
 import SettingsForm from './SettingsForm'
 import type { ReferenceSummary } from '@/lib/clem/suggest'
+import type { BlogTheme } from '@/lib/blog/types'
 
 export default async function SettingsPage() {
   const { userId } = await auth()
@@ -36,7 +37,10 @@ export default async function SettingsPage() {
         <p className="text-slate-400 text-sm">{tenant.domain}</p>
       </div>
       <SettingsForm
-        tenant={tenant}
+        tenant={{
+          ...tenant,
+          blog_theme: tenant.blog_theme as unknown as BlogTheme | null,
+        }}
         members={members ?? []}
         isAdmin={role === 'admin'}
         crawledAt={crawlCache?.crawled_at ?? null}

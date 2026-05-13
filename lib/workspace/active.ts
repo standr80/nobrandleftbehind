@@ -25,6 +25,8 @@ export interface ActiveWorkspace {
     logo_url: string | null
     post_cadence_active: boolean | null
     reference_urls: string[] | null
+    white_label_domain: string | null
+    blog_theme: import('../supabase/types').Json | null
   }
 }
 

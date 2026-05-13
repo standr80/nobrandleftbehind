@@ -3,6 +3,7 @@
 import { useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import type { ReferenceSummary } from '@/lib/clem/suggest'
+import type { BlogTheme, BlogNavLink } from '@/lib/blog/types'
 
 const CADENCE_OPTIONS = ['1pw', '2pw', '3pw', '5pw', 'daily']
 const DAYS_OPTIONS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
@@ -32,6 +33,8 @@ interface Tenant {
   post_cadence_active: boolean | null
   billing_tier: string | null
   reference_urls: string[] | null
+  white_label_domain: string | null
+  blog_theme: BlogTheme | null
 }
 
 interface Member {
@@ -93,6 +96,20 @@ export default function SettingsForm({
   const [referenceSummaries, setReferenceSummaries] = useState<ReferenceSummary[]>(
     initialReferenceSummaries
   )
+
+  // ── Blog domain + theme state ─────────────────────────────────
+  const [blogDomain, setBlogDomain] = useState(tenant.white_label_domain ?? '')
+  const [blogTheme, setBlogTheme] = useState<BlogTheme | null>(tenant.blog_theme)
+  const [extracting, setExtracting] = useState(false)
+  const [extractMsg, setExtractMsg] = useState('')
+  // Editable nav links (all users)
+  const [navLinks, setNavLinks] = useState<BlogNavLink[]>(
+    tenant.blog_theme?.navLinks ?? []
+  )
+  const [newNavLabel, setNewNavLabel] = useState('')
+  const [newNavUrl, setNewNavUrl] = useState('')
+  const [savingNav, setSavingNav] = useState(false)
+  const [navMsg, setNavMsg] = useState('')
 
   // ── Suggest state ────────────────────────────────────────────
   const [suggesting, setSuggesting] = useState(false)
@@ -171,6 +188,7 @@ export default function SettingsForm({
           publish_days: days,
           publish_time: time,
           post_cadence_active: cadenceActive,
+          white_label_domain: blogDomain.replace(/^https?:\/\//, '').replace(/\/$/, '').trim() || null,
         }),
       })
       const data = await res.json()
@@ -398,6 +416,19 @@ export default function SettingsForm({
               <input className={inputClass} value={logoUrl} onChange={(e) => setLogoUrl(e.target.value)} placeholder="https://..." />
             </div>
             <div>
+              <label className={labelClass}>Blog subdomain</label>
+              <input
+                className={inputClass}
+                value={blogDomain}
+                onChange={(e) => setBlogDomain(e.target.value)}
+                placeholder="blog.designsonprint.com"
+              />
+              <p className="text-xs text-slate-400 mt-1">
+                The subdomain where your Clem-hosted blog lives. Point a CNAME DNS record for this
+                subdomain to <span className="font-mono text-slate-600">cname.vercel-dns.com</span> then enter it here.
+              </p>
+            </div>
+            <div>
               <label className={labelClass}>Billing tier</label>
               <p className="text-sm text-slate-600 bg-white border border-slate-200 rounded-lg px-4 py-2.5 capitalize">
                 {tenant.billing_tier ?? 'starter'}
@@ -591,6 +622,217 @@ export default function SettingsForm({
                 </p>
               )}
             </div>
+
+            {/* ── Blog design match ── */}
+            <div className="border-t border-slate-800 pt-6 space-y-4">
+              <div>
+                <p className="text-sm font-medium">Blog design match</p>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  Clem scrapes your website homepage and extracts your brand colours, fonts, logo, and
+                  navigation so your hosted blog matches your site automatically.
+                  {blogTheme?.extractedAt && (
+                    <> Last extracted: <span className="text-slate-300">{formatTimestamp(blogTheme.extractedAt)}</span></>
+                  )}
+                </p>
+              </div>
+
+              {/* Admin-only: extract design tokens */}
+              {isAdmin && (
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex-1">
+                    <p className="text-sm font-medium">Extract design tokens</p>
+                    <p className="text-xs text-slate-400 mt-0.5">
+                      Scrapes <span className="text-slate-300">{tenant.domain}</span> and applies brand
+                      colours, fonts, and logo to your hosted blog.
+                    </p>
+                    {extractMsg && (
+                      <p className={`text-xs mt-2 ${extractMsg.startsWith('✓') ? 'text-emerald-500' : 'text-red-400'}`}>
+                        {extractMsg}
+                      </p>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    disabled={extracting}
+                    onClick={async () => {
+                      setExtracting(true)
+                      setExtractMsg('')
+                      try {
+                        const res = await fetch('/api/clem/extract-theme', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ tenantId: tenant.id }),
+                        })
+                        const data = await res.json()
+                        if (!res.ok) throw new Error(data.error ?? 'Extraction failed')
+                        setBlogTheme(data.theme)
+                        setNavLinks(data.theme.navLinks ?? [])
+                        setExtractMsg('✓ Design tokens extracted')
+                        router.refresh()
+                      } catch (err) {
+                        setExtractMsg(err instanceof Error ? err.message : 'Extraction failed')
+                      } finally {
+                        setExtracting(false)
+                      }
+                    }}
+                    className="shrink-0 inline-flex items-center gap-1.5 px-4 py-2 text-sm bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 text-white rounded-lg transition-colors"
+                  >
+                    {extracting ? (
+                      <>
+                        <span className="w-3 h-3 border border-white/30 border-t-white rounded-full animate-spin" />
+                        Extracting…
+                      </>
+                    ) : (
+                      '⬡ Extract design match'
+                    )}
+                  </button>
+                </div>
+              )}
+
+              {/* Colour / font preview */}
+              {blogTheme && (
+                <div className="rounded-lg border border-slate-700 p-4 space-y-3">
+                  <p className="text-xs font-semibold text-slate-400 uppercase tracking-widest">Current theme</p>
+                  <div className="flex flex-wrap gap-3">
+                    {[
+                      { label: 'Primary', value: blogTheme.primaryColor },
+                      { label: 'Background', value: blogTheme.backgroundColor },
+                      { label: 'Text', value: blogTheme.textColor },
+                    ].map(({ label, value }) => (
+                      <div key={label} className="flex items-center gap-2">
+                        <div
+                          className="w-5 h-5 rounded border border-white/20 flex-shrink-0"
+                          style={{ backgroundColor: value }}
+                        />
+                        <span className="text-xs text-slate-400">{label}: <span className="font-mono text-slate-300">{value}</span></span>
+                      </div>
+                    ))}
+                  </div>
+                  <p className="text-xs text-slate-400">
+                    Heading font: <span className="text-slate-300">{blogTheme.headingFont}</span>
+                  </p>
+                  <p className="text-xs text-slate-400">
+                    Body font: <span className="text-slate-300">{blogTheme.bodyFont}</span>
+                  </p>
+                </div>
+              )}
+
+              {/* Nav links — editable by all users */}
+              <div>
+                <p className="text-sm font-medium mb-2">Blog header navigation</p>
+                <p className="text-xs text-slate-400 mb-3">
+                  These links appear in the header of your hosted blog alongside the Blog link.
+                  Edit them to match your site&apos;s main navigation.
+                </p>
+                <div className="space-y-2 mb-3">
+                  {navLinks.map((link, i) => (
+                    <div key={i} className="flex gap-2">
+                      <input
+                        className="flex-1 bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white placeholder-slate-500"
+                        value={link.label}
+                        onChange={(e) => {
+                          const updated = [...navLinks]
+                          updated[i] = { ...updated[i], label: e.target.value }
+                          setNavLinks(updated)
+                        }}
+                        placeholder="Label"
+                      />
+                      <input
+                        className="flex-1 bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white placeholder-slate-500"
+                        value={link.url}
+                        onChange={(e) => {
+                          const updated = [...navLinks]
+                          updated[i] = { ...updated[i], url: e.target.value }
+                          setNavLinks(updated)
+                        }}
+                        placeholder="https://..."
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setNavLinks(navLinks.filter((_, j) => j !== i))}
+                        className="px-2 py-1.5 text-slate-400 hover:text-red-400 text-sm"
+                        aria-label="Remove"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ))}
+                </div>
+                {navLinks.length < 8 && (
+                  <div className="flex gap-2 mb-3">
+                    <input
+                      className="flex-1 bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white placeholder-slate-500"
+                      value={newNavLabel}
+                      onChange={(e) => setNewNavLabel(e.target.value)}
+                      placeholder="Label"
+                    />
+                    <input
+                      className="flex-1 bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white placeholder-slate-500"
+                      value={newNavUrl}
+                      onChange={(e) => setNewNavUrl(e.target.value)}
+                      placeholder="https://..."
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && newNavLabel && newNavUrl) {
+                          setNavLinks([...navLinks, { label: newNavLabel, url: newNavUrl }])
+                          setNewNavLabel('')
+                          setNewNavUrl('')
+                        }
+                      }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (newNavLabel && newNavUrl) {
+                          setNavLinks([...navLinks, { label: newNavLabel, url: newNavUrl }])
+                          setNewNavLabel('')
+                          setNewNavUrl('')
+                        }
+                      }}
+                      className="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-white text-xs rounded-lg"
+                    >
+                      Add
+                    </button>
+                  </div>
+                )}
+                {navMsg && (
+                  <p className={`text-xs mb-2 ${navMsg.startsWith('✓') ? 'text-emerald-500' : 'text-red-400'}`}>
+                    {navMsg}
+                  </p>
+                )}
+                <button
+                  type="button"
+                  disabled={savingNav}
+                  onClick={async () => {
+                    setSavingNav(true)
+                    setNavMsg('')
+                    try {
+                      // Merge updated nav links into the existing blog_theme
+                      const updatedTheme = blogTheme
+                        ? { ...blogTheme, navLinks }
+                        : { navLinks }
+                      const res = await fetch('/api/tenant', {
+                        method: 'PATCH',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ blog_theme: updatedTheme }),
+                      })
+                      const data = await res.json()
+                      if (!res.ok) throw new Error(data.error ?? 'Save failed')
+                      setBlogTheme(updatedTheme as BlogTheme)
+                      setNavMsg('✓ Navigation saved')
+                      router.refresh()
+                    } catch (err) {
+                      setNavMsg(err instanceof Error ? err.message : 'Save failed')
+                    } finally {
+                      setSavingNav(false)
+                    }
+                  }}
+                  className="inline-flex items-center gap-1.5 px-4 py-2 text-sm bg-slate-700 hover:bg-slate-600 disabled:opacity-40 text-white rounded-lg transition-colors"
+                >
+                  {savingNav ? 'Saving…' : 'Save navigation'}
+                </button>
+              </div>
+            </div>
+
           </div>
         )}
 

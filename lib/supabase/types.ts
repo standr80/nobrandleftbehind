@@ -314,6 +314,7 @@ export type Database = {
         Row: {
           auto_merge: boolean | null
           billing_tier: string | null
+          blog_theme: Json | null
           brand_voice: string | null
           cms_type: string | null
           created_at: string | null
@@ -339,6 +340,7 @@ export type Database = {
         Insert: {
           auto_merge?: boolean | null
           billing_tier?: string | null
+          blog_theme?: Json | null
           brand_voice?: string | null
           cms_type?: string | null
           created_at?: string | null
@@ -364,6 +366,7 @@ export type Database = {
         Update: {
           auto_merge?: boolean | null
           billing_tier?: string | null
+          blog_theme?: Json | null
           brand_voice?: string | null
           cms_type?: string | null
           created_at?: string | null

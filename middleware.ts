@@ -1,5 +1,6 @@
 import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server'
 import { NextResponse } from 'next/server'
+import type { NextRequest } from 'next/server'
 import { ACTIVE_WORKSPACE_COOKIE, PENDING_INVITE_COOKIE } from '@/lib/workspace/active'
 
 const isPublicRoute = createRouteMatcher([
@@ -20,12 +21,36 @@ const isWorkspaceRoute = createRouteMatcher([
   '/settings(.*)',
 ])
 
-export default clerkMiddleware(async (auth, request) => {
+/** Hostnames that belong to the Clem platform itself */
+function isPlatformHost(host: string): boolean {
+  return /nobrandleftbehind\.(com|vercel\.app)/i.test(host) ||
+    host.startsWith('localhost') ||
+    host.startsWith('127.0.0.1')
+}
+
+export default clerkMiddleware(async (auth, request: NextRequest) => {
+  const host = request.headers.get('host') ?? ''
+  const pathname = request.nextUrl.pathname
+
+  // ── Blog host routing ────────────────────────────────────────────────────────
+  // Any request arriving on a non-platform domain is treated as a blog host.
+  // We rewrite the path internally to app/blog/* while keeping the visitor's
+  // address bar unchanged, and forward the original host as x-blog-host so
+  // server components can look up the correct tenant.
+  if (!isPlatformHost(host)) {
+    const url = request.nextUrl.clone()
+    url.pathname = '/blog' + (pathname === '/' ? '' : pathname)
+
+    const requestHeaders = new Headers(request.headers)
+    requestHeaders.set('x-blog-host', host)
+
+    return NextResponse.rewrite(url, { request: { headers: requestHeaders } })
+  }
+
+  // ── Platform routing (unchanged) ─────────────────────────────────────────────
   if (isPublicRoute(request)) return NextResponse.next()
 
   await auth.protect()
-
-  const pathname = request.nextUrl.pathname
 
   // After sign-up/sign-in: if a pending invite cookie exists and the user
   // isn't already on the invite page, redirect them there to accept.
