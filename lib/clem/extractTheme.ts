@@ -16,7 +16,7 @@ export async function extractTheme(tenantId: string): Promise<BlogTheme> {
 
   const { data: tenant, error } = await db
     .from('tenants')
-    .select('id, domain')
+    .select('id, domain, logo_url, name')
     .eq('id', tenantId)
     .single()
 
@@ -90,8 +90,9 @@ ${htmlSample}`,
     textColor: parsed.textColor ?? '#1a1a1a',
     headingFont: parsed.headingFont ?? 'system-ui, sans-serif',
     bodyFont: parsed.bodyFont ?? 'Georgia, serif',
-    logoUrl: parsed.logoUrl ?? null,
-    logoAlt: parsed.logoAlt ?? null,
+    // Prefer the logo already stored in tenant settings over whatever Claude found
+    logoUrl: tenant.logo_url ?? parsed.logoUrl ?? null,
+    logoAlt: parsed.logoAlt ?? tenant.name ?? null,
     navLinks: Array.isArray(parsed.navLinks) ? parsed.navLinks : [],
     extractedAt: new Date().toISOString(),
   }

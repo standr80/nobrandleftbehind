@@ -16,7 +16,7 @@ export async function getTenantByBlogHost(host: string): Promise<BlogTenant | nu
 
   const { data, error } = await db
     .from('tenants')
-    .select('id, name, domain, white_label_domain, blog_theme')
+    .select('id, name, domain, white_label_domain, blog_theme, logo_url')
     .eq('white_label_domain', cleanHost)
     .maybeSingle()
 
@@ -24,9 +24,13 @@ export async function getTenantByBlogHost(host: string): Promise<BlogTenant | nu
 
   // Merge extracted theme with defaults so pages always have complete values
   const rawTheme = data.blog_theme as Partial<BlogTheme> | null
-  const theme: BlogTheme = rawTheme
-    ? { ...DEFAULT_BLOG_THEME, ...rawTheme }
-    : DEFAULT_BLOG_THEME
+  const theme: BlogTheme = {
+    ...DEFAULT_BLOG_THEME,
+    ...(rawTheme ?? {}),
+    // Always prefer the logo from tenant settings as the canonical source
+    logoUrl: rawTheme?.logoUrl ?? (data as unknown as { logo_url?: string | null }).logo_url ?? null,
+    logoAlt: rawTheme?.logoAlt ?? data.name,
+  }
 
   return {
     id: data.id,
