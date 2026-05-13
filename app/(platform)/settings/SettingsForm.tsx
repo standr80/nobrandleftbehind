@@ -430,6 +430,16 @@ export default function SettingsForm({
                 show you a unique CNAME target (e.g. <span className="font-mono text-slate-300">be549e9ea49c997c.vercel-dns-016.com</span>).
                 Add that as a CNAME record in your DNS, then enter the subdomain here.
               </p>
+              {blogDomain && (
+                <a
+                  href={`https://${blogDomain.replace(/^https?:\/\//, '')}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 mt-2 text-xs font-medium text-indigo-600 hover:text-indigo-500 transition-colors"
+                >
+                  View blog →
+                </a>
+              )}
             </div>
             <div>
               <label className={labelClass}>Billing tier</label>
