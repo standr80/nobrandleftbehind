@@ -697,12 +697,12 @@ export default function SettingsForm({
                 {/* Optional URL override */}
                 <div>
                   <input
-                    className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white placeholder-slate-500"
+                    className={inputClass}
                     value={extractUrl}
                     onChange={(e) => setExtractUrl(e.target.value)}
                     placeholder={`Defaults to ${tenant.domain} — enter a different URL to extract from`}
                   />
-                  <p className="text-xs text-slate-500 mt-1">
+                  <p className="text-xs text-slate-400 mt-1">
                     Optional. Leave blank to extract from your main domain. Useful if a client is previewing a new design at a staging URL.
                   </p>
                 </div>
@@ -748,7 +748,7 @@ export default function SettingsForm({
                   {navLinks.map((link, i) => (
                     <div key={i} className="flex gap-2">
                       <input
-                        className="flex-1 bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white placeholder-slate-500"
+                        className="flex-1 bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-indigo-500"
                         value={link.label}
                         onChange={(e) => {
                           const updated = [...navLinks]
@@ -758,7 +758,7 @@ export default function SettingsForm({
                         placeholder="Label"
                       />
                       <input
-                        className="flex-1 bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white placeholder-slate-500"
+                        className="flex-1 bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-indigo-500"
                         value={link.url}
                         onChange={(e) => {
                           const updated = [...navLinks]
@@ -770,7 +770,7 @@ export default function SettingsForm({
                       <button
                         type="button"
                         onClick={() => setNavLinks(navLinks.filter((_, j) => j !== i))}
-                        className="px-2 py-1.5 text-slate-400 hover:text-red-400 text-sm"
+                        className="px-2 py-1.5 text-slate-400 hover:text-red-500 text-sm"
                         aria-label="Remove"
                       >
                         ✕
@@ -781,13 +781,13 @@ export default function SettingsForm({
                 {navLinks.length < 8 && (
                   <div className="flex gap-2 mb-3">
                     <input
-                      className="flex-1 bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white placeholder-slate-500"
+                      className="flex-1 bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-indigo-500"
                       value={newNavLabel}
                       onChange={(e) => setNewNavLabel(e.target.value)}
                       placeholder="Label"
                     />
                     <input
-                      className="flex-1 bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white placeholder-slate-500"
+                      className="flex-1 bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-indigo-500"
                       value={newNavUrl}
                       onChange={(e) => setNewNavUrl(e.target.value)}
                       placeholder="https://..."
@@ -808,7 +808,7 @@ export default function SettingsForm({
                           setNewNavUrl('')
                         }
                       }}
-                      className="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-white text-xs rounded-lg"
+                      className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-sm rounded-lg transition-colors"
                     >
                       Add
                     </button>
@@ -846,7 +846,7 @@ export default function SettingsForm({
                       setSavingNav(false)
                     }
                   }}
-                  className="inline-flex items-center gap-1.5 px-4 py-2 text-sm bg-slate-700 hover:bg-slate-600 disabled:opacity-40 text-white rounded-lg transition-colors"
+                  className="inline-flex items-center gap-1.5 px-4 py-2 text-sm bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 text-white rounded-lg transition-colors"
                 >
                   {savingNav ? 'Saving…' : 'Save navigation'}
                 </button>
