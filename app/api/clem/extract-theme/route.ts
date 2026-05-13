@@ -18,11 +18,12 @@ export async function POST(request: Request) {
   const isAdmin = userId === PLATFORM_ADMIN_ID || workspace.role === 'admin'
   if (!isAdmin) return NextResponse.json({ error: 'Admin only' }, { status: 403 })
 
-  const { tenantId } = await request.json()
-  const targetId = tenantId ?? workspace.tenantId
+  const body = await request.json()
+  const targetId = body.tenantId ?? workspace.tenantId
+  const overrideUrl: string | undefined = body.url || undefined
 
   try {
-    const theme = await extractTheme(targetId)
+    const theme = await extractTheme(targetId, overrideUrl)
     return NextResponse.json({ ok: true, theme })
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)

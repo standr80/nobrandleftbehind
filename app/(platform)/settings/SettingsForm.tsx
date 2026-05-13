@@ -102,6 +102,7 @@ export default function SettingsForm({
   const [blogTheme, setBlogTheme] = useState<BlogTheme | null>(tenant.blog_theme)
   const [extracting, setExtracting] = useState(false)
   const [extractMsg, setExtractMsg] = useState('')
+  const [extractUrl, setExtractUrl] = useState('')
   // Editable nav links (all users)
   const [navLinks, setNavLinks] = useState<BlogNavLink[]>(
     tenant.blog_theme?.navLinks ?? []
@@ -638,6 +639,7 @@ export default function SettingsForm({
 
               {/* Admin-only: extract design tokens */}
               {isAdmin && (
+                <div className="space-y-3">
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex-1">
                     <p className="text-sm font-medium">Extract design tokens</p>
@@ -661,7 +663,10 @@ export default function SettingsForm({
                         const res = await fetch('/api/clem/extract-theme', {
                           method: 'POST',
                           headers: { 'Content-Type': 'application/json' },
-                          body: JSON.stringify({ tenantId: tenant.id }),
+                          body: JSON.stringify({
+                            tenantId: tenant.id,
+                            url: extractUrl.trim() || undefined,
+                          }),
                         })
                         const data = await res.json()
                         if (!res.ok) throw new Error(data.error ?? 'Extraction failed')
@@ -686,6 +691,19 @@ export default function SettingsForm({
                       '⬡ Extract design match'
                     )}
                   </button>
+                </div>
+                {/* Optional URL override */}
+                <div>
+                  <input
+                    className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white placeholder-slate-500"
+                    value={extractUrl}
+                    onChange={(e) => setExtractUrl(e.target.value)}
+                    placeholder={`Defaults to ${tenant.domain} — enter a different URL to extract from`}
+                  />
+                  <p className="text-xs text-slate-500 mt-1">
+                    Optional. Leave blank to extract from your main domain. Useful if a client is previewing a new design at a staging URL.
+                  </p>
+                </div>
                 </div>
               )}
 

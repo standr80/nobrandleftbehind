@@ -11,7 +11,7 @@ const CLAUDE_MODEL = 'claude-sonnet-4-20250514'
  * Claude to extract brand design tokens and navigation structure.
  * The result is saved to tenants.blog_theme and returned.
  */
-export async function extractTheme(tenantId: string): Promise<BlogTheme> {
+export async function extractTheme(tenantId: string, overrideUrl?: string): Promise<BlogTheme> {
   const db = createAdminClient()
 
   const { data: tenant, error } = await db
@@ -22,7 +22,9 @@ export async function extractTheme(tenantId: string): Promise<BlogTheme> {
 
   if (error || !tenant) throw new Error(`Tenant ${tenantId} not found`)
 
-  const url = `https://${tenant.domain}`
+  // Use the override URL if provided, otherwise fall back to the tenant's main domain
+  const rawUrl = overrideUrl?.trim() || `https://${tenant.domain}`
+  const url = rawUrl.startsWith('http') ? rawUrl : `https://${rawUrl}`
   console.log(`[clem/extract-theme] Scraping ${url}…`)
 
   const firecrawl = new FirecrawlApp({ apiKey: process.env.FIRECRAWL_API_KEY! })
