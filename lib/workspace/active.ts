@@ -27,6 +27,7 @@ export interface ActiveWorkspace {
     reference_urls: string[] | null
     white_label_domain: string | null
     blog_theme: import('../supabase/types').Json | null
+    theme_extract_url: string | null
   }
 }
 

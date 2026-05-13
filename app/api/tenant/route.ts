@@ -35,13 +35,14 @@ export async function PATCH(request: Request) {
     reference_urls?: string[]
     white_label_domain?: string | null
     blog_theme?: import('@/lib/supabase/types').Json | null
+    theme_extract_url?: string | null
   } = {}
 
   const allowed = [
     'name', 'domain', 'logo_url', 'brand_voice', 'target_audience', 'forbidden_words',
     'cms_type', 'git_repo', 'git_branch', 'git_blog_path',
     'publish_cadence', 'publish_days', 'publish_time', 'post_cadence_active',
-    'reference_urls', 'white_label_domain', 'blog_theme',
+    'reference_urls', 'white_label_domain', 'blog_theme', 'theme_extract_url',
   ] as const
   for (const key of allowed) {
     if (key in body) (updates as Record<string, unknown>)[key] = body[key]

@@ -35,6 +35,7 @@ interface Tenant {
   reference_urls: string[] | null
   white_label_domain: string | null
   blog_theme: BlogTheme | null
+  theme_extract_url: string | null
 }
 
 interface Member {
@@ -102,7 +103,8 @@ export default function SettingsForm({
   const [blogTheme, setBlogTheme] = useState<BlogTheme | null>(tenant.blog_theme)
   const [extracting, setExtracting] = useState(false)
   const [extractMsg, setExtractMsg] = useState('')
-  const [extractUrl, setExtractUrl] = useState('')
+  const [extractUrl, setExtractUrl] = useState(tenant.theme_extract_url ?? '')
+  const [savingExtractUrl, setSavingExtractUrl] = useState(false)
   // Editable nav links (all users)
   const [navLinks, setNavLinks] = useState<BlogNavLink[]>(
     tenant.blog_theme?.navLinks ?? []
@@ -706,14 +708,51 @@ export default function SettingsForm({
                 </div>
                 {/* Optional URL override */}
                 <div>
-                  <input
-                    className={inputClass}
-                    value={extractUrl}
-                    onChange={(e) => setExtractUrl(e.target.value)}
-                    placeholder={`Defaults to ${tenant.domain} — enter a different URL to extract from`}
-                  />
+                  <label className={labelClass}>Design match source URL (optional)</label>
+                  <div className="flex gap-2">
+                    <input
+                      className={inputClass}
+                      value={extractUrl}
+                      onChange={(e) => setExtractUrl(e.target.value)}
+                      placeholder={`Defaults to ${tenant.domain}`}
+                    />
+                    <button
+                      type="button"
+                      disabled={savingExtractUrl}
+                      onClick={async () => {
+                        setSavingExtractUrl(true)
+                        await fetch('/api/tenant', {
+                          method: 'PATCH',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ theme_extract_url: extractUrl.trim() || null }),
+                        })
+                        setSavingExtractUrl(false)
+                        router.refresh()
+                      }}
+                      className="shrink-0 px-3 py-2 text-sm bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 text-white rounded-lg transition-colors"
+                    >
+                      {savingExtractUrl ? 'Saving…' : 'Save'}
+                    </button>
+                    {extractUrl && (
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          setExtractUrl('')
+                          await fetch('/api/tenant', {
+                            method: 'PATCH',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ theme_extract_url: null }),
+                          })
+                          router.refresh()
+                        }}
+                        className="shrink-0 px-3 py-2 text-sm border border-slate-200 hover:border-red-300 hover:text-red-500 text-slate-500 rounded-lg transition-colors"
+                      >
+                        Clear
+                      </button>
+                    )}
+                  </div>
                   <p className="text-xs text-slate-400 mt-1">
-                    Optional. Leave blank to extract from your main domain. Useful if a client is previewing a new design at a staging URL.
+                    Leave blank to extract from your main domain. Enter a staging or preview URL if the client is preparing a new design.
                   </p>
                 </div>
                 </div>

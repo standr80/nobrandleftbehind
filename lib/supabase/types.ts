@@ -336,6 +336,7 @@ export type Database = {
           target_audience: string | null
           white_label: boolean | null
           white_label_domain: string | null
+          theme_extract_url: string | null
         }
         Insert: {
           auto_merge?: boolean | null
@@ -362,6 +363,7 @@ export type Database = {
           target_audience?: string | null
           white_label?: boolean | null
           white_label_domain?: string | null
+          theme_extract_url?: string | null
         }
         Update: {
           auto_merge?: boolean | null
@@ -388,6 +390,7 @@ export type Database = {
           target_audience?: string | null
           white_label?: boolean | null
           white_label_domain?: string | null
+          theme_extract_url?: string | null
         }
         Relationships: []
       }
