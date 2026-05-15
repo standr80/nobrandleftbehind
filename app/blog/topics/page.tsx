@@ -2,6 +2,7 @@ import { headers } from 'next/headers'
 import { notFound } from 'next/navigation'
 import { getTenantByBlogHost } from '@/lib/blog/getTenantByBlogHost'
 import { getSidebarData } from '@/lib/blog/getSidebarData'
+import { tagToSlug } from '@/lib/blog/tagUtils'
 import type { Metadata } from 'next'
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -53,7 +54,7 @@ export default async function TopicsPage() {
           {sidebar.allTags.map(({ tag, count }) => (
             <a
               key={tag}
-              href={`${blogUrl}/tags/${encodeURIComponent(tag)}`}
+              href={`${blogUrl}/tags/${tagToSlug(tag)}`}
               style={{
                 display: 'flex',
                 alignItems: 'center',

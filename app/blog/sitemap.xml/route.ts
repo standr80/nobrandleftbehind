@@ -2,6 +2,7 @@ import { headers } from 'next/headers'
 import { NextResponse } from 'next/server'
 import { getTenantByBlogHost } from '@/lib/blog/getTenantByBlogHost'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { tagToSlug } from '@/lib/blog/tagUtils'
 
 export async function GET() {
   const headersList = await headers()
@@ -36,7 +37,7 @@ export async function GET() {
   </url>`,
     // Tag pages
     ...tags.map((tag) => `  <url>
-    <loc>${blogUrl}/tags/${encodeURIComponent(tag)}</loc>
+    <loc>${blogUrl}/tags/${tagToSlug(tag)}</loc>
     <changefreq>weekly</changefreq>
     <priority>0.6</priority>
   </url>`),

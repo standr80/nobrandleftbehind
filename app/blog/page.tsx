@@ -2,6 +2,7 @@ import { headers } from 'next/headers'
 import { notFound } from 'next/navigation'
 import { getTenantByBlogHost, POSTS_PER_PAGE } from '@/lib/blog/getTenantByBlogHost'
 import { getSidebarData } from '@/lib/blog/getSidebarData'
+import { tagToSlug } from '@/lib/blog/tagUtils'
 import { createAdminClient } from '@/lib/supabase/admin'
 import type { BlogTheme } from '@/lib/blog/types'
 import type { Metadata } from 'next'
@@ -18,6 +19,7 @@ export async function generateMetadata(): Promise<Metadata> {
     title: `${tenant.name} Blog`,
     description: `Latest articles from ${tenant.name}`,
     alternates: { canonical: `https://${host}` },
+    openGraph: { siteName: `${tenant.name} Blog`, title: `${tenant.name} Blog`, description: `Latest articles from ${tenant.name}` },
   }
 }
 
@@ -301,7 +303,7 @@ export function BlogSidebar({ sidebar, theme, blogUrl }: {
           {sidebar.topTags.map(({ tag, count }) => (
             <a
               key={tag}
-              href={`${blogUrl}/tags/${encodeURIComponent(tag)}`}
+              href={`${blogUrl}/tags/${tagToSlug(tag)}`}
               className="blog-sidebar-link"
               style={{ color: theme.textColor }}
             >

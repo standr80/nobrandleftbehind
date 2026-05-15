@@ -76,11 +76,29 @@ export default async function BlogLayout({ children }: BlogLayoutProps) {
       white-space: nowrap;
       text-decoration: none;
     }
+    .skip-link {
+      position: absolute;
+      top: -100%;
+      left: 1rem;
+      background: ${theme.primaryColor};
+      color: #fff;
+      padding: 0.5rem 1rem;
+      border-radius: 0 0 0.5rem 0.5rem;
+      font-size: 0.875rem;
+      font-family: ${theme.headingFont};
+      text-decoration: none;
+      z-index: 200;
+      transition: top 0.15s;
+    }
+    .skip-link:focus { top: 0; }
   `.trim()
 
   return (
     <>
       <style dangerouslySetInnerHTML={{ __html: globalCss }} />
+
+      {/* Skip to content — keyboard/screen reader accessibility */}
+      <a href="#main-content" className="skip-link">Skip to content</a>
 
       {/* ── Header ── */}
       <header style={{
@@ -121,7 +139,7 @@ export default async function BlogLayout({ children }: BlogLayoutProps) {
           </a>
 
           {/* Navigation */}
-          <nav style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', flexWrap: 'wrap' }}>
+          <nav aria-label="Main navigation" style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', flexWrap: 'wrap' }}>
             {theme.navLinks.map((link: BlogNavLink) => (
               <a key={link.url} href={link.url} className="blog-nav-link">
                 {link.label}
@@ -132,7 +150,7 @@ export default async function BlogLayout({ children }: BlogLayoutProps) {
       </header>
 
       {/* ── Page content ── */}
-      <main style={{ minHeight: 'calc(100vh - 64px - 80px)' }}>
+      <main id="main-content" style={{ minHeight: 'calc(100vh - 64px - 80px)' }}>
         {children}
       </main>
 

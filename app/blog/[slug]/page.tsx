@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation'
 import { getTenantByBlogHost } from '@/lib/blog/getTenantByBlogHost'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { toHtml } from '@/lib/mdx/toHtml'
+import { tagToSlug } from '@/lib/blog/tagUtils'
 import type { Metadata } from 'next'
 
 interface Props {
@@ -36,8 +37,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       description: post.excerpt ?? undefined,
       url: `${blogUrl}/${slug}`,
       type: 'article',
+      siteName: `${tenant.name} Blog`,
       publishedTime: post.published_at ?? undefined,
-      images: post.hero_image_url ? [{ url: post.hero_image_url }] : [],
+      images: post.hero_image_url ? [{ url: post.hero_image_url, width: 1600, height: 700 }] : [],
     },
     twitter: {
       card: post.hero_image_url ? 'summary_large_image' : 'summary',
@@ -115,8 +117,40 @@ export default async function BlogPostPage({ params }: Props) {
     @media (max-width: 640px) { .related-grid { grid-template-columns: 1fr; } }
   `
 
+  const canonicalUrl = `${blogUrl}/${post.slug}`
+
+  const jsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'BlogPosting',
+    headline: post.title,
+    description: post.excerpt ?? undefined,
+    image: post.hero_image_url ?? undefined,
+    datePublished: post.published_at ?? undefined,
+    url: canonicalUrl,
+    author: {
+      '@type': 'Organization',
+      name: tenant.name,
+      url: `https://${tenant.domain}`,
+    },
+    publisher: {
+      '@type': 'Organization',
+      name: tenant.name,
+      url: `https://${tenant.domain}`,
+      ...(tenant.blog_theme.logoUrl ? { logo: { '@type': 'ImageObject', url: tenant.blog_theme.logoUrl } } : {}),
+    },
+    mainEntityOfPage: {
+      '@type': 'WebPage',
+      '@id': canonicalUrl,
+    },
+    keywords: (post.tags ?? []).join(', ') || undefined,
+  }
+
   return (
     <article>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
       <style dangerouslySetInnerHTML={{ __html: postCss }} />
 
       {/* Hero image */}
@@ -136,7 +170,7 @@ export default async function BlogPostPage({ params }: Props) {
         {(post.tags ?? []).length > 0 && (
           <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '1.25rem' }}>
             {(post.tags ?? []).map((tag) => (
-              <a key={tag} href={`${blogUrl}/tags/${encodeURIComponent(tag)}`} style={{
+              <a key={tag} href={`${blogUrl}/tags/${tagToSlug(tag)}`} style={{
                 fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase',
                 letterSpacing: '0.06em', color: theme.primaryColor,
                 padding: '0.25rem 0.625rem', borderRadius: '0.25rem',
