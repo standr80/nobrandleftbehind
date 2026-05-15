@@ -189,12 +189,17 @@ export default function PostReviewClient({ post, tenantId: _tenantId }: Props) {
   async function savePost() {
     setSaving(true)
     setSaveMsg('')
+    // Normalise tags: lowercase, spaces → hyphens, strip non-alphanumeric except hyphens
+    const normalisedTags = tags
+      .split(',')
+      .map((t) => t.trim().toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '').replace(/-+/g, '-'))
+      .filter(Boolean)
     const updatedFm = {
       ...fm,
       title,
       excerpt,
       metaDescription,
-      tags: `[${tags.split(',').map((t: string) => `"${t.trim()}"`).join(', ')}]`,
+      tags: `[${normalisedTags.map((t: string) => `"${t}"`).join(', ')}]`,
     }
     const newMdx = buildMdx(updatedFm, body)
     const heroFields = uploadedImageUrl
@@ -209,7 +214,7 @@ export default function PostReviewClient({ post, tenantId: _tenantId }: Props) {
         title,
         excerpt,
         meta_description: metaDescription,
-        tags: tags.split(',').map((t: string) => t.trim()).filter(Boolean),
+        tags: normalisedTags,
         ...heroFields,
       }),
     })
@@ -351,7 +356,7 @@ export default function PostReviewClient({ post, tenantId: _tenantId }: Props) {
               title={title}
               body={body}
               excerpt={excerpt}
-              tags={tags.split(',').map((t) => t.trim()).filter(Boolean)}
+              tags={tags.split(',').map((t) => t.trim().toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '').replace(/-+/g, '-')).filter(Boolean)}
               heroImageUrl={uploadedImageUrl ?? null}
               heroImageCredit={null}
               draftedAt={post.drafted_at ?? null}

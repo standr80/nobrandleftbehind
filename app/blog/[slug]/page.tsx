@@ -19,7 +19,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const db = createAdminClient()
   const { data: post } = await db
     .from('blog_posts')
-    .select('title, excerpt, hero_image_url, published_at')
+    .select('title, excerpt, hero_image_url, published_at, updated_at')
     .eq('tenant_id', tenant.id)
     .eq('slug', slug)
     .eq('status', 'published')
@@ -39,6 +39,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       type: 'article',
       siteName: `${tenant.name} Blog`,
       publishedTime: post.published_at ?? undefined,
+      modifiedTime: post.updated_at ?? post.published_at ?? undefined,
       images: post.hero_image_url ? [{ url: post.hero_image_url, width: 1600, height: 700 }] : [],
     },
     twitter: {
@@ -63,7 +64,7 @@ export default async function BlogPostPage({ params }: Props) {
 
   const { data: post } = await db
     .from('blog_posts')
-    .select('title, slug, excerpt, published_at, tags, hero_image_url, hero_image_alt, body_mdx')
+    .select('title, slug, excerpt, published_at, updated_at, tags, hero_image_url, hero_image_alt, body_mdx')
     .eq('tenant_id', tenant.id)
     .eq('slug', slug)
     .eq('status', 'published')
@@ -126,6 +127,7 @@ export default async function BlogPostPage({ params }: Props) {
     description: post.excerpt ?? undefined,
     image: post.hero_image_url ?? undefined,
     datePublished: post.published_at ?? undefined,
+    dateModified: post.updated_at ?? post.published_at ?? undefined,
     url: canonicalUrl,
     author: {
       '@type': 'Organization',
