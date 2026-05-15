@@ -138,20 +138,17 @@ export default async function BlogLayout({ children }: BlogLayoutProps) {
       </main>
 
       {/* ── Footer ── */}
-      <footer style={{
-        borderTop: `1px solid rgba(${textRgb}, 0.1)`,
-        padding: '1.5rem 1.5rem',
-        textAlign: 'center',
-      }}>
-        {blog_footer && (
-          <p style={{ fontSize: '0.8rem', opacity: 0.6, margin: '0 0 0.5rem', maxWidth: '640px', marginLeft: 'auto', marginRight: 'auto', lineHeight: 1.6 }}>
+      {blog_footer && (
+        <footer style={{
+          borderTop: `1px solid rgba(${textRgb}, 0.1)`,
+          padding: '1.25rem 1.5rem',
+          textAlign: 'center',
+        }}>
+          <p style={{ fontSize: '0.8rem', opacity: 0.6, margin: 0, maxWidth: '640px', marginLeft: 'auto', marginRight: 'auto', lineHeight: 1.6 }}>
             {blog_footer}
           </p>
-        )}
-        <p style={{ fontSize: '0.75rem', opacity: 0.4, margin: 0 }}>
-          © {new Date().getFullYear()} {name} · <a href={homeUrl} style={{ color: 'inherit' }}>{domain}</a>
-        </p>
-      </footer>
+        </footer>
+      )}
     </>
   )
 }

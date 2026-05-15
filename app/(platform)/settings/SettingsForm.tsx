@@ -913,10 +913,10 @@ export default function SettingsForm({
                   rows={3}
                   value={blogFooter}
                   onChange={(e) => setBlogFooter(e.target.value)}
-                  placeholder="This blog is produced with AI assistance and human editorial review. All content is original. © 2026 Your Company."
+                  placeholder="This blog is produced with AI assistance and human editorial review. All content is original. © 2026 Designs on Print."
                 />
                 <p className="text-xs text-slate-400 mt-1">
-                  Appears in the footer of your hosted blog. The copyright year and company name are shown automatically — use this field to add any additional legal or AI disclosure text.
+                  Appears in the footer of your hosted blog exactly as written. Leave blank for no footer.
                 </p>
                 {footerMsg && (
                   <p className={`text-xs mt-2 ${footerMsg.startsWith('✓') ? 'text-emerald-600' : 'text-red-600'}`}>
