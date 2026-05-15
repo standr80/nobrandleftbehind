@@ -28,22 +28,6 @@ function formatDate(iso: string | null) {
   return new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
 }
 
-function TagPill({ tag, blogUrl, primary }: { tag: string; blogUrl: string; primary: string }) {
-  return (
-    <a
-      href={`${blogUrl}/tags/${encodeURIComponent(tag)}`}
-      style={{
-        fontSize: '0.7rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em',
-        color: primary, border: `1px solid ${primary}`,
-        padding: '0.2rem 0.55rem', borderRadius: '999px',
-        whiteSpace: 'nowrap', textDecoration: 'none',
-      }}
-    >
-      {tag}
-    </a>
-  )
-}
-
 // ── Page ─────────────────────────────────────────────────────────────────────
 
 export default async function BlogListingPage({ searchParams }: Props) {
