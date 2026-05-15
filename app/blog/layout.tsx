@@ -101,8 +101,8 @@ export default async function BlogLayout({ children }: BlogLayoutProps) {
           justifyContent: 'space-between',
           gap: '2rem',
         }}>
-          {/* Logo / brand */}
-          <a href={homeUrl} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexShrink: 0, textDecoration: 'none' }}>
+          {/* Logo / brand — links to blog home */}
+          <a href={blogUrl} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexShrink: 0, textDecoration: 'none' }}>
             {theme.logoUrl ? (
               <img
                 src={theme.logoUrl}
@@ -128,9 +128,6 @@ export default async function BlogLayout({ children }: BlogLayoutProps) {
                 {link.label}
               </a>
             ))}
-            <a href={blogUrl} className="blog-nav-active">
-              Blog
-            </a>
           </nav>
         </div>
       </header>
