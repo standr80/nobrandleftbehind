@@ -27,7 +27,7 @@ export default async function BlogLayout({ children }: BlogLayoutProps) {
   const tenant = await getTenantByBlogHost(blogHost)
   if (!tenant) notFound()
 
-  const { blog_theme: theme, name, domain } = tenant
+  const { blog_theme: theme, name, domain, blog_footer } = tenant
   const homeUrl = `https://${domain}`
   const blogUrl = `https://${blogHost}`
 
@@ -140,11 +140,16 @@ export default async function BlogLayout({ children }: BlogLayoutProps) {
       {/* ── Footer ── */}
       <footer style={{
         borderTop: `1px solid rgba(${textRgb}, 0.1)`,
-        padding: '1.5rem',
+        padding: '1.5rem 1.5rem',
         textAlign: 'center',
       }}>
-        <p style={{ fontSize: '0.8rem', opacity: 0.5, margin: 0 }}>
-          © {new Date().getFullYear()} {name} · <a href={homeUrl}>{domain}</a>
+        {blog_footer && (
+          <p style={{ fontSize: '0.8rem', opacity: 0.6, margin: '0 0 0.5rem', maxWidth: '640px', marginLeft: 'auto', marginRight: 'auto', lineHeight: 1.6 }}>
+            {blog_footer}
+          </p>
+        )}
+        <p style={{ fontSize: '0.75rem', opacity: 0.4, margin: 0 }}>
+          © {new Date().getFullYear()} {name} · <a href={homeUrl} style={{ color: 'inherit' }}>{domain}</a>
         </p>
       </footer>
     </>

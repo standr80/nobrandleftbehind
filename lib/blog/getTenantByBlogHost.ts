@@ -16,7 +16,7 @@ export async function getTenantByBlogHost(host: string): Promise<BlogTenant | nu
 
   const { data, error } = await db
     .from('tenants')
-    .select('id, name, domain, white_label_domain, blog_theme, logo_url')
+    .select('id, name, domain, white_label_domain, blog_theme, logo_url, blog_footer')
     .eq('white_label_domain', cleanHost)
     .maybeSingle()
 
@@ -38,6 +38,7 @@ export async function getTenantByBlogHost(host: string): Promise<BlogTenant | nu
     domain: data.domain,
     white_label_domain: data.white_label_domain,
     blog_theme: theme,
+    blog_footer: (data as unknown as { blog_footer?: string | null }).blog_footer ?? null,
   }
 }
 

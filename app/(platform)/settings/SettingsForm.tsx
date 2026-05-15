@@ -36,6 +36,7 @@ interface Tenant {
   white_label_domain: string | null
   blog_theme: BlogTheme | null
   theme_extract_url: string | null
+  blog_footer: string | null
 }
 
 interface Member {
@@ -105,6 +106,9 @@ export default function SettingsForm({
   const [extractMsg, setExtractMsg] = useState('')
   const [extractUrl, setExtractUrl] = useState(tenant.theme_extract_url ?? '')
   const [savingExtractUrl, setSavingExtractUrl] = useState(false)
+  const [blogFooter, setBlogFooter] = useState(tenant.blog_footer ?? '')
+  const [savingFooter, setSavingFooter] = useState(false)
+  const [footerMsg, setFooterMsg] = useState('')
   // Editable nav links (all users)
   const [navLinks, setNavLinks] = useState<BlogNavLink[]>(
     tenant.blog_theme?.navLinks ?? []
@@ -898,6 +902,53 @@ export default function SettingsForm({
                   className="inline-flex items-center gap-1.5 px-4 py-2 text-sm bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 text-white rounded-lg transition-colors"
                 >
                   {savingNav ? 'Saving…' : 'Save navigation'}
+                </button>
+              </div>
+
+              {/* ── Blog footer text ── */}
+              <div className="pt-2">
+                <label className={labelClass}>Blog footer text</label>
+                <textarea
+                  className={`${inputClass} resize-none`}
+                  rows={3}
+                  value={blogFooter}
+                  onChange={(e) => setBlogFooter(e.target.value)}
+                  placeholder="This blog is produced with AI assistance and human editorial review. All content is original. © 2026 Your Company."
+                />
+                <p className="text-xs text-slate-400 mt-1">
+                  Appears in the footer of your hosted blog. The copyright year and company name are shown automatically — use this field to add any additional legal or AI disclosure text.
+                </p>
+                {footerMsg && (
+                  <p className={`text-xs mt-2 ${footerMsg.startsWith('✓') ? 'text-emerald-600' : 'text-red-600'}`}>
+                    {footerMsg}
+                  </p>
+                )}
+                <button
+                  type="button"
+                  disabled={savingFooter}
+                  onClick={async () => {
+                    setSavingFooter(true)
+                    setFooterMsg('')
+                    try {
+                      const res = await fetch('/api/tenant', {
+                        method: 'PATCH',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ blog_footer: blogFooter.trim() || null }),
+                      })
+                      const data = await res.json()
+                      if (!res.ok) throw new Error(data.error ?? 'Save failed')
+                      setFooterMsg('✓ Footer saved')
+                      router.refresh()
+                      setTimeout(() => setFooterMsg(''), 2500)
+                    } catch (err) {
+                      setFooterMsg(err instanceof Error ? err.message : 'Save failed')
+                    } finally {
+                      setSavingFooter(false)
+                    }
+                  }}
+                  className="mt-3 inline-flex items-center gap-1.5 px-4 py-2 text-sm bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 text-white rounded-lg transition-colors"
+                >
+                  {savingFooter ? 'Saving…' : 'Save footer'}
                 </button>
               </div>
             </div>

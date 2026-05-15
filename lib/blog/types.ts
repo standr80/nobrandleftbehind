@@ -33,6 +33,7 @@ export interface BlogTenant {
   domain: string
   white_label_domain: string | null
   blog_theme: BlogTheme
+  blog_footer: string | null
 }
 
 export interface BlogPost {

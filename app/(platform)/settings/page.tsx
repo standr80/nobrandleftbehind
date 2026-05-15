@@ -41,6 +41,7 @@ export default async function SettingsPage() {
           ...tenant,
           blog_theme: tenant.blog_theme as unknown as BlogTheme | null,
           theme_extract_url: tenant.theme_extract_url ?? null,
+          blog_footer: tenant.blog_footer ?? null,
         }}
         members={members ?? []}
         isAdmin={role === 'admin'}
