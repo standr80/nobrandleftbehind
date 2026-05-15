@@ -27,8 +27,7 @@ export default async function BlogLayout({ children }: BlogLayoutProps) {
   const tenant = await getTenantByBlogHost(blogHost)
   if (!tenant) notFound()
 
-  const { blog_theme: theme, name, domain, blog_footer } = tenant
-  const homeUrl = `https://${domain}`
+  const { blog_theme: theme, name, blog_footer } = tenant
   const blogUrl = `https://${blogHost}`
 
   const primaryRgb = hexToRgb(theme.primaryColor)
