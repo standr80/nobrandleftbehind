@@ -21,11 +21,16 @@ const isWorkspaceRoute = createRouteMatcher([
   '/settings(.*)',
 ])
 
-/** Hostnames that belong to the Clem platform itself */
+/** Hostnames that belong to the Clem platform itself.
+ *  Uses anchored regex so subdomains like blog.nobrandleftbehind.com
+ *  are correctly treated as client blog hosts, not the platform.
+ */
 function isPlatformHost(host: string): boolean {
-  return /nobrandleftbehind\.(com|vercel\.app)/i.test(host) ||
-    host.startsWith('localhost') ||
-    host.startsWith('127.0.0.1')
+  // Strip port (present in dev: localhost:3000)
+  const hostname = host.split(':')[0]
+  return /^(www\.)?nobrandleftbehind\.(com|vercel\.app)$/i.test(hostname) ||
+    hostname === 'localhost' ||
+    hostname === '127.0.0.1'
 }
 
 export default clerkMiddleware(async (auth, request: NextRequest) => {
