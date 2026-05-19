@@ -15,7 +15,7 @@ const agents = [
     status: 'live' as const,
     href: '/dashboard',
     cta: 'Open Clem',
-    photo: null as string | null, // e.g. '/agents/clem.jpg'
+    photo: '/agents/clem.jpg' as string | null,
     accent: '#4f46e5', // indigo
   },
   {
