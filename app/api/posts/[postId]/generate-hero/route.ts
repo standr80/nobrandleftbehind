@@ -3,6 +3,9 @@ import { NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { generateHeroImage } from '@/lib/clem/generateHeroImage'
 
+// Claude + Ideogram + sharp + upload can take up to 60s
+export const maxDuration = 60
+
 interface Params {
   params: Promise<{ postId: string }>
 }

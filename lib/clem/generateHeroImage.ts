@@ -89,13 +89,10 @@ Write an Ideogram hero image prompt (1–3 sentences).`,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      image_request: {
-        prompt,
-        num_images: 2,
-        aspect_ratio: 'ASPECT_16_9',
-        rendering_speed: 'QUALITY',
-        model: 'V_3',
-      },
+      prompt,
+      num_images: 2,
+      aspect_ratio: '16x9',
+      rendering_speed: 'QUALITY',
     }),
   })
 
