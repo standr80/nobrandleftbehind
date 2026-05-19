@@ -48,11 +48,14 @@ export async function PATCH(request: Request, { params }: Params) {
     hero_image_url?: string | null
     hero_image_credit?: string | null
     hero_image_alt?: string | null
+    scheduled_for?: string | null
+    auto_scheduled?: boolean
   }
 
   const allowedFields: (keyof PostUpdate)[] = [
     'body_mdx', 'title', 'slug', 'excerpt', 'meta_description', 'tags',
     'hero_image_url', 'hero_image_credit', 'hero_image_alt',
+    'scheduled_for', 'auto_scheduled',
   ]
   const updates: PostUpdate = {}
   for (const field of allowedFields) {

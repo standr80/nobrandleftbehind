@@ -607,6 +607,34 @@ export default function PostReviewClient({ post, tenantId: _tenantId, imageGenEn
               Choose when this post should be published.
             </p>
             <SchedulePicker value={schedule} onChange={setSchedule} />
+
+            {/* Save schedule button — persists the chosen date without a full article save */}
+            {schedule.mode === 'manual' && schedule.datetime && (
+              <button
+                type="button"
+                disabled={actionLoading === 'save_schedule'}
+                onClick={async () => {
+                  setActionLoading('save_schedule')
+                  try {
+                    await fetch(`/api/posts/${post.id}`, {
+                      method: 'PATCH',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
+                        scheduled_for: new Date(schedule.datetime).toISOString(),
+                        auto_scheduled: false,
+                      }),
+                    })
+                    router.refresh()
+                  } finally {
+                    setActionLoading(null)
+                  }
+                }}
+                className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white text-sm rounded-lg transition-colors"
+              >
+                {actionLoading === 'save_schedule' ? 'Saving…' : 'Save schedule'}
+              </button>
+            )}
+
             {post.scheduled_for && (
               <p className="text-xs text-slate-400">
                 Currently scheduled:{' '}
