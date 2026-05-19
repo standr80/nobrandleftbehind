@@ -60,12 +60,18 @@ const STATUS_STYLES: Record<string, string> = {
 // Component
 // ============================================================
 
-interface Props {
-  post: BlogPost
-  tenantId: string // retained for future use (e.g. tenant-scoped uploads)
+interface GeneratedImage {
+  ideogramUrl: string
+  supabaseUrl: string
 }
 
-export default function PostReviewClient({ post, tenantId: _tenantId }: Props) {
+interface Props {
+  post: BlogPost
+  tenantId: string
+  imageGenEnabled?: boolean
+}
+
+export default function PostReviewClient({ post, tenantId: _tenantId, imageGenEnabled = false }: Props) {
   const router = useRouter()
   const fm = parseFrontmatter(post.body_mdx ?? '')
   const initialBody = repairMojibake(parseMdxBody(post.body_mdx ?? ''))
@@ -96,6 +102,15 @@ export default function PostReviewClient({ post, tenantId: _tenantId }: Props) {
   )
   const [uploading, setUploading] = useState(false)
   const [uploadError, setUploadError] = useState('')
+
+  // ── AI image generation state ───────────────────────────────────────────
+  const [showAiPanel, setShowAiPanel] = useState(false)
+  const [aiPrompt, setAiPrompt] = useState('')
+  const [generating, setGenerating] = useState(false)
+  const [generatedImages, setGeneratedImages] = useState<GeneratedImage[]>([])
+  const [aiError, setAiError] = useState('')
+  const [selectedAiImage, setSelectedAiImage] = useState<string | null>(null)
+  const [attachingAi, setAttachingAi] = useState(false)
 
   const handleBodyChange = useCallback((md: string) => setBody(md), [])
 
@@ -444,6 +459,143 @@ export default function PostReviewClient({ post, tenantId: _tenantId }: Props) {
                 <div className="absolute top-2 left-2 bg-indigo-600 text-white text-xs px-2 py-0.5 rounded">
                   ✓ Hero image set
                 </div>
+              </div>
+            )}
+
+            {/* ── AI Image Generation ── */}
+            {imageGenEnabled && (
+              <div className="border-t border-slate-200 pt-4 mt-2">
+                <div className="flex items-center justify-between mb-3">
+                  <div>
+                    <p className="text-sm font-medium text-slate-700">Generate with AI</p>
+                    <p className="text-xs text-slate-400 mt-0.5">Uses your Ideogram account to create 2 hero image options</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => { setShowAiPanel(!showAiPanel); setGeneratedImages([]); setAiError('') }}
+                    className="text-xs text-indigo-600 hover:text-indigo-500 transition-colors"
+                  >
+                    {showAiPanel ? 'Hide ↑' : 'Open ↓'}
+                  </button>
+                </div>
+
+                {showAiPanel && (
+                  <div className="space-y-3">
+                    <div>
+                      <label className="text-xs text-slate-400 mb-1 block">
+                        Image prompt
+                        <span className="ml-1 text-slate-300">(leave blank to auto-generate from article)</span>
+                      </label>
+                      <textarea
+                        className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-indigo-500 resize-none transition-colors"
+                        rows={3}
+                        value={aiPrompt}
+                        onChange={(e) => setAiPrompt(e.target.value)}
+                        placeholder="e.g. Aerial view of a vibrant print workshop, colourful ink samples on wooden table, soft natural light, editorial photography style"
+                        disabled={generating}
+                      />
+                    </div>
+
+                    {aiError && <p className="text-xs text-red-600">{aiError}</p>}
+
+                    {generatedImages.length === 0 ? (
+                      <button
+                        type="button"
+                        disabled={generating}
+                        onClick={async () => {
+                          setGenerating(true)
+                          setAiError('')
+                          setGeneratedImages([])
+                          setSelectedAiImage(null)
+                          try {
+                            const res = await fetch(`/api/posts/${post.id}/generate-hero`, {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({ customPrompt: aiPrompt.trim() || undefined }),
+                            })
+                            const data = await res.json()
+                            if (!res.ok) throw new Error(data.error ?? 'Generation failed')
+                            setAiPrompt(data.prompt)
+                            setGeneratedImages(data.images)
+                          } catch (err) {
+                            setAiError(err instanceof Error ? err.message : 'Something went wrong')
+                          } finally {
+                            setGenerating(false)
+                          }
+                        }}
+                        className="inline-flex items-center gap-2 px-4 py-2 text-sm bg-indigo-600 hover:bg-indigo-500 disabled:bg-indigo-600/40 disabled:cursor-not-allowed text-white rounded-lg transition-colors"
+                      >
+                        {generating ? (
+                          <>
+                            <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                            Generating… (30–60s)
+                          </>
+                        ) : (
+                          '✦ Generate 2 images'
+                        )}
+                      </button>
+                    ) : (
+                      <div className="space-y-3">
+                        <p className="text-xs text-slate-500">Click an image to select it, then use &quot;Use this image&quot; to set it as the hero.</p>
+                        <div className="grid grid-cols-2 gap-3">
+                          {generatedImages.map((img, i) => (
+                            <button
+                              key={i}
+                              type="button"
+                              onClick={() => setSelectedAiImage(img.supabaseUrl)}
+                              className={`relative rounded-xl overflow-hidden aspect-[16/7] ring-2 transition-all ${selectedAiImage === img.supabaseUrl ? 'ring-indigo-500 ring-offset-2' : 'ring-transparent hover:ring-slate-300'}`}
+                            >
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                              <img src={img.supabaseUrl} alt={`Generated option ${i + 1}`} className="w-full h-full object-cover" />
+                              {selectedAiImage === img.supabaseUrl && (
+                                <div className="absolute top-2 left-2 bg-indigo-600 text-white text-xs px-2 py-0.5 rounded">
+                                  ✓ Selected
+                                </div>
+                              )}
+                            </button>
+                          ))}
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            disabled={!selectedAiImage || attachingAi}
+                            onClick={async () => {
+                              if (!selectedAiImage) return
+                              setAttachingAi(true)
+                              try {
+                                const res = await fetch(`/api/posts/${post.id}/generate-hero`, {
+                                  method: 'PATCH',
+                                  headers: { 'Content-Type': 'application/json' },
+                                  body: JSON.stringify({ url: selectedAiImage }),
+                                })
+                                const data = await res.json()
+                                if (!res.ok) throw new Error(data.error ?? 'Failed to attach image')
+                                setUploadedImageUrl(selectedAiImage)
+                                setShowAiPanel(false)
+                                setGeneratedImages([])
+                                setSelectedAiImage(null)
+                              } catch (err) {
+                                setAiError(err instanceof Error ? err.message : 'Failed to attach image')
+                              } finally {
+                                setAttachingAi(false)
+                              }
+                            }}
+                            className="px-4 py-2 text-sm bg-indigo-600 hover:bg-indigo-500 disabled:bg-indigo-600/40 disabled:cursor-not-allowed text-white rounded-lg transition-colors"
+                          >
+                            {attachingAi ? 'Attaching…' : 'Use this image'}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => { setGeneratedImages([]); setSelectedAiImage(null); setAiError('') }}
+                            className="px-4 py-2 text-sm text-slate-400 hover:text-slate-900 transition-colors"
+                          >
+                            Try again
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             )}
           </div>

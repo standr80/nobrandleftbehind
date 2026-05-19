@@ -29,6 +29,7 @@ export interface ActiveWorkspace {
     blog_theme: import('../supabase/types').Json | null
     theme_extract_url: string | null
     blog_footer: string | null
+    image_gen_enabled: boolean | null
   }
 }
 

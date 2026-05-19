@@ -37,6 +37,8 @@ export async function PATCH(request: Request) {
     blog_theme?: import('@/lib/supabase/types').Json | null
     theme_extract_url?: string | null
     blog_footer?: string | null
+    ideogram_api_key?: string | null
+    image_gen_enabled?: boolean | null
   } = {}
 
   const allowed = [
@@ -44,6 +46,7 @@ export async function PATCH(request: Request) {
     'cms_type', 'git_repo', 'git_branch', 'git_blog_path',
     'publish_cadence', 'publish_days', 'publish_time', 'post_cadence_active',
     'reference_urls', 'white_label_domain', 'blog_theme', 'theme_extract_url', 'blog_footer',
+    'ideogram_api_key', 'image_gen_enabled',
   ] as const
   for (const key of allowed) {
     if (key in body) (updates as Record<string, unknown>)[key] = body[key]

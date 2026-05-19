@@ -49,9 +49,9 @@ ON CONFLICT DO NOTHING;
 
 -- INSERT INTO tenant_members (tenant_id, clerk_user_id, role, name, email)
 -- VALUES (
---   'PASTE_TENANT_UUID_HERE',
---   'PASTE_YOUR_CLERK_USER_ID_HERE',
+--   '5b75c9b5-7bad-41c7-aa36-cdc55f2d640f',
+--   'user_3DM8tadOBpssNx5oR3aub1zC9DI',
 --   'admin',
---   'Your Name',
---   'your@email.com'
+--   'Richard Standen',
+--   'richardstanden+admin@gmail.com'
 -- );

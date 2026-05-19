@@ -42,6 +42,8 @@ export default async function SettingsPage() {
           blog_theme: tenant.blog_theme as unknown as BlogTheme | null,
           theme_extract_url: tenant.theme_extract_url ?? null,
           blog_footer: tenant.blog_footer ?? null,
+          ideogram_api_key: (tenant as unknown as { ideogram_api_key: string | null }).ideogram_api_key ?? null,
+          image_gen_enabled: (tenant as unknown as { image_gen_enabled: boolean | null }).image_gen_enabled ?? null,
         }}
         members={members ?? []}
         isAdmin={role === 'admin'}

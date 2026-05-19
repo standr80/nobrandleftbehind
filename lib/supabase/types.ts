@@ -338,6 +338,8 @@ export type Database = {
           white_label_domain: string | null
           theme_extract_url: string | null
           blog_footer: string | null
+          ideogram_api_key: string | null
+          image_gen_enabled: boolean | null
         }
         Insert: {
           auto_merge?: boolean | null
@@ -366,6 +368,8 @@ export type Database = {
           white_label_domain?: string | null
           theme_extract_url?: string | null
           blog_footer?: string | null
+          ideogram_api_key?: string | null
+          image_gen_enabled?: boolean | null
         }
         Update: {
           auto_merge?: boolean | null
@@ -394,6 +398,8 @@ export type Database = {
           white_label_domain?: string | null
           theme_extract_url?: string | null
           blog_footer?: string | null
+          ideogram_api_key?: string | null
+          image_gen_enabled?: boolean | null
         }
         Relationships: []
       }

@@ -37,6 +37,8 @@ interface Tenant {
   blog_theme: BlogTheme | null
   theme_extract_url: string | null
   blog_footer: string | null
+  ideogram_api_key: string | null
+  image_gen_enabled: boolean | null
 }
 
 interface Member {
@@ -109,6 +111,13 @@ export default function SettingsForm({
   const [blogFooter, setBlogFooter] = useState(tenant.blog_footer ?? '')
   const [savingFooter, setSavingFooter] = useState(false)
   const [footerMsg, setFooterMsg] = useState('')
+
+  // ── Image generation state ─────────────────────────────────────
+  const [imageGenEnabled, setImageGenEnabled] = useState(tenant.image_gen_enabled ?? false)
+  const [ideogramKey, setIdeogramKey] = useState(tenant.ideogram_api_key ? '••••••••••••••••' : '')
+  const [ideogramKeyDirty, setIdeogramKeyDirty] = useState(false)
+  const [savingImageGen, setSavingImageGen] = useState(false)
+  const [imageGenMsg, setImageGenMsg] = useState('')
   // Editable nav links (all users)
   const [navLinks, setNavLinks] = useState<BlogNavLink[]>(
     tenant.blog_theme?.navLinks ?? []
@@ -950,6 +959,113 @@ export default function SettingsForm({
                   {savingFooter ? 'Saving…' : 'Save footer'}
                 </button>
               </div>
+
+              {/* ── Image generation ── */}
+              {isAdmin && (
+                <div className="pt-2 border-t border-slate-100 mt-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <div>
+                      <p className="text-sm font-medium text-slate-700">AI hero image generation</p>
+                      <p className="text-xs text-slate-400 mt-0.5">
+                        Generates two Ideogram V3 images per article. Billed to your Ideogram account.{' '}
+                        <a href="https://ideogram.ai/manage-api" target="_blank" rel="noopener noreferrer"
+                          className="text-indigo-600 hover:underline">Get an API key →</a>
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        const next = !imageGenEnabled
+                        setImageGenEnabled(next)
+                        await fetch('/api/tenant', {
+                          method: 'PATCH',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ image_gen_enabled: next }),
+                        })
+                        router.refresh()
+                      }}
+                      className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ${imageGenEnabled ? 'bg-indigo-600' : 'bg-slate-200'}`}
+                    >
+                      <span className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform duration-200 ${imageGenEnabled ? 'translate-x-5' : 'translate-x-0'}`} />
+                    </button>
+                  </div>
+
+                  <div>
+                    <label className={labelClass}>Ideogram API key</label>
+                    <input
+                      type="password"
+                      className={inputClass}
+                      value={ideogramKey}
+                      placeholder={tenant.ideogram_api_key ? 'Key saved — enter a new one to replace' : 'paste-your-api-key-here'}
+                      onChange={(e) => { setIdeogramKey(e.target.value); setIdeogramKeyDirty(true) }}
+                      autoComplete="off"
+                    />
+                    <p className="text-xs text-slate-400 mt-1">
+                      Stored securely server-side. Never exposed to the browser.
+                      {tenant.ideogram_api_key && !ideogramKeyDirty && (
+                        <span className="text-emerald-500 ml-1">✓ Key saved</span>
+                      )}
+                    </p>
+                    {imageGenMsg && (
+                      <p className={`text-xs mt-2 ${imageGenMsg.startsWith('✓') ? 'text-emerald-600' : 'text-red-600'}`}>
+                        {imageGenMsg}
+                      </p>
+                    )}
+                    {ideogramKeyDirty && ideogramKey && (
+                      <button
+                        type="button"
+                        disabled={savingImageGen}
+                        onClick={async () => {
+                          setSavingImageGen(true)
+                          setImageGenMsg('')
+                          try {
+                            const res = await fetch('/api/tenant', {
+                              method: 'PATCH',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({ ideogram_api_key: ideogramKey.trim() }),
+                            })
+                            const data = await res.json()
+                            if (!res.ok) throw new Error(data.error ?? 'Save failed')
+                            setIdeogramKeyDirty(false)
+                            setIdeogramKey('••••••••••••••••')
+                            setImageGenMsg('✓ API key saved')
+                            router.refresh()
+                            setTimeout(() => setImageGenMsg(''), 2500)
+                          } catch (err) {
+                            setImageGenMsg(err instanceof Error ? err.message : 'Save failed')
+                          } finally {
+                            setSavingImageGen(false)
+                          }
+                        }}
+                        className="mt-2 inline-flex items-center gap-1.5 px-4 py-2 text-sm bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 text-white rounded-lg transition-colors"
+                      >
+                        {savingImageGen ? 'Saving…' : 'Save API key'}
+                      </button>
+                    )}
+                    {tenant.ideogram_api_key && !ideogramKeyDirty && (
+                      <button
+                        type="button"
+                        className="mt-2 ml-2 inline-flex items-center gap-1.5 px-4 py-2 text-sm border border-slate-200 text-slate-500 hover:text-red-600 hover:border-red-200 rounded-lg transition-colors"
+                        onClick={async () => {
+                          if (!confirm('Remove the Ideogram API key?')) return
+                          await fetch('/api/tenant', {
+                            method: 'PATCH',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ ideogram_api_key: null, image_gen_enabled: false }),
+                          })
+                          setIdeogramKey('')
+                          setImageGenEnabled(false)
+                          setImageGenMsg('Key removed')
+                          router.refresh()
+                          setTimeout(() => setImageGenMsg(''), 2000)
+                        }}
+                      >
+                        Remove key
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
 
           </div>
