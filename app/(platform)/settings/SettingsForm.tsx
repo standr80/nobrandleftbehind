@@ -416,7 +416,7 @@ export default function SettingsForm({
             </div>
             <div>
               <label className={labelClass}>Domain</label>
-              <input className={inputClass} value={domain} onChange={(e) => setDomain(e.target.value)} placeholder="designsonprint.com" />
+              <input className={inputClass} value={domain} onChange={(e) => setDomain(e.target.value)} placeholder="e.g. yourdomain.com" />
             </div>
             <div>
               <label className={labelClass}>Logo URL (optional)</label>
@@ -428,11 +428,10 @@ export default function SettingsForm({
                 className={inputClass}
                 value={blogDomain}
                 onChange={(e) => setBlogDomain(e.target.value)}
-                placeholder="blog.designsonprint.com"
+                placeholder="e.g. blog.yourdomain.com"
               />
               <p className="text-xs text-slate-400 mt-1">
-                The subdomain where your Clem-hosted blog lives (e.g. <span className="font-mono text-slate-300">blog.designsonprint.com</span>).
-                First add the subdomain in Vercel → your project → Settings → Domains — Vercel will
+                The subdomain where your Clem-hosted blog lives. First add the subdomain in Vercel → your project → Settings → Domains — Vercel will
                 show you a unique CNAME target (e.g. <span className="font-mono text-slate-300">be549e9ea49c997c.vercel-dns-016.com</span>).
                 Add that as a CNAME record in your DNS, then enter the subdomain here.
               </p>
@@ -913,7 +912,7 @@ export default function SettingsForm({
                   rows={3}
                   value={blogFooter}
                   onChange={(e) => setBlogFooter(e.target.value)}
-                  placeholder="This blog is produced with AI assistance and human editorial review. All content is original. © 2026 Designs on Print."
+                  placeholder="e.g. This blog is produced with AI assistance and human editorial review. All content is original. © 2026 Your Company Name."
                 />
                 <p className="text-xs text-slate-400 mt-1">
                   Appears in the footer of your hosted blog exactly as written. Leave blank for no footer.
@@ -959,6 +958,15 @@ export default function SettingsForm({
         {/* ── Brand ── */}
         {section === 'brand' && (
           <>
+            {(!brandVoice && !targetAudience) && (
+              <div className="flex items-start gap-2.5 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 text-xs text-amber-700">
+                <span className="text-amber-500 text-sm leading-none mt-px">⚠</span>
+                <p>
+                  <strong>Brand settings are empty.</strong> Clem will generate articles without any brand voice or audience guidance — results will be generic.
+                  Fill these in to get the best output.
+                </p>
+              </div>
+            )}
             <div>
               <label className={labelClass}>Brand voice</label>
               <textarea
@@ -966,9 +974,12 @@ export default function SettingsForm({
                 rows={4}
                 value={brandVoice}
                 onChange={(e) => setBrandVoice(e.target.value)}
-                placeholder="Friendly, expert, approachable. Speak to small business owners who want quality custom print without the jargon."
+                placeholder="e.g. Friendly, expert, approachable. Write for busy professionals who want clear advice without jargon. Avoid overly formal or corporate language."
               />
-              <p className="text-xs text-slate-300 mt-1">Clem injects this into every prompt. Be specific about tone, style, and what to avoid.</p>
+              <p className="text-xs text-slate-400 mt-1">
+                Clem injects this directly into every AI prompt. The more specific you are, the better the output.
+                {brandVoice && <span className="text-emerald-500 ml-1">✓ Saved and active</span>}
+              </p>
             </div>
             <div>
               <label className={labelClass}>Target audience</label>
@@ -977,8 +988,9 @@ export default function SettingsForm({
                 rows={2}
                 value={targetAudience}
                 onChange={(e) => setTargetAudience(e.target.value)}
-                placeholder="UK small business owners, event organisers, marketers needing custom print"
+                placeholder="e.g. Small business owners aged 30–55 looking to grow their online presence"
               />
+              {targetAudience && <p className="text-xs text-emerald-500 mt-1">✓ Saved and active</p>}
             </div>
             <div>
               <label className={labelClass}>Forbidden words (comma-separated)</label>
@@ -986,9 +998,12 @@ export default function SettingsForm({
                 className={inputClass}
                 value={forbiddenWords}
                 onChange={(e) => setForbiddenWords(e.target.value)}
-                placeholder="synergy, leverage, utilize, game-changer"
+                placeholder="e.g. synergy, leverage, utilize, game-changer"
               />
-              <p className="text-xs text-slate-300 mt-1">Words or phrases Clem must never use</p>
+              <p className="text-xs text-slate-300 mt-1">
+                Words or phrases Clem must never use.
+                {forbiddenWords && <span className="text-emerald-500 ml-1">✓ Saved and active</span>}
+              </p>
             </div>
           </>
         )}
@@ -1089,7 +1104,7 @@ export default function SettingsForm({
               <div className="space-y-4 pt-2">
                 <div>
                   <label className={labelClass}>GitHub repo (owner/repo)</label>
-                  <input className={inputClass} value={gitRepo} onChange={(e) => setGitRepo(e.target.value)} placeholder="standr80/designsonprint" />
+                  <input className={inputClass} value={gitRepo} onChange={(e) => setGitRepo(e.target.value)} placeholder="e.g. yourorg/yourrepo" />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>

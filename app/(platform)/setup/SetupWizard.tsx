@@ -126,7 +126,7 @@ export default function SetupWizard() {
               <label className={labelClass}>Company / site name</label>
               <input
                 className={inputClass}
-                placeholder="Designs on Print"
+                placeholder="e.g. Acme Corp"
                 value={form.name}
                 onChange={(e) => set('name', e.target.value)}
               />
@@ -135,7 +135,7 @@ export default function SetupWizard() {
               <label className={labelClass}>Domain</label>
               <input
                 className={inputClass}
-                placeholder="designsonprint.com"
+                placeholder="e.g. yourdomain.com"
                 value={form.domain}
                 onChange={(e) => set('domain', e.target.value)}
               />
@@ -152,12 +152,12 @@ export default function SetupWizard() {
               <textarea
                 className={`${inputClass} resize-none`}
                 rows={3}
-                placeholder="Friendly, expert, approachable. UK-based. Speak to small business owners who want quality custom print without the jargon."
+                placeholder="e.g. Friendly, expert, approachable. Write for busy professionals who want clear advice without jargon."
                 value={form.brand_voice}
                 onChange={(e) => set('brand_voice', e.target.value)}
               />
               <p className="text-xs text-slate-300 mt-1">
-                Describe the tone Clem should write in. Be specific.
+                Describe the tone Clem should write in. Be specific — this is sent directly to the AI.
               </p>
             </div>
             <div>
@@ -165,7 +165,7 @@ export default function SetupWizard() {
               <textarea
                 className={`${inputClass} resize-none`}
                 rows={2}
-                placeholder="UK small business owners, event organisers, marketers needing custom print"
+                placeholder="e.g. Small business owners aged 30–55 looking to grow their online presence"
                 value={form.target_audience}
                 onChange={(e) => set('target_audience', e.target.value)}
               />
@@ -174,7 +174,7 @@ export default function SetupWizard() {
               <label className={labelClass}>Forbidden words (comma-separated)</label>
               <input
                 className={inputClass}
-                placeholder="synergy, leverage, utilize, game-changer"
+                placeholder="e.g. synergy, leverage, utilize, game-changer"
                 value={form.forbidden_words}
                 onChange={(e) => set('forbidden_words', e.target.value)}
               />
