@@ -9,8 +9,8 @@ export const scheduledPublish = inngest.createFunction(
   {
     id: 'scheduled-publish',
     name: 'Scheduled Post Publisher',
+    triggers: [{ cron: '*/5 * * * *' }],
   },
-  { cron: '*/5 * * * *' },
   async () => {
     const db = createAdminClient()
     const now = new Date().toISOString()
