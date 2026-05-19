@@ -27,7 +27,7 @@ const agents = [
     status: 'soon' as const,
     href: null,
     cta: null,
-    photo: null as string | null, // e.g. '/agents/hank.jpg'
+    photo: '/agents/hank.jpg' as string | null,
     accent: '#64748b', // slate
   },
 ]
