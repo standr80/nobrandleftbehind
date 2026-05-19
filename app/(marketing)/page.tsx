@@ -14,7 +14,7 @@ const agents = [
       'Researches, writes, and queues SEO-ready blog posts for your website — on a schedule you control.',
     status: 'live' as const,
     href: '/dashboard',
-    cta: 'Open Clem',
+    cta: 'Hire Clem',
     photo: '/agents/clem.jpg' as string | null,
     accent: '#4f46e5', // indigo
   },
@@ -91,8 +91,8 @@ export default async function LandingPage() {
                     <img
                       src={agent.photo}
                       alt={`${agent.name} — ${agent.role}`}
-                      className={`w-full h-full object-cover object-top transition-transform duration-500 ${
-                        agent.status === 'live' ? 'group-hover:scale-105' : 'grayscale opacity-60'
+                        className={`w-full h-full object-cover object-top transition-transform duration-500 ${
+                        agent.status === 'live' ? 'group-hover:scale-105' : ''
                       }`}
                     />
                   ) : (
