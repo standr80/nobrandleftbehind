@@ -1,6 +1,5 @@
 import Link from 'next/link'
 import { auth } from '@clerk/nextjs/server'
-import { redirect } from 'next/navigation'
 
 // ── Agent roster ──────────────────────────────────────────────────────────────
 // Drop a 800×800 JPEG into /public/agents/ and set the photo property.
@@ -34,7 +33,6 @@ const agents = [
 
 export default async function LandingPage() {
   const { userId } = await auth()
-  if (userId) redirect('/dashboard')
 
   return (
     <main className="min-h-screen bg-white text-slate-900 flex flex-col">
@@ -47,15 +45,26 @@ export default async function LandingPage() {
           </span>
         </div>
         <div className="flex items-center gap-3">
-          <Link href="/sign-in" className="text-sm text-slate-500 hover:text-slate-900 transition-colors">
-            Sign in
-          </Link>
-          <Link
-            href="/sign-up"
-            className="text-sm bg-slate-900 hover:bg-slate-700 text-white px-4 py-2 rounded-lg transition-colors font-medium"
-          >
-            Get started
-          </Link>
+          {userId ? (
+            <Link
+              href="/dashboard"
+              className="text-sm bg-slate-900 hover:bg-slate-700 text-white px-4 py-2 rounded-lg transition-colors font-medium"
+            >
+              Dashboard →
+            </Link>
+          ) : (
+            <>
+              <Link href="/sign-in" className="text-sm text-slate-500 hover:text-slate-900 transition-colors">
+                Sign in
+              </Link>
+              <Link
+                href="/sign-up"
+                className="text-sm bg-slate-900 hover:bg-slate-700 text-white px-4 py-2 rounded-lg transition-colors font-medium"
+              >
+                Get started
+              </Link>
+            </>
+          )}
         </div>
       </nav>
 
