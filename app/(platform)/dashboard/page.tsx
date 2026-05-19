@@ -191,7 +191,7 @@ export default async function DashboardPage() {
             Generate topic suggestions and Clem will research, write, and queue them for your
             review.
           </p>
-          <TriggerSuggestButton tenantId={tenant.id} />
+          <TriggerSuggestButton tenantId={tenant.id} currentSuggestionCount={stats.pendingSuggestions} />
           <p className="text-xs text-slate-300 mt-6">
             Cadence: {tenant.publish_cadence} · {tenant.publish_days?.join(', ')} at{' '}
             {tenant.publish_time}
@@ -261,7 +261,7 @@ export default async function DashboardPage() {
               Suggest 5 new ideas based on your last site crawl
             </p>
           </div>
-          <TriggerSuggestButton tenantId={tenant.id} />
+          <TriggerSuggestButton tenantId={tenant.id} currentSuggestionCount={stats.pendingSuggestions} />
         </div>
       )}
     </div>

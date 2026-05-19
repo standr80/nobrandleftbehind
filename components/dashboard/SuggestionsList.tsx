@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 
 interface Suggestion {
@@ -208,6 +208,17 @@ export default function SuggestionsList({ suggestions: initialSuggestions, tenan
   const [items, setItems] = useState<Suggestion[]>(
     initialSuggestions.filter((s) => s.status === 'pending'),
   )
+
+  // Sync from server when router.refresh() brings new props
+  useEffect(() => {
+    setItems((current) => {
+      const incoming = initialSuggestions.filter((s) => s.status === 'pending')
+      // Merge: keep any local edits, append truly new items
+      const currentIds = new Set(current.map((s) => s.id))
+      const newItems = incoming.filter((s) => !currentIds.has(s.id))
+      return newItems.length > 0 ? [...current, ...newItems] : current
+    })
+  }, [initialSuggestions])
   const [drafting, setDrafting] = useState<string | null>(null)
   const [rejecting, setRejecting] = useState<string | null>(null)
   const [editing, setEditing] = useState<string | null>(null)
