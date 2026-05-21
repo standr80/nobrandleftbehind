@@ -39,7 +39,9 @@ export default function CreateWorkspaceForm() {
       const data = await res.json()
       if (!res.ok) throw new Error(data.error ?? 'Failed to create workspace')
 
-      if (data.invited) {
+      if (data.invited && data.emailSent === false && data.inviteUrl) {
+        setSuccess(`Workspace created. Email failed — share this invite link manually:\n${data.inviteUrl}`)
+      } else if (data.invited) {
         setSuccess(`Workspace created. An invite has been sent to ${adminEmail}.`)
       } else {
         setSuccess(`Workspace created and ${adminEmail} added as admin.`)

@@ -69,13 +69,21 @@ export async function POST(request: Request) {
   } else {
     // Send invite
     const token = randomUUID()
-    await db.from('workspace_invitations').insert({
+    const { error: inviteErr } = await db.from('workspace_invitations').insert({
       tenant_id: tenant.id,
       email: adminEmail.toLowerCase().trim(),
       role: 'admin',
       token,
       invited_by: null,
     })
+
+    if (inviteErr) {
+      console.error('[/api/admin/workspaces] Failed to create invite record:', inviteErr.message)
+      return NextResponse.json(
+        { error: `Workspace created but failed to create invite: ${inviteErr.message}` },
+        { status: 500 },
+      )
+    }
 
     try {
       await sendWorkspaceInvite({
@@ -88,6 +96,14 @@ export async function POST(request: Request) {
       })
     } catch (err) {
       console.error('[/api/admin/workspaces] Failed to send invite email:', err)
+      // Email failed but invite record exists — return inviteUrl so admin can share manually
+      return NextResponse.json({
+        ok: true,
+        tenantId: tenant.id,
+        invited: true,
+        emailSent: false,
+        inviteUrl: `${process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'}/invite/${token}`,
+      })
     }
 
     invited = true
