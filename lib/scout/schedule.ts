@@ -23,7 +23,7 @@ export async function runScoutForTenant(tenantId: string): Promise<ScoutRunResul
 
   // Load tenant + scout config
   const [tenantRes, configRes] = await Promise.all([
-    db.from('tenants').select('name, domain, brand_voice, target_audience').eq('id', tenantId).single(),
+    db.from('tenants').select('name, domain, brand_voice, target_audience, reference_urls').eq('id', tenantId).single(),
     db.from('scout_config').select('*').eq('tenant_id', tenantId).maybeSingle(),
   ])
 
@@ -39,7 +39,12 @@ export async function runScoutForTenant(tenantId: string): Promise<ScoutRunResul
     await db.from('scout_config').insert({ tenant_id: tenantId })
   }
 
-  const competitorUrls: string[] = config?.competitor_urls ?? []
+  // Merge Clem's reference_urls with Scout-specific competitor_urls, deduplicating.
+  // reference_urls is the primary source (set in Clem Settings); competitor_urls are Scout additions.
+  const competitorUrls: string[] = [
+    ...(tenant.reference_urls ?? []),
+    ...(config?.competitor_urls ?? []),
+  ].filter((v, i, arr) => arr.indexOf(v) === i).slice(0, 5)
   const seedKeywords: string[] = extractSeedKeywords(tenant.brand_voice, tenant.target_audience)
 
   let competitorResults: Awaited<ReturnType<typeof runCompetitorPipeline>> = []

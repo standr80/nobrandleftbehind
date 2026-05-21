@@ -13,7 +13,7 @@ export default async function CompetitorsPage() {
 
   const db = createAdminClient()
 
-  const [configRes, snapshotsRes] = await Promise.all([
+  const [configRes, snapshotsRes, tenantRes] = await Promise.all([
     db.from('scout_config').select('*').eq('tenant_id', workspace.tenantId).maybeSingle(),
     db
       .from('scout_competitor_snapshots')
@@ -21,9 +21,11 @@ export default async function CompetitorsPage() {
       .eq('tenant_id', workspace.tenantId)
       .order('created_at', { ascending: false })
       .limit(50),
+    db.from('tenants').select('reference_urls').eq('id', workspace.tenantId).single(),
   ])
 
-  const competitorUrls: string[] = configRes.data?.competitor_urls ?? []
+  const clemReferenceUrls: string[] = tenantRes.data?.reference_urls ?? []
+  const scoutExtraUrls: string[] = configRes.data?.competitor_urls ?? []
 
   type SnapshotRow = NonNullable<typeof snapshotsRes.data>[number]
   // Group snapshots by competitor URL — latest per competitor
@@ -42,7 +44,8 @@ export default async function CompetitorsPage() {
       </p>
 
       <CompetitorManager
-        initialUrls={competitorUrls}
+        clemReferenceUrls={clemReferenceUrls}
+        scoutExtraUrls={scoutExtraUrls}
         latestSnapshots={Object.values(latestByUrl)}
         isAdmin={workspace.role === 'admin'}
       />
