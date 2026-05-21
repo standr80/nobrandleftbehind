@@ -23,7 +23,7 @@ export default async function KeywordsPage() {
     <div>
       <h1 className="text-xl font-bold text-slate-900 mb-2">Keyword opportunities</h1>
       <p className="text-sm text-slate-500 mb-6">
-        Scout-discovered opportunities. Approve to add to Clem's queue, or dismiss to remove.
+        Scout-discovered opportunities. Approve to add to Clem&apos;s queue, or dismiss to remove.
       </p>
       <KeywordOpportunityList
         initialOpportunities={opportunities ?? []}

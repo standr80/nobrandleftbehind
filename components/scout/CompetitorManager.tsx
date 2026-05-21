@@ -27,8 +27,6 @@ export default function CompetitorManager({ initialUrls, latestSnapshots, isAdmi
   const [error, setError] = useState<string | null>(null)
   const router = useRouter()
 
-  const snapshotMap = Object.fromEntries(latestSnapshots.map((s) => [s.competitor_url, s]))
-
   function addUrl() {
     if (urls.length < 5) setUrls([...urls, ''])
   }
