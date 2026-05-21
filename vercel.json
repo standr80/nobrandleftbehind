@@ -3,6 +3,14 @@
     {
       "path": "/api/cron/publish",
       "schedule": "0 * * * *"
+    },
+    {
+      "path": "/api/scout/alerts/check",
+      "schedule": "0 7 * * *"
+    },
+    {
+      "path": "/api/scout/weekly",
+      "schedule": "0 6 * * 1"
     }
   ]
 }

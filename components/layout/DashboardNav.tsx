@@ -12,6 +12,7 @@ interface Props {
 
 const coreNavItems = [
   { href: '/dashboard', label: 'Dashboard', icon: '▦' },
+  { href: '/dashboard/scout', label: 'Scout', icon: '◉' },
   { href: '/author', label: 'Author', icon: '✎' },
   { href: '/settings', label: 'Settings', icon: '⚙' },
 ]

@@ -234,12 +234,299 @@ export type Database = {
           },
         ]
       }
+      scout_alerts: {
+        Row: {
+          actioned: boolean | null
+          actioned_at: string | null
+          alert_type: string
+          briefing_id: string | null
+          created_at: string | null
+          data: Json | null
+          detail: string | null
+          id: string
+          severity: string | null
+          tenant_id: string
+          title: string
+        }
+        Insert: {
+          actioned?: boolean | null
+          actioned_at?: string | null
+          alert_type: string
+          briefing_id?: string | null
+          created_at?: string | null
+          data?: Json | null
+          detail?: string | null
+          id?: string
+          severity?: string | null
+          tenant_id: string
+          title: string
+        }
+        Update: {
+          actioned?: boolean | null
+          actioned_at?: string | null
+          alert_type?: string
+          briefing_id?: string | null
+          created_at?: string | null
+          data?: Json | null
+          detail?: string | null
+          id?: string
+          severity?: string | null
+          tenant_id?: string
+          title?: string
+        }
+        Relationships: []
+      }
+      scout_briefings: {
+        Row: {
+          briefing_html: string | null
+          briefing_json: Json | null
+          clem_suggestions_added: number | null
+          created_at: string | null
+          email_sent_at: string | null
+          id: string
+          status: string | null
+          tenant_id: string
+          urgent_count: number | null
+          watch_count: number | null
+          week_starting: string
+          wins_count: number | null
+        }
+        Insert: {
+          briefing_html?: string | null
+          briefing_json?: Json | null
+          clem_suggestions_added?: number | null
+          created_at?: string | null
+          email_sent_at?: string | null
+          id?: string
+          status?: string | null
+          tenant_id: string
+          urgent_count?: number | null
+          watch_count?: number | null
+          week_starting: string
+          wins_count?: number | null
+        }
+        Update: {
+          briefing_html?: string | null
+          briefing_json?: Json | null
+          clem_suggestions_added?: number | null
+          created_at?: string | null
+          email_sent_at?: string | null
+          id?: string
+          status?: string | null
+          tenant_id?: string
+          urgent_count?: number | null
+          watch_count?: number | null
+          week_starting?: string
+          wins_count?: number | null
+        }
+        Relationships: []
+      }
+      scout_competitor_snapshots: {
+        Row: {
+          changed_pages: Json | null
+          competitor_url: string
+          created_at: string | null
+          id: string
+          keyword_gaps: Json | null
+          new_backlinks: Json | null
+          new_blog_posts: Json | null
+          new_pages: Json | null
+          page_count: number | null
+          pricing_change_summary: string | null
+          pricing_changed: boolean | null
+          pricing_page_content: string | null
+          ranking_keywords: Json | null
+          raw_crawl_hash: string | null
+          removed_pages: Json | null
+          snapshot_date: string
+          tech_stack: Json | null
+          tenant_id: string
+        }
+        Insert: {
+          changed_pages?: Json | null
+          competitor_url: string
+          created_at?: string | null
+          id?: string
+          keyword_gaps?: Json | null
+          new_backlinks?: Json | null
+          new_blog_posts?: Json | null
+          new_pages?: Json | null
+          page_count?: number | null
+          pricing_change_summary?: string | null
+          pricing_changed?: boolean | null
+          pricing_page_content?: string | null
+          ranking_keywords?: Json | null
+          raw_crawl_hash?: string | null
+          removed_pages?: Json | null
+          snapshot_date: string
+          tech_stack?: Json | null
+          tenant_id: string
+        }
+        Update: {
+          changed_pages?: Json | null
+          competitor_url?: string
+          created_at?: string | null
+          id?: string
+          keyword_gaps?: Json | null
+          new_backlinks?: Json | null
+          new_blog_posts?: Json | null
+          new_pages?: Json | null
+          page_count?: number | null
+          pricing_change_summary?: string | null
+          pricing_changed?: boolean | null
+          pricing_page_content?: string | null
+          ranking_keywords?: Json | null
+          raw_crawl_hash?: string | null
+          removed_pages?: Json | null
+          snapshot_date?: string
+          tech_stack?: Json | null
+          tenant_id?: string
+        }
+        Relationships: []
+      }
+      scout_config: {
+        Row: {
+          briefing_day: string | null
+          briefing_time: string | null
+          competitor_urls: string[] | null
+          created_at: string | null
+          dataforseo_enabled: boolean | null
+          enabled: boolean | null
+          ga4_access_token_enc: string | null
+          ga4_connected: boolean | null
+          ga4_property_id: string | null
+          ga4_refresh_token_enc: string | null
+          gsc_access_token_enc: string | null
+          gsc_connected: boolean | null
+          gsc_property_id: string | null
+          gsc_refresh_token_enc: string | null
+          id: string
+          tenant_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          briefing_day?: string | null
+          briefing_time?: string | null
+          competitor_urls?: string[] | null
+          created_at?: string | null
+          dataforseo_enabled?: boolean | null
+          enabled?: boolean | null
+          ga4_access_token_enc?: string | null
+          ga4_connected?: boolean | null
+          ga4_property_id?: string | null
+          ga4_refresh_token_enc?: string | null
+          gsc_access_token_enc?: string | null
+          gsc_connected?: boolean | null
+          gsc_property_id?: string | null
+          gsc_refresh_token_enc?: string | null
+          id?: string
+          tenant_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          briefing_day?: string | null
+          briefing_time?: string | null
+          competitor_urls?: string[] | null
+          created_at?: string | null
+          dataforseo_enabled?: boolean | null
+          enabled?: boolean | null
+          ga4_access_token_enc?: string | null
+          ga4_connected?: boolean | null
+          ga4_property_id?: string | null
+          ga4_refresh_token_enc?: string | null
+          gsc_access_token_enc?: string | null
+          gsc_connected?: boolean | null
+          gsc_property_id?: string | null
+          gsc_refresh_token_enc?: string | null
+          id?: string
+          tenant_id?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      scout_keyword_opportunities: {
+        Row: {
+          clem_suggestion_id: string | null
+          competitor_ranking_url: string | null
+          created_at: string | null
+          discovered_at: string | null
+          id: string
+          keyword: string
+          keyword_difficulty: number | null
+          opportunity_type: string | null
+          search_volume: number | null
+          seasonal_peak_month: number | null
+          status: string | null
+          tenant_id: string
+          weeks_until_peak: number | null
+        }
+        Insert: {
+          clem_suggestion_id?: string | null
+          competitor_ranking_url?: string | null
+          created_at?: string | null
+          discovered_at?: string | null
+          id?: string
+          keyword: string
+          keyword_difficulty?: number | null
+          opportunity_type?: string | null
+          search_volume?: number | null
+          seasonal_peak_month?: number | null
+          status?: string | null
+          tenant_id: string
+          weeks_until_peak?: number | null
+        }
+        Update: {
+          clem_suggestion_id?: string | null
+          competitor_ranking_url?: string | null
+          created_at?: string | null
+          discovered_at?: string | null
+          id?: string
+          keyword?: string
+          keyword_difficulty?: number | null
+          opportunity_type?: string | null
+          search_volume?: number | null
+          seasonal_peak_month?: number | null
+          status?: string | null
+          tenant_id?: string
+          weeks_until_peak?: number | null
+        }
+        Relationships: []
+      }
+      scout_paa_cache: {
+        Row: {
+          expires_at: string | null
+          fetched_at: string | null
+          id: string
+          questions: Json | null
+          seed_keyword: string
+          tenant_id: string
+        }
+        Insert: {
+          expires_at?: string | null
+          fetched_at?: string | null
+          id?: string
+          questions?: Json | null
+          seed_keyword: string
+          tenant_id: string
+        }
+        Update: {
+          expires_at?: string | null
+          fetched_at?: string | null
+          id?: string
+          questions?: Json | null
+          seed_keyword?: string
+          tenant_id?: string
+        }
+        Relationships: []
+      }
       suggestions: {
         Row: {
           created_at: string | null
           id: string
           proposed_title: string
           rationale: string | null
+          source: string | null
+          source_type: string | null
           status: string | null
           target_keywords: string[] | null
           tenant_id: string
@@ -249,6 +536,8 @@ export type Database = {
           id?: string
           proposed_title: string
           rationale?: string | null
+          source?: string | null
+          source_type?: string | null
           status?: string | null
           target_keywords?: string[] | null
           tenant_id: string
@@ -258,6 +547,8 @@ export type Database = {
           id?: string
           proposed_title?: string
           rationale?: string | null
+          source?: string | null
+          source_type?: string | null
           status?: string | null
           target_keywords?: string[] | null
           tenant_id?: string

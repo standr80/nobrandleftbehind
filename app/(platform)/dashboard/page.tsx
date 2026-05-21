@@ -14,7 +14,7 @@ async function getDashboardStats(tenantId: string) {
   const [suggestionsRes, postsRes] = await Promise.all([
     db
       .from('suggestions')
-      .select('id, proposed_title, rationale, target_keywords, status')
+      .select('id, proposed_title, rationale, target_keywords, status, source, source_type')
       .eq('tenant_id', tenantId)
       .eq('status', 'pending')
       .order('created_at', { ascending: false }),

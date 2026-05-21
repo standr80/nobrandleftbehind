@@ -9,6 +9,8 @@ interface Suggestion {
   rationale: string | null
   target_keywords: string[] | null
   status: string | null
+  source?: string | null
+  source_type?: string | null
 }
 
 interface Props {
@@ -311,7 +313,19 @@ export default function SuggestionsList({ suggestions: initialSuggestions, tenan
             ) : (
               <div className="flex items-start justify-between gap-4">
                 <div className="min-w-0">
-                  <p className="text-sm font-medium text-slate-900">{s.proposed_title}</p>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <p className="text-sm font-medium text-slate-900">{s.proposed_title}</p>
+                    {s.source === 'scout' && (
+                      <span className="text-xs px-1.5 py-0.5 bg-indigo-50 text-indigo-600 border border-indigo-100 rounded font-medium shrink-0">
+                        ◉ Scout
+                        {s.source_type && (
+                          <span className="ml-1 font-normal opacity-70 capitalize">
+                            · {s.source_type.replace(/_/g, ' ')}
+                          </span>
+                        )}
+                      </span>
+                    )}
+                  </div>
                   {s.rationale && (
                     <p className="text-xs text-slate-400 mt-1 line-clamp-2">{s.rationale}</p>
                   )}
