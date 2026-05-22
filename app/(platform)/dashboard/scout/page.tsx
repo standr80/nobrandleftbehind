@@ -56,7 +56,7 @@ export default async function ScoutOverviewPage() {
   const workspace = await getActiveWorkspace(userId)
   if (!workspace) redirect('/setup')
 
-  const { config, allCompetitorUrls, latestBriefing, alerts, pendingOpportunities } =
+  const { allCompetitorUrls, latestBriefing, alerts, pendingOpportunities } =
     await getScoutOverview(workspace.tenantId)
 
   const urgentAlerts = alerts.filter((a) => a.severity === 'urgent')
