@@ -8,9 +8,10 @@ import ScoutRunButton from '@/components/scout/ScoutRunButton'
 async function getScoutOverview(tenantId: string) {
   const db = createAdminClient()
 
-  const [configRes, latestBriefingRes, alertsRes, opportunitiesRes, competitorSnapshotsRes] =
+  const [configRes, tenantRes, latestBriefingRes, alertsRes, opportunitiesRes] =
     await Promise.all([
       db.from('scout_config').select('*').eq('tenant_id', tenantId).maybeSingle(),
+      db.from('tenants').select('reference_urls').eq('id', tenantId).single(),
       db
         .from('scout_briefings')
         .select('id, week_starting, status, urgent_count, watch_count, wins_count, clem_suggestions_added, created_at')
@@ -32,20 +33,19 @@ async function getScoutOverview(tenantId: string) {
         .eq('status', 'pending')
         .order('discovered_at', { ascending: false })
         .limit(5),
-      db
-        .from('scout_competitor_snapshots')
-        .select('competitor_url, snapshot_date')
-        .eq('tenant_id', tenantId)
-        .order('created_at', { ascending: false })
-        .limit(20),
     ])
+
+  // Combined competitor list — same logic as schedule.ts
+  const clemUrls: string[] = tenantRes.data?.reference_urls ?? []
+  const scoutUrls: string[] = configRes.data?.competitor_urls ?? []
+  const allCompetitorUrls = [...clemUrls, ...scoutUrls.filter((u) => !clemUrls.includes(u))].slice(0, 5)
 
   return {
     config: configRes.data,
+    allCompetitorUrls,
     latestBriefing: latestBriefingRes.data,
     alerts: alertsRes.data ?? [],
     pendingOpportunities: opportunitiesRes.data ?? [],
-    competitorSnapshots: competitorSnapshotsRes.data ?? [],
   }
 }
 
@@ -56,14 +56,11 @@ export default async function ScoutOverviewPage() {
   const workspace = await getActiveWorkspace(userId)
   if (!workspace) redirect('/setup')
 
-  const { config, latestBriefing, alerts, pendingOpportunities, competitorSnapshots } =
+  const { config, allCompetitorUrls, latestBriefing, alerts, pendingOpportunities } =
     await getScoutOverview(workspace.tenantId)
 
   const urgentAlerts = alerts.filter((a) => a.severity === 'urgent')
   const watchAlerts = alerts.filter((a) => a.severity === 'watch')
-
-  // Get unique competitor URLs from recent snapshots
-  const monitoredCompetitors = [...new Set(competitorSnapshots.map((s) => s.competitor_url))]
   const isAdmin = workspace.role === 'admin'
 
   return (
@@ -81,14 +78,15 @@ export default async function ScoutOverviewPage() {
       </div>
 
       {/* No config warning */}
-      {!config?.competitor_urls?.length && (
+      {allCompetitorUrls.length === 0 && (
         <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-6">
           <p className="text-sm text-amber-800 font-medium">Scout is ready but needs configuration.</p>
           <p className="text-sm text-amber-700 mt-1">
-            Add competitor URLs to start monitoring.{' '}
-            <Link href="/dashboard/scout/competitors" className="underline font-medium">
-              Set up competitors →
-            </Link>
+            Add competitor URLs in{' '}
+            <Link href="/settings" className="underline font-medium">Clem Settings</Link>
+            {' '}or{' '}
+            <Link href="/dashboard/scout/competitors" className="underline font-medium">Scout Competitors</Link>
+            {' '}to start monitoring.
           </p>
         </div>
       )}
@@ -96,7 +94,7 @@ export default async function ScoutOverviewPage() {
       {/* Stats row */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
         {[
-          { label: 'Competitors monitored', value: monitoredCompetitors.length, href: '/dashboard/scout/competitors' },
+          { label: 'Competitors monitored', value: allCompetitorUrls.length, href: '/dashboard/scout/competitors' },
           { label: 'Unactioned alerts', value: alerts.length, accent: urgentAlerts.length > 0 },
           { label: 'Pending opportunities', value: pendingOpportunities.length, href: '/dashboard/scout/keywords' },
           {
