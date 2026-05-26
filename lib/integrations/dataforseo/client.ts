@@ -188,28 +188,32 @@ export async function getPeopleAlsoAsk(
     }>
   }
 
-  const body = keywords.map((kw) => ({
-    keyword: kw,
-    location_code: locationCode,
-    language_code: 'en',
-    depth: 3,
-  }))
+  // /live endpoints only accept ONE task per request — run in parallel
+  const settled = await Promise.allSettled(
+    keywords.map((kw) =>
+      post<Resp>('/serp/google/organic/live/advanced', [
+        { keyword: kw, location_code: locationCode, language_code: 'en', depth: 3 },
+      ]),
+    ),
+  )
 
-  const data = await post<Resp>('/serp/google/organic/live/advanced', body)
   const result: Record<string, DfsPAAItem[]> = {}
-
-  for (const task of data?.tasks ?? []) {
-    for (const r of task.result ?? []) {
-      const paaBlocks = r.items?.filter((i) => i.type === 'people_also_ask') ?? []
-      const questions: DfsPAAItem[] = []
-      let pos = 1
-      for (const block of paaBlocks) {
-        for (const q of block.items ?? []) {
-          const text = q.title ?? q.featured_title
-          if (text) questions.push({ question: text, serp_position: pos++ })
+  for (const outcome of settled) {
+    if (outcome.status === 'rejected') continue
+    for (const task of outcome.value?.tasks ?? []) {
+      for (const r of task.result ?? []) {
+        if (!r.keyword) continue
+        const paaBlocks = r.items?.filter((i) => i.type === 'people_also_ask') ?? []
+        const questions: DfsPAAItem[] = []
+        let pos = 1
+        for (const block of paaBlocks) {
+          for (const q of block.items ?? []) {
+            const text = q.title ?? q.featured_title
+            if (text) questions.push({ question: text, serp_position: pos++ })
+          }
         }
+        result[r.keyword] = questions
       }
-      result[r.keyword] = questions
     }
   }
 
@@ -242,26 +246,31 @@ export async function getSerpFeatures(
     }>
   }
 
-  // /regular endpoint does not support depth — use /advanced for depth
-  const body = keywords.map((kw) => ({
-    keyword: kw,
-    location_code: locationCode,
-    language_code: 'en',
-  }))
+  // /live endpoints only accept ONE task per request — run in parallel, cap at 10
+  const batch = keywords.slice(0, 10)
+  const settled = await Promise.allSettled(
+    batch.map((kw) =>
+      post<Resp>('/serp/google/organic/live/regular', [
+        { keyword: kw, location_code: locationCode, language_code: 'en' },
+      ]),
+    ),
+  )
 
-  const data = await post<Resp>('/serp/google/organic/live/regular', body)
   const results: DfsSerpFeatureItem[] = []
-
-  for (const task of data?.tasks ?? []) {
-    for (const r of task.result ?? []) {
-      const hasFeaturedSnippet = r.items?.some((i) => i.type === 'featured_snippet') ?? false
-      const clientItem = r.items?.find((i) => i.domain?.includes(clientDomain))
-      results.push({
-        keyword: r.keyword,
-        search_volume: r.search_volume ?? null,
-        has_featured_snippet: hasFeaturedSnippet,
-        client_position: clientItem?.rank_absolute ?? null,
-      })
+  for (const outcome of settled) {
+    if (outcome.status === 'rejected') continue
+    for (const task of outcome.value?.tasks ?? []) {
+      for (const r of task.result ?? []) {
+        if (!r.keyword) continue
+        const hasFeaturedSnippet = r.items?.some((i) => i.type === 'featured_snippet') ?? false
+        const clientItem = r.items?.find((i) => i.domain?.includes(clientDomain))
+        results.push({
+          keyword: r.keyword,
+          search_volume: r.search_volume ?? null,
+          has_featured_snippet: hasFeaturedSnippet,
+          client_position: clientItem?.rank_absolute ?? null,
+        })
+      }
     }
   }
 
@@ -294,7 +303,10 @@ export async function getKeywordTrends(
   }
 
   // This endpoint takes keywords as a plural array in a single task,
-  // not one task per keyword.
+  // not one task per keyword. Filter out any blank strings first.
+  const cleanKeywords = keywords.filter((k) => typeof k === 'string' && k.trim().length > 0)
+  if (!cleanKeywords.length) return []
+
   const dateFrom = (() => {
     const d = new Date()
     d.setFullYear(d.getFullYear() - 1)
@@ -302,7 +314,7 @@ export async function getKeywordTrends(
   })()
 
   const body = [{
-    keywords,
+    keywords: cleanKeywords,
     location_code: locationCode,
     language_code: 'en',
     date_from: dateFrom,

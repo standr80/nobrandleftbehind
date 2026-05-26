@@ -88,7 +88,9 @@ export async function runSearchOpportunityPipeline(
   let clientRankingKeywords: string[] = []
   try {
     const rankings = await getDomainRankings(clientDomain, 2826, 100)
-    clientRankingKeywords = rankings.map((r) => r.keyword)
+    clientRankingKeywords = rankings
+      .map((r) => r.keyword)
+      .filter((k): k is string => typeof k === 'string' && k.trim().length > 0)
   } catch (err) {
     errors.push(`getDomainRankings: ${err instanceof Error ? err.message : String(err)}`)
   }
@@ -198,7 +200,9 @@ export async function runSearchOpportunityPipeline(
   // ── 3.4 Seasonal trends + 3.5 Rising trends ──
   const seasonalWindows: OpportunityItem[] = []
   const risingTrends: OpportunityItem[] = []
-  const trendKeywords = [...seedKeywords, ...clientRankingKeywords.slice(0, 20)].slice(0, 30)
+  const trendKeywords = [...seedKeywords, ...clientRankingKeywords.slice(0, 20)]
+    .filter((k) => typeof k === 'string' && k.trim().length > 0)
+    .slice(0, 30)
 
   if (trendKeywords.length) {
     try {
