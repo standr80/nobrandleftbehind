@@ -27,9 +27,28 @@ async function post<T>(path: string, body: unknown): Promise<T> {
   })
   if (!res.ok) {
     const text = await res.text()
-    throw new Error(`DataForSEO ${path} failed: ${res.status} ${text}`)
+    throw new Error(`DataForSEO ${path} HTTP ${res.status}: ${text}`)
   }
-  return res.json() as Promise<T>
+  const json = (await res.json()) as {
+    status_code?: number
+    status_message?: string
+    tasks?: Array<{ status_code?: number; status_message?: string }>
+  }
+  // DataForSEO wraps API errors in status_code inside the JSON body
+  // rather than using HTTP error codes. 20000 = success, 4xxxx = error.
+  if (json.status_code && json.status_code !== 20000) {
+    throw new Error(
+      `DataForSEO ${path} API error ${json.status_code}: ${json.status_message ?? 'unknown error'}`,
+    )
+  }
+  // Also check first task status code
+  const firstTask = json.tasks?.[0]
+  if (firstTask?.status_code && firstTask.status_code !== 20000) {
+    throw new Error(
+      `DataForSEO ${path} task error ${firstTask.status_code}: ${firstTask.status_message ?? 'unknown error'}`,
+    )
+  }
+  return json as unknown as T
 }
 
 // ─── Types ────────────────────────────────────────────────────────────────────
