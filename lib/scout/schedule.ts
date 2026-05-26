@@ -45,7 +45,7 @@ export async function runScoutForTenant(tenantId: string): Promise<ScoutRunResul
     ...(tenant.reference_urls ?? []),
     ...(config?.competitor_urls ?? []),
   ].filter((v, i, arr) => arr.indexOf(v) === i).slice(0, 5)
-  const seedKeywords: string[] = extractSeedKeywords(tenant.brand_voice, tenant.target_audience)
+  const seedKeywords: string[] = extractSeedKeywords(tenant.brand_voice, tenant.target_audience, competitorUrls)
 
   let competitorResults: Awaited<ReturnType<typeof runCompetitorPipeline>> = []
   let searchResults: Awaited<ReturnType<typeof runSearchOpportunityPipeline>> = {
@@ -70,6 +70,23 @@ export async function runScoutForTenant(tenantId: string): Promise<ScoutRunResul
   if (process.env.DATAFORSEO_LOGIN && process.env.DATAFORSEO_PASSWORD) {
     try {
       searchResults = await runSearchOpportunityPipeline(tenantId, tenant.domain, seedKeywords)
+      // Post a one-time diagnostic watch alert showing what Pipeline 3 found
+      // (auto-actioned so it doesn't clutter the dashboard after the first run)
+      await db.from('scout_alerts').insert({
+        tenant_id: tenantId,
+        alert_type: 'pipeline3_diagnostic',
+        severity: 'watch',
+        title: `Pipeline 3 complete — ${searchResults.totalAdded} opportunities found`,
+        detail: [
+          `Seed keywords used: ${seedKeywords.slice(0, 5).join(', ')}${seedKeywords.length > 5 ? ` (+${seedKeywords.length - 5} more)` : ''}`,
+          `Featured snippets: ${searchResults.featuredSnippetTargets.length}`,
+          `PAA questions: ${searchResults.paaQuestions.length}`,
+          `Seasonal windows: ${searchResults.seasonalWindows.length}`,
+          `Rising trends: ${searchResults.risingTrends.length}`,
+          `Total added to opportunities: ${searchResults.totalAdded}`,
+        ].join(' · '),
+        actioned: searchResults.totalAdded > 0, // auto-action if successful
+      })
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err)
       console.error(`[Scout] Pipeline 3 failed for tenant ${tenantId}:`, message)
@@ -153,17 +170,67 @@ export async function runScoutForAllTenants(): Promise<ScoutRunResult[]> {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function extractSeedKeywords(brandVoice: string | null, targetAudience: string | null): string[] {
-  const combined = [brandVoice ?? '', targetAudience ?? ''].join(' ')
-  // Extract significant words (3+ chars, not stop words)
+/**
+ * Extract multi-word seed phrases from brand_voice and target_audience.
+ * Single words are poor DataForSEO seeds — 2-3 word phrases produce much
+ * better PAA, trend, and SERP results.
+ */
+function extractSeedKeywords(
+  brandVoice: string | null,
+  targetAudience: string | null,
+  competitorUrls: string[],
+): string[] {
   const stopWords = new Set([
     'and', 'the', 'for', 'with', 'our', 'your', 'that', 'this', 'from', 'are',
     'has', 'have', 'will', 'can', 'who', 'what', 'when', 'where', 'how', 'why',
+    'we', 'a', 'an', 'to', 'of', 'in', 'is', 'it', 'on', 'at', 'by', 'be',
   ])
-  return combined
-    .toLowerCase()
-    .replace(/[^a-z\s]/g, ' ')
-    .split(/\s+/)
-    .filter((w) => w.length >= 3 && !stopWords.has(w))
-    .slice(0, 20)
+
+  const phrases: string[] = []
+
+  // Extract 2–3 word phrases from brand_voice and target_audience
+  for (const source of [brandVoice, targetAudience]) {
+    if (!source) continue
+    const words = source
+      .toLowerCase()
+      .replace(/[^a-z\s]/g, ' ')
+      .split(/\s+/)
+      .filter((w) => w.length >= 3 && !stopWords.has(w))
+
+    // 2-word phrases
+    for (let i = 0; i < words.length - 1; i++) {
+      phrases.push(`${words[i]} ${words[i + 1]}`)
+    }
+    // 3-word phrases
+    for (let i = 0; i < words.length - 2; i++) {
+      phrases.push(`${words[i]} ${words[i + 1]} ${words[i + 2]}`)
+    }
+    // Individual significant words as fallback
+    phrases.push(...words)
+  }
+
+  // Add competitor domain names as seeds (stripped to readable form)
+  // e.g. "vistaprint.co.uk" → "vistaprint", "instantprint.co.uk" → "instant print"
+  for (const url of competitorUrls) {
+    try {
+      const hostname = new URL(url.startsWith('http') ? url : `https://${url}`).hostname
+      const domain = hostname.replace(/^www\./, '').split('.')[0]
+      // Split camelCase or compound words: "instantprint" → "instant print"
+      const readable = domain.replace(/([a-z])([A-Z])/g, '$1 $2').toLowerCase()
+      phrases.push(readable)
+    } catch { /* ignore invalid URLs */ }
+  }
+
+  // Deduplicate, keep phrases with 2+ words first, cap at 20
+  const seen = new Set<string>()
+  const deduped = phrases.filter((p) => {
+    if (seen.has(p)) return false
+    seen.add(p)
+    return p.trim().length > 0
+  })
+
+  const multiWord = deduped.filter((p) => p.includes(' '))
+  const singleWord = deduped.filter((p) => !p.includes(' '))
+
+  return [...multiWord, ...singleWord].slice(0, 20)
 }
