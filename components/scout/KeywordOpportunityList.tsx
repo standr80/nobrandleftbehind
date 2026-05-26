@@ -169,7 +169,7 @@ export default function KeywordOpportunityList({ initialOpportunities }: Props) 
                       disabled={actionLoading === opp.id}
                       className="text-xs px-2 py-1 bg-indigo-600 text-white rounded hover:bg-indigo-700 transition-colors disabled:opacity-50"
                     >
-                      {actionLoading === opp.id ? '…' : 'Add to Clem'}
+                      {actionLoading === opp.id ? 'Adding…' : '+ Add to Clem'}
                     </button>
                   </div>
                 )}
