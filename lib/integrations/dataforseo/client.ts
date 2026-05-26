@@ -191,6 +191,7 @@ export async function getPeopleAlsoAsk(
   const body = keywords.map((kw) => ({
     keyword: kw,
     location_code: locationCode,
+    language_code: 'en',
     depth: 3,
   }))
 
@@ -241,10 +242,11 @@ export async function getSerpFeatures(
     }>
   }
 
+  // /regular endpoint does not support depth — use /advanced for depth
   const body = keywords.map((kw) => ({
     keyword: kw,
     location_code: locationCode,
-    depth: 10,
+    language_code: 'en',
   }))
 
   const data = await post<Resp>('/serp/google/organic/live/regular', body)
@@ -291,15 +293,20 @@ export async function getKeywordTrends(
     }>
   }
 
-  const body = keywords.map((kw) => ({
-    keyword: kw,
+  // This endpoint takes keywords as a plural array in a single task,
+  // not one task per keyword.
+  const dateFrom = (() => {
+    const d = new Date()
+    d.setFullYear(d.getFullYear() - 1)
+    return d.toISOString().slice(0, 7) + '-01'
+  })()
+
+  const body = [{
+    keywords,
     location_code: locationCode,
-    date_from: (() => {
-      const d = new Date()
-      d.setFullYear(d.getFullYear() - 1)
-      return d.toISOString().slice(0, 7) + '-01'
-    })(),
-  }))
+    language_code: 'en',
+    date_from: dateFrom,
+  }]
 
   const data = await post<Resp>('/keywords_data/google_ads/search_volume/live', body)
   const results: DfsTrendItem[] = []
