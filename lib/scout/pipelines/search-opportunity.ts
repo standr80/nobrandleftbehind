@@ -27,6 +27,7 @@ export interface SearchOpportunityResult {
   seasonalWindows: OpportunityItem[]
   risingTrends: OpportunityItem[]
   totalAdded: number
+  stepErrors: string[]
 }
 
 export interface OpportunityItem {
@@ -248,6 +249,7 @@ export async function runSearchOpportunityPipeline(
   }
 
   // Persist all opportunities to scout_keyword_opportunities
+
   let totalAdded = 0
   if (opportunityItems.length) {
     const inserts = opportunityItems.map((item) => ({
@@ -273,5 +275,6 @@ export async function runSearchOpportunityPipeline(
     seasonalWindows,
     risingTrends,
     totalAdded,
+    stepErrors: errors,
   }
 }

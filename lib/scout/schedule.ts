@@ -60,6 +60,7 @@ export async function runScoutForTenant(tenantId: string): Promise<ScoutRunResul
     seasonalWindows: [],
     risingTrends: [],
     totalAdded: 0,
+    stepErrors: [],
   }
 
   // Pipeline 2 — Competitor intelligence
@@ -77,20 +78,24 @@ export async function runScoutForTenant(tenantId: string): Promise<ScoutRunResul
       searchResults = await runSearchOpportunityPipeline(tenantId, tenant.domain, seedKeywords)
       // Post a one-time diagnostic watch alert showing what Pipeline 3 found
       // (auto-actioned so it doesn't clutter the dashboard after the first run)
+      const diagnosticParts = [
+        `Seed keywords used: ${seedKeywords.slice(0, 5).join(', ')}${seedKeywords.length > 5 ? ` (+${seedKeywords.length - 5} more)` : ''}`,
+        `Featured snippets: ${searchResults.featuredSnippetTargets.length}`,
+        `PAA questions: ${searchResults.paaQuestions.length}`,
+        `Seasonal windows: ${searchResults.seasonalWindows.length}`,
+        `Rising trends: ${searchResults.risingTrends.length}`,
+        `Total added to opportunities: ${searchResults.totalAdded}`,
+      ]
+      if (searchResults.stepErrors.length) {
+        diagnosticParts.push(`Step errors: ${searchResults.stepErrors.join(' | ')}`)
+      }
       await db.from('scout_alerts').insert({
         tenant_id: tenantId,
         alert_type: 'pipeline3_diagnostic',
-        severity: 'watch',
-        title: `Pipeline 3 complete — ${searchResults.totalAdded} opportunities found`,
-        detail: [
-          `Seed keywords used: ${seedKeywords.slice(0, 5).join(', ')}${seedKeywords.length > 5 ? ` (+${seedKeywords.length - 5} more)` : ''}`,
-          `Featured snippets: ${searchResults.featuredSnippetTargets.length}`,
-          `PAA questions: ${searchResults.paaQuestions.length}`,
-          `Seasonal windows: ${searchResults.seasonalWindows.length}`,
-          `Rising trends: ${searchResults.risingTrends.length}`,
-          `Total added to opportunities: ${searchResults.totalAdded}`,
-        ].join(' · '),
-        actioned: searchResults.totalAdded > 0, // auto-action if successful
+        severity: searchResults.stepErrors.length > 0 ? 'urgent' : 'watch',
+        title: `Pipeline 3 complete — ${searchResults.totalAdded} opportunities found${searchResults.stepErrors.length ? ` (${searchResults.stepErrors.length} errors)` : ''}`,
+        detail: diagnosticParts.join(' · '),
+        actioned: searchResults.totalAdded > 0 && searchResults.stepErrors.length === 0,
       })
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err)
