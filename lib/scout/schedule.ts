@@ -45,7 +45,12 @@ export async function runScoutForTenant(tenantId: string): Promise<ScoutRunResul
     ...(tenant.reference_urls ?? []),
     ...(config?.competitor_urls ?? []),
   ].filter((v, i, arr) => arr.indexOf(v) === i).slice(0, 5)
-  const seedKeywords: string[] = extractSeedKeywords(tenant.brand_voice, tenant.target_audience, competitorUrls)
+  const seedKeywords: string[] = await extractSeedKeywords(
+    tenant.brand_voice,
+    tenant.target_audience,
+    tenant.domain,
+    competitorUrls,
+  )
 
   let competitorResults: Awaited<ReturnType<typeof runCompetitorPipeline>> = []
   let searchResults: Awaited<ReturnType<typeof runSearchOpportunityPipeline>> = {
@@ -171,66 +176,56 @@ export async function runScoutForAllTenants(): Promise<ScoutRunResult[]> {
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 /**
- * Extract multi-word seed phrases from brand_voice and target_audience.
- * Single words are poor DataForSEO seeds — 2-3 word phrases produce much
- * better PAA, trend, and SERP results.
+ * Use Claude to generate proper search-intent keyword phrases from the
+ * tenant's brand context. N-gram extraction produces meaningless phrases
+ * like "based speak" — Claude produces real keywords like "custom print uk".
  */
-function extractSeedKeywords(
+async function extractSeedKeywords(
   brandVoice: string | null,
   targetAudience: string | null,
+  domain: string,
   competitorUrls: string[],
-): string[] {
-  const stopWords = new Set([
-    'and', 'the', 'for', 'with', 'our', 'your', 'that', 'this', 'from', 'are',
-    'has', 'have', 'will', 'can', 'who', 'what', 'when', 'where', 'how', 'why',
-    'we', 'a', 'an', 'to', 'of', 'in', 'is', 'it', 'on', 'at', 'by', 'be',
-  ])
-
-  const phrases: string[] = []
-
-  // Extract 2–3 word phrases from brand_voice and target_audience
-  for (const source of [brandVoice, targetAudience]) {
-    if (!source) continue
-    const words = source
-      .toLowerCase()
-      .replace(/[^a-z\s]/g, ' ')
-      .split(/\s+/)
-      .filter((w) => w.length >= 3 && !stopWords.has(w))
-
-    // 2-word phrases
-    for (let i = 0; i < words.length - 1; i++) {
-      phrases.push(`${words[i]} ${words[i + 1]}`)
-    }
-    // 3-word phrases
-    for (let i = 0; i < words.length - 2; i++) {
-      phrases.push(`${words[i]} ${words[i + 1]} ${words[i + 2]}`)
-    }
-    // Individual significant words as fallback
-    phrases.push(...words)
-  }
-
-  // Add competitor domain names as seeds (stripped to readable form)
-  // e.g. "vistaprint.co.uk" → "vistaprint", "instantprint.co.uk" → "instant print"
-  for (const url of competitorUrls) {
+): Promise<string[]> {
+  // Competitor domain names as context clues
+  const competitorDomains = competitorUrls.map((url) => {
     try {
       const hostname = new URL(url.startsWith('http') ? url : `https://${url}`).hostname
-      const domain = hostname.replace(/^www\./, '').split('.')[0]
-      // Split camelCase or compound words: "instantprint" → "instant print"
-      const readable = domain.replace(/([a-z])([A-Z])/g, '$1 $2').toLowerCase()
-      phrases.push(readable)
-    } catch { /* ignore invalid URLs */ }
+      return hostname.replace(/^www\./, '').split('.')[0]
+    } catch { return '' }
+  }).filter(Boolean)
+
+  if (!brandVoice && !targetAudience && !competitorDomains.length) {
+    return []
   }
 
-  // Deduplicate, keep phrases with 2+ words first, cap at 20
-  const seen = new Set<string>()
-  const deduped = phrases.filter((p) => {
-    if (seen.has(p)) return false
-    seen.add(p)
-    return p.trim().length > 0
+  const Anthropic = (await import('@anthropic-ai/sdk')).default
+  const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+
+  const msg = await anthropic.messages.create({
+    model: 'claude-sonnet-4-20250514',
+    max_tokens: 200,
+    messages: [{
+      role: 'user',
+      content: `Generate 15 real search-engine keyword phrases for a business with this profile:
+Domain: ${domain}
+Brand voice: ${brandVoice ?? 'not set'}
+Target audience: ${targetAudience ?? 'not set'}
+Competitor domains: ${competitorDomains.join(', ') || 'none'}
+
+Rules:
+- Return ONLY the keywords, one per line, nothing else
+- Each keyword must be 2-4 words that real customers would type into Google
+- Focus on products/services, not brand descriptions
+- Include location-relevant terms if the business is local
+- Example good output: "custom business card printing", "cheap banner printing uk"
+- Do NOT include brand names or competitor names`,
+    }],
   })
 
-  const multiWord = deduped.filter((p) => p.includes(' '))
-  const singleWord = deduped.filter((p) => !p.includes(' '))
-
-  return [...multiWord, ...singleWord].slice(0, 20)
+  const text = (msg.content[0] as { type: 'text'; text: string }).text
+  return text
+    .split('\n')
+    .map((l) => l.replace(/^[-•*\d.)\s]+/, '').trim().toLowerCase())
+    .filter((l) => l.length > 3 && l.includes(' '))
+    .slice(0, 15)
 }
