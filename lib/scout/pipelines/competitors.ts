@@ -124,41 +124,97 @@ Summary:`,
   return (msg.content[0] as { type: 'text'; text: string }).text.trim()
 }
 
-async function crawlWithFirecrawl(url: string): Promise<FirecrawlPage[]> {
+/** Ensure URL has a scheme so new URL() doesn't throw. */
+function normaliseUrl(url: string): string {
+  if (/^https?:\/\//i.test(url)) return url
+  return `https://${url}`
+}
+
+/**
+ * Fast competitor crawl using Firecrawl map (synchronous, returns URL list)
+ * then targeted scrapes of high-value pages (homepage + pricing + blog index).
+ * Avoids the async crawl+poll pattern which is too slow for 3 competitors
+ * within a single Vercel function invocation.
+ */
+async function crawlWithFirecrawl(rawUrl: string): Promise<FirecrawlPage[]> {
   const apiKey = process.env.FIRECRAWL_API_KEY
   if (!apiKey) throw new Error('FIRECRAWL_API_KEY is not set')
 
-  const res = await fetch('https://api.firecrawl.dev/v1/crawl', {
+  const url = normaliseUrl(rawUrl)
+
+  // Step 1: map — synchronous, returns all URLs on the site
+  const mapRes = await fetch('https://api.firecrawl.dev/v1/map', {
     method: 'POST',
     headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      url,
-      limit: 50,
-      scrapeOptions: { formats: ['markdown'] },
-      maxDepth: 2,
-    }),
+    body: JSON.stringify({ url, limit: 100 }),
   })
 
-  if (!res.ok) {
-    const text = await res.text()
-    throw new Error(`Firecrawl crawl failed for ${url}: ${res.status} ${text}`)
+  if (!mapRes.ok) {
+    const text = await mapRes.text()
+    throw new Error(`Firecrawl map failed for ${url}: ${mapRes.status} ${text}`)
   }
 
-  // Firecrawl returns a job ID — poll for completion
-  const { id: jobId } = (await res.json()) as { id: string }
-  let attempts = 0
-  while (attempts < 30) {
-    await new Promise((r) => setTimeout(r, 3000))
-    const pollRes = await fetch(`https://api.firecrawl.dev/v1/crawl/${jobId}`, {
-      headers: { Authorization: `Bearer ${apiKey}` },
-    })
-    if (!pollRes.ok) throw new Error(`Firecrawl poll failed: ${pollRes.status}`)
-    const pollData = (await pollRes.json()) as { status: string; data?: FirecrawlPage[] }
-    if (pollData.status === 'completed') return pollData.data ?? []
-    if (pollData.status === 'failed') throw new Error(`Firecrawl job failed for ${url}`)
-    attempts++
-  }
-  throw new Error(`Firecrawl timed out for ${url}`)
+  const mapData = (await mapRes.json()) as { links?: string[]; urls?: string[] }
+  const allUrls: string[] = mapData.links ?? mapData.urls ?? []
+
+  // Step 2: pick the most valuable pages to actually scrape for content
+  const pricingPatterns = ['/pricing', '/plans', '/packages', '/tariffs', '/buy']
+  const blogPatterns = ['/blog', '/news', '/articles', '/insights', '/resources', '/posts']
+
+  const pricingUrls = allUrls.filter((u) =>
+    pricingPatterns.some((p) => u.toLowerCase().includes(p)),
+  ).slice(0, 2)
+
+  const blogIndexUrls = allUrls.filter((u) =>
+    blogPatterns.some((p) => {
+      const path = new URL(normaliseUrl(u)).pathname
+      // Blog index = exactly /blog or /blog/ not individual posts
+      return path === p || path === `${p}/`
+    }),
+  ).slice(0, 1)
+
+  const newBlogPostUrls = allUrls.filter((u) =>
+    blogPatterns.some((p) => u.toLowerCase().includes(`${p}/`)) &&
+    !blogIndexUrls.includes(u),
+  ).slice(0, 5)
+
+  // Always scrape the homepage
+  const urlsToScrape = [...new Set([url, ...pricingUrls, ...blogIndexUrls, ...newBlogPostUrls])]
+
+  // Step 3: scrape selected pages in parallel (synchronous endpoint)
+  const scraped = await Promise.allSettled(
+    urlsToScrape.map(async (pageUrl) => {
+      const scrapeRes = await fetch('https://api.firecrawl.dev/v1/scrape', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: pageUrl, formats: ['markdown'] }),
+      })
+      if (!scrapeRes.ok) return null
+      const data = (await scrapeRes.json()) as {
+        success?: boolean
+        data?: { markdown?: string; metadata?: { title?: string } }
+      }
+      if (!data.success || !data.data) return null
+      return {
+        url: pageUrl,
+        markdown: data.data.markdown,
+        metadata: data.data.metadata,
+      } as FirecrawlPage
+    }),
+  )
+
+  // Combine: all mapped URLs (for inventory diff) + scraped content for key pages
+  const scrapedPages = scraped
+    .filter((r): r is PromiseFulfilledResult<FirecrawlPage | null> => r.status === 'fulfilled')
+    .map((r) => r.value)
+    .filter((p): p is FirecrawlPage => p !== null)
+
+  // Return mapped URLs as stub pages (for inventory), plus scraped content pages
+  const mappedStubs: FirecrawlPage[] = allUrls
+    .filter((u) => !urlsToScrape.includes(u))
+    .map((u) => ({ url: u }))
+
+  return [...scrapedPages, ...mappedStubs]
 }
 
 // ─── Main pipeline function ───────────────────────────────────────────────────
@@ -182,7 +238,8 @@ export async function runCompetitorPipeline(
 
   const results: CompetitorResult[] = []
 
-  for (const competitorUrl of competitorUrls) {
+  for (const rawCompetitorUrl of competitorUrls) {
+    const competitorUrl = normaliseUrl(rawCompetitorUrl)
     try {
       // Check if crawled in last 24h (avoid redundant Firecrawl cost)
       const { data: recentSnapshot } = await db
