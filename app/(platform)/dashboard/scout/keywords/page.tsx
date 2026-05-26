@@ -27,7 +27,6 @@ export default async function KeywordsPage() {
       </p>
       <KeywordOpportunityList
         initialOpportunities={opportunities ?? []}
-        isAdmin={workspace.role === 'admin'}
       />
     </div>
   )

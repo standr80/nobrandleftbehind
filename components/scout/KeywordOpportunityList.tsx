@@ -19,7 +19,6 @@ interface Opportunity {
 
 interface Props {
   initialOpportunities: Opportunity[]
-  isAdmin: boolean
 }
 
 const TYPE_LABELS: Record<string, string> = {
@@ -40,7 +39,7 @@ const TYPE_COLOURS: Record<string, string> = {
 
 const STATUS_FILTER_OPTIONS = ['all', 'pending', 'sent_to_clem', 'dismissed'] as const
 
-export default function KeywordOpportunityList({ initialOpportunities, isAdmin }: Props) {
+export default function KeywordOpportunityList({ initialOpportunities }: Props) {
   const [opportunities, setOpportunities] = useState(initialOpportunities)
   const [filter, setFilter] = useState<(typeof STATUS_FILTER_OPTIONS)[number]>('pending')
   const [typeFilter, setTypeFilter] = useState<string>('all')
@@ -156,7 +155,7 @@ export default function KeywordOpportunityList({ initialOpportunities, isAdmin }
                   <span className="text-xs text-slate-400 shrink-0">Dismissed</span>
                 )}
 
-                {isAdmin && opp.status === 'pending' && (
+                {opp.status === 'pending' && (
                   <div className="flex gap-2 shrink-0">
                     <button
                       onClick={() => updateStatus(opp.id, 'dismissed')}
