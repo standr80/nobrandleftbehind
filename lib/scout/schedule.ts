@@ -71,7 +71,37 @@ export async function runScoutForTenant(tenantId: string): Promise<ScoutRunResul
     try {
       searchResults = await runSearchOpportunityPipeline(tenantId, tenant.domain, seedKeywords)
     } catch (err) {
-      console.error(`[Scout] Pipeline 3 failed for tenant ${tenantId}:`, err)
+      const message = err instanceof Error ? err.message : String(err)
+      console.error(`[Scout] Pipeline 3 failed for tenant ${tenantId}:`, message)
+      // Surface the error as a watch alert so it's visible in the dashboard
+      try {
+        await db.from('scout_alerts').insert({
+          tenant_id: tenantId,
+          alert_type: 'pipeline_error',
+          severity: 'watch',
+          title: 'Keyword opportunity pipeline failed',
+          detail: message,
+        })
+      } catch { /* ignore secondary error */ }
+    }
+  } else {
+    console.warn(`[Scout] Pipeline 3 skipped — DATAFORSEO_LOGIN/PASSWORD not set for tenant ${tenantId}`)
+    // Surface as a watch alert on first run so admin knows why opportunities are empty
+    const { data: existingAlert } = await db
+      .from('scout_alerts')
+      .select('id')
+      .eq('tenant_id', tenantId)
+      .eq('alert_type', 'dataforseo_not_configured')
+      .limit(1)
+      .maybeSingle()
+    if (!existingAlert) {
+      await db.from('scout_alerts').insert({
+        tenant_id: tenantId,
+        alert_type: 'dataforseo_not_configured',
+        severity: 'watch',
+        title: 'DataForSEO not configured',
+        detail: 'Keyword opportunities, SERP gap analysis, PAA mining, and trend detection require DATAFORSEO_LOGIN and DATAFORSEO_PASSWORD environment variables. Add them in Vercel settings to enable Pipeline 3.',
+      })
     }
   }
 
