@@ -79,7 +79,8 @@ export interface DfsPAAItem {
 }
 
 export interface DfsSeasonalPoint {
-  date: string
+  year: number
+  month: number
   search_volume: number
 }
 
@@ -326,8 +327,11 @@ export async function getKeywordTrends(
   for (const task of data?.tasks ?? []) {
     for (const r of task.result ?? []) {
       const monthly = r.monthly_searches ?? []
-      // Calculate growth: last 4 weeks vs same 4 weeks prior year
-      const sorted = [...monthly].sort((a, b) => a.date.localeCompare(b.date))
+      // Calculate growth: last 4 months vs prior 4 months
+      // API returns {year, month, search_volume} — sort chronologically
+      const sorted = [...monthly].sort((a, b) =>
+        a.year !== b.year ? a.year - b.year : a.month - b.month,
+      )
       const recent = sorted.slice(-4)
       const prior = sorted.slice(-8, -4)
       const recentAvg = recent.reduce((s, p) => s + p.search_volume, 0) / (recent.length || 1)

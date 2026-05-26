@@ -51,14 +51,14 @@ function weeksUntilMonth(targetMonth: number): number {
   return Math.round(monthsAway * 4.33)
 }
 
-function findPeakMonth(monthly: { date: string; search_volume: number }[]): number | null {
+function findPeakMonth(monthly: { year: number; month: number; search_volume: number }[]): number | null {
   if (!monthly.length) return null
   let maxVol = 0
   let peakMonth = 1
   for (const pt of monthly) {
     if (pt.search_volume > maxVol) {
       maxVol = pt.search_volume
-      peakMonth = new Date(pt.date).getMonth() + 1
+      peakMonth = pt.month
     }
   }
   return peakMonth
