@@ -9,7 +9,6 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 import { runCompetitorPipeline } from './pipelines/competitors'
 import { runSearchOpportunityPipeline } from './pipelines/search-opportunity'
-import { pushToClem } from './clem-handoff'
 import { generateAndDeliverBriefing } from './briefing'
 
 export interface ScoutRunResult {
@@ -132,13 +131,9 @@ export async function runScoutForTenant(tenantId: string): Promise<ScoutRunResul
     }
   }
 
-  // Clem handoff
-  let handoffResult = { suggestionsCreated: 0, opportunitiesUpdated: 0 }
-  try {
-    handoffResult = await pushToClem(tenantId, tenant.name, competitorResults, searchResults)
-  } catch (err) {
-    console.error(`[Scout] Clem handoff failed for tenant ${tenantId}:`, err)
-  }
+  // Opportunities are left in 'pending' state for the user to review
+  // on the Keywords page. They are sent to Clem only when manually approved.
+  const handoffResult = { suggestionsCreated: 0, opportunitiesUpdated: 0 }
 
   // Generate and deliver briefing
   try {
