@@ -160,22 +160,33 @@ export default function CompetitorManager({
             These reference URLs are set in your Clem AI settings and are automatically monitored by Scout.
           </p>
           <div className="space-y-2">
-            {clemReferenceUrls.map((url) => (
-              <div
-                key={url}
-                className="flex items-center gap-3 px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg"
-              >
-                <span className="text-xs px-1.5 py-0.5 bg-indigo-50 text-indigo-600 rounded font-medium shrink-0">
-                  Clem
-                </span>
-                <span className="text-sm text-slate-600 truncate flex-1">{url}</span>
-                <span className="text-xs text-slate-400 shrink-0">
-                  {snapshotDates[urlKey(url)]
-                    ? `Last crawled ${fmtDate(snapshotDates[urlKey(url)])}`
-                    : 'Not yet crawled'}
-                </span>
-              </div>
-            ))}
+            {clemReferenceUrls.map((url) => {
+              const date = snapshotDates[urlKey(url)]
+              const isCrawling = crawling[url] ?? false
+              const err = crawlError[url]
+              return (
+                <div
+                  key={url}
+                  className="flex items-center gap-3 px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg"
+                >
+                  <span className="text-xs px-1.5 py-0.5 bg-indigo-50 text-indigo-600 rounded font-medium shrink-0">
+                    Clem
+                  </span>
+                  <span className="text-sm text-slate-600 truncate flex-1">{url}</span>
+                  {err && <span className="text-xs text-red-500 shrink-0">{err}</span>}
+                  <span className="text-xs text-slate-400 shrink-0">
+                    {date ? `Last crawled ${fmtDate(date)}` : 'Not yet crawled'}
+                  </span>
+                  <button
+                    onClick={() => handleCrawl(url)}
+                    disabled={isCrawling}
+                    className="text-xs px-2.5 py-1 bg-indigo-600 text-white rounded hover:bg-indigo-700 disabled:opacity-50 transition-colors shrink-0"
+                  >
+                    {isCrawling ? 'Crawling…' : date ? 'Re-crawl' : 'Crawl'}
+                  </button>
+                </div>
+              )
+            })}
           </div>
         </div>
       )}
