@@ -3,7 +3,6 @@ import { redirect } from 'next/navigation'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getActiveWorkspace } from '@/lib/workspace/active'
 import CompetitorManager from '@/components/scout/CompetitorManager'
-import ScoutRunButton from '@/components/scout/ScoutRunButton'
 
 export default async function CompetitorsPage() {
   const { userId } = await auth()
@@ -39,15 +38,10 @@ export default async function CompetitorsPage() {
 
   return (
     <div>
-      <div className="flex items-start justify-between gap-4 mb-6">
-        <div>
-          <h1 className="text-xl font-bold text-slate-900 mb-1">Competitors</h1>
-          <p className="text-sm text-slate-500">
-            Scout monitors up to 5 competitor URLs weekly. Add URLs to track content changes, pricing, and keyword gaps.
-          </p>
-        </div>
-        <ScoutRunButton />
-      </div>
+      <h1 className="text-xl font-bold text-slate-900 mb-2">Competitors</h1>
+      <p className="text-sm text-slate-500 mb-6">
+        Scout monitors up to 5 competitor URLs. Add a URL, then crawl it immediately or let Scout pick it up on its weekly run.
+      </p>
 
       <CompetitorManager
         clemReferenceUrls={clemReferenceUrls}

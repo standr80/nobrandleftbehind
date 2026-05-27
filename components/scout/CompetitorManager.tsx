@@ -3,7 +3,6 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import ScoutRunButton from '@/components/scout/ScoutRunButton'
 
 interface Snapshot {
   id: string
@@ -22,96 +21,130 @@ interface Props {
   latestSnapshots: Snapshot[]
 }
 
+function normaliseUrl(raw: string): string {
+  const trimmed = raw.trim()
+  if (!trimmed) return ''
+  if (/^https?:\/\//i.test(trimmed)) return trimmed
+  return 'https://' + trimmed
+}
+
+function urlKey(raw: string): string {
+  try {
+    const withScheme = /^https?:\/\//i.test(raw) ? raw : 'https://' + raw
+    const u = new URL(withScheme)
+    return (u.hostname + u.pathname).replace(/\/$/, '').toLowerCase()
+  } catch {
+    return raw.toLowerCase().replace(/^https?:\/\//, '').replace(/\/$/, '')
+  }
+}
+
+function fmtDate(dateStr: string) {
+  return new Date(dateStr).toLocaleDateString('en-GB', {
+    day: 'numeric', month: 'short', year: 'numeric',
+  })
+}
+
 export default function CompetitorManager({
   clemReferenceUrls,
   scoutExtraUrls,
   latestSnapshots,
 }: Props) {
-  // Scout-specific extras only — Clem reference URLs are managed in Settings
-  const [extraUrls, setExtraUrls] = useState<string[]>(
-    scoutExtraUrls.length ? scoutExtraUrls : [''],
-  )
+  const [savedUrls, setSavedUrls] = useState<string[]>(scoutExtraUrls.filter(Boolean))
+  const [newUrl, setNewUrl] = useState('')
+  const [addError, setAddError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
-  const [saved, setSaved] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+
+  // Per-URL crawl state
+  const [crawling, setCrawling] = useState<Record<string, boolean>>({})
+  const [crawlError, setCrawlError] = useState<Record<string, string | null>>({})
+
+  // Local snapshot dates — updated after individual crawls
+  const initialSnapshotByUrl = latestSnapshots.reduce<Record<string, string>>((acc, s) => {
+    acc[urlKey(s.competitor_url)] = s.snapshot_date
+    return acc
+  }, {})
+  const [snapshotDates, setSnapshotDates] = useState<Record<string, string>>(initialSnapshotByUrl)
+
   const router = useRouter()
 
-  // Normalise a URL to a bare hostname+path key for comparison,
-  // so https://multi-signs.com, multi-signs.com, and
-  // https://multi-signs.com/ all resolve to the same key.
-  function urlKey(raw: string): string {
-    try {
-      const withScheme = /^https?:\/\//i.test(raw) ? raw : 'https://' + raw
-      const u = new URL(withScheme)
-      return (u.hostname + u.pathname).replace(/\/$/, '').toLowerCase()
-    } catch {
-      return raw.toLowerCase().replace(/^https?:\/\//, '').replace(/\/$/, '')
+  const remainingSlots = Math.max(0, 5 - clemReferenceUrls.length - savedUrls.length)
+  const allMonitored = [...clemReferenceUrls, ...savedUrls].slice(0, 5)
+
+  // ── Persist saved URLs to scout_config ──────────────────────────────────────
+  async function persistUrls(urls: string[]) {
+    const res = await fetch('/api/scout/config', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ competitor_urls: urls }),
+    })
+    if (!res.ok) {
+      const d = await res.json()
+      throw new Error(d.error ?? 'Failed to save')
     }
   }
 
-  // Index snapshots by normalised URL key for reliable lookup
-  const snapshotByUrl = latestSnapshots.reduce<Record<string, Snapshot>>((acc, s) => {
-    acc[urlKey(s.competitor_url)] = s
-    return acc
-  }, {})
+  // ── Add a new URL ────────────────────────────────────────────────────────────
+  async function handleAdd() {
+    const url = normaliseUrl(newUrl)
+    if (!url) { setAddError('Please enter a URL'); return }
+    if (savedUrls.some((u) => urlKey(u) === urlKey(url))) {
+      setAddError('Already in your list'); return
+    }
+    if (remainingSlots <= 0) { setAddError('No slots remaining'); return }
 
-  // Combined list (Clem first, then Scout extras), capped at 5
-  const allMonitored = [
-    ...clemReferenceUrls,
-    ...scoutExtraUrls.filter((u) => u && !clemReferenceUrls.includes(u)),
-  ].slice(0, 5)
-
-  const remainingSlots = 5 - clemReferenceUrls.length
-
-  function addUrl() {
-    if (extraUrls.filter(Boolean).length < remainingSlots) setExtraUrls([...extraUrls, ''])
-  }
-
-  function removeUrl(index: number) {
-    setExtraUrls(extraUrls.filter((_, i) => i !== index))
-  }
-
-  function updateUrl(index: number, value: string) {
-    const next = [...extraUrls]
-    next[index] = value
-    setExtraUrls(next)
-  }
-
-  function normaliseUrl(raw: string): string {
-    const trimmed = raw.trim()
-    if (!trimmed) return ''
-    if (/^https?:\/\//i.test(trimmed)) return trimmed
-    return 'https://' + trimmed
-  }
-
-  async function handleSave() {
     setSaving(true)
-    setSaved(false)
-    setError(null)
-    const validUrls = extraUrls.map(normaliseUrl).filter((u) => u.length > 0)
+    setAddError(null)
     try {
-      const res = await fetch('/api/scout/config', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ competitor_urls: validUrls }),
-      })
-      if (!res.ok) {
-        const d = await res.json()
-        setError(d.error ?? 'Failed to save')
-      } else {
-        setSaved(true)
-        router.refresh()
-      }
-    } catch {
-      setError('Network error')
+      const next = [...savedUrls, url]
+      await persistUrls(next)
+      setSavedUrls(next)
+      setNewUrl('')
+      router.refresh()
+    } catch (e) {
+      setAddError(e instanceof Error ? e.message : 'Failed to save')
     } finally {
       setSaving(false)
     }
   }
 
+  // ── Remove a URL ─────────────────────────────────────────────────────────────
+  async function handleRemove(url: string) {
+    const next = savedUrls.filter((u) => u !== url)
+    try {
+      await persistUrls(next)
+      setSavedUrls(next)
+      router.refresh()
+    } catch {
+      // ignore — UI already updated optimistically
+    }
+  }
+
+  // ── Crawl a single URL ───────────────────────────────────────────────────────
+  async function handleCrawl(url: string) {
+    setCrawling((prev) => ({ ...prev, [url]: true }))
+    setCrawlError((prev) => ({ ...prev, [url]: null }))
+    try {
+      const res = await fetch('/api/scout/crawl-competitor', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        setCrawlError((prev) => ({ ...prev, [url]: data.error ?? 'Crawl failed' }))
+      } else {
+        setSnapshotDates((prev) => ({ ...prev, [urlKey(url)]: data.snapshot_date }))
+      }
+    } catch {
+      setCrawlError((prev) => ({ ...prev, [url]: 'Network error' }))
+    } finally {
+      setCrawling((prev) => ({ ...prev, [url]: false }))
+    }
+  }
+
   return (
     <div className="space-y-6">
-      {/* Clem reference URLs (read-only here) */}
+      {/* From Clem settings (read-only) */}
       {clemReferenceUrls.length > 0 && (
         <div className="bg-white rounded-lg border border-slate-200 p-5">
           <div className="flex items-center justify-between mb-3">
@@ -130,15 +163,15 @@ export default function CompetitorManager({
             {clemReferenceUrls.map((url) => (
               <div
                 key={url}
-                className="flex items-center gap-2 px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg"
+                className="flex items-center gap-3 px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg"
               >
                 <span className="text-xs px-1.5 py-0.5 bg-indigo-50 text-indigo-600 rounded font-medium shrink-0">
                   Clem
                 </span>
                 <span className="text-sm text-slate-600 truncate flex-1">{url}</span>
                 <span className="text-xs text-slate-400 shrink-0">
-                  {snapshotByUrl[urlKey(url)]
-                    ? `Last crawled ${new Date(snapshotByUrl[urlKey(url)].snapshot_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}`
+                  {snapshotDates[urlKey(url)]
+                    ? `Last crawled ${fmtDate(snapshotDates[urlKey(url)])}`
                     : 'Not yet crawled'}
                 </span>
               </div>
@@ -147,98 +180,97 @@ export default function CompetitorManager({
         </div>
       )}
 
-      {/* Scout-specific additions */}
+      {/* Scout-only additions */}
       <div className="bg-white rounded-lg border border-slate-200 p-5">
         <h2 className="text-sm font-semibold text-slate-700 mb-1">Scout-only additions</h2>
         <p className="text-xs text-slate-400 mb-4">
           {remainingSlots > 0
-            ? `Add up to ${remainingSlots} more competitor URL${remainingSlots !== 1 ? 's' : ''} to monitor (${5 - clemReferenceUrls.length - scoutExtraUrls.filter(Boolean).length} slot${5 - clemReferenceUrls.length - scoutExtraUrls.filter(Boolean).length !== 1 ? 's' : ''} remaining).`
-            : 'All 5 competitor slots are filled by your Clem reference URLs.'}
+            ? `${5 - clemReferenceUrls.length - savedUrls.length} of ${5 - clemReferenceUrls.length} slot${5 - clemReferenceUrls.length !== 1 ? 's' : ''} remaining.`
+            : 'All slots are filled.'}
         </p>
 
-        {remainingSlots > 0 && (
-          <>
-            <div className="space-y-3">
-              {extraUrls.map((url, i) => {
-                return (
-                  <div key={i} className="flex gap-2 items-center">
-                    <input
-                      type="text"
-                      value={url}
-                      onChange={(e) => updateUrl(i, e.target.value)}
-                      placeholder="https://www.competitor.com"
-                      className="flex-1 px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                    />
-                    {url && (
-                      <span className="text-xs text-slate-400 shrink-0 w-32 text-right">
-                        {snapshotByUrl[urlKey(url)]
-                          ? new Date(snapshotByUrl[urlKey(url)].snapshot_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
-                          : 'Not yet crawled'}
-                      </span>
-                    )}
-                    <button
-                      onClick={() => removeUrl(i)}
-                      className="px-2 py-2 text-slate-400 hover:text-red-500 transition-colors"
-                      title="Remove"
-                    >
-                      ✕
-                    </button>
-                  </div>
-                )
-              })}
-            </div>
-            {extraUrls.filter(Boolean).length < remainingSlots && (
-              <button
-                onClick={addUrl}
-                className="mt-3 text-sm text-indigo-600 hover:text-indigo-800 font-medium"
-              >
-                + Add another
-              </button>
-            )}
-              <div className="mt-4 space-y-3">
-                <div className="flex items-center gap-3">
+        {/* Saved Scout-only URLs */}
+        {savedUrls.length > 0 && (
+          <div className="space-y-2 mb-4">
+            {savedUrls.map((url) => {
+              const key = urlKey(url)
+              const date = snapshotDates[key]
+              const isCrawling = crawling[url] ?? false
+              const err = crawlError[url]
+              return (
+                <div key={url} className="flex items-center gap-3 px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg">
+                  <span className="text-sm text-slate-700 truncate flex-1">{url}</span>
+                  <span className="text-xs text-slate-400 shrink-0">
+                    {date ? `Last crawled ${fmtDate(date)}` : 'Not yet crawled'}
+                  </span>
+                  {err && <span className="text-xs text-red-500 shrink-0">{err}</span>}
                   <button
-                    onClick={handleSave}
-                    disabled={saving}
-                    className="px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 disabled:opacity-50 transition-colors"
+                    onClick={() => handleCrawl(url)}
+                    disabled={isCrawling}
+                    className="text-xs px-2.5 py-1 bg-indigo-600 text-white rounded hover:bg-indigo-700 disabled:opacity-50 transition-colors shrink-0"
                   >
-                    {saving ? 'Saving…' : 'Save'}
+                    {isCrawling ? 'Crawling…' : date ? 'Re-crawl' : 'Crawl'}
                   </button>
-                  {error && <span className="text-sm text-red-500">{error}</span>}
+                  <button
+                    onClick={() => handleRemove(url)}
+                    disabled={isCrawling}
+                    className="text-slate-400 hover:text-red-500 transition-colors shrink-0 disabled:opacity-50"
+                    title="Remove"
+                  >
+                    ✕
+                  </button>
                 </div>
-                {saved && (
-                  <div className="flex items-center gap-3 bg-indigo-50 border border-indigo-100 rounded-lg px-4 py-3">
-                    <span className="text-sm text-indigo-700 font-medium">✓ Saved.</span>
-                    <span className="text-sm text-indigo-600">Now crawl these URLs:</span>
-                    <ScoutRunButton />
-                  </div>
-                )}
-              </div>
-          </>
+              )
+            })}
+          </div>
+        )}
+
+        {/* Add new URL */}
+        {remainingSlots > 0 && (
+          <div className="space-y-2">
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={newUrl}
+                onChange={(e) => { setNewUrl(e.target.value); setAddError(null) }}
+                onKeyDown={(e) => e.key === 'Enter' && handleAdd()}
+                placeholder="https://www.competitor.com"
+                className="flex-1 px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              />
+              <button
+                onClick={handleAdd}
+                disabled={saving || !newUrl.trim()}
+                className="px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 disabled:opacity-50 transition-colors"
+              >
+                {saving ? 'Saving…' : 'Add'}
+              </button>
+            </div>
+            {addError && <p className="text-xs text-red-500">{addError}</p>}
+          </div>
         )}
       </div>
 
-      {/* Summary of all monitored URLs */}
+      {/* Summary */}
       {allMonitored.length > 0 && (
         <div className="bg-indigo-50 border border-indigo-100 rounded-lg px-4 py-3">
           <p className="text-xs text-indigo-700 font-medium">
             Scout monitors {allMonitored.length} competitor{allMonitored.length !== 1 ? 's' : ''} in total
-            {clemReferenceUrls.length > 0 && scoutExtraUrls.filter(Boolean).length > 0
-              ? ` (${clemReferenceUrls.length} from Clem settings, ${scoutExtraUrls.filter(Boolean).length} Scout-only)`
+            {clemReferenceUrls.length > 0 && savedUrls.length > 0
+              ? ` (${clemReferenceUrls.length} from Clem settings, ${savedUrls.length} Scout-only)`
               : ''}
             .
           </p>
         </div>
       )}
 
-      {/* Latest snapshots */}
+      {/* Latest snapshots detail */}
       {latestSnapshots.length > 0 && (
         <div className="bg-white rounded-lg border border-slate-200 p-5">
-          <h2 className="text-sm font-semibold text-slate-700 mb-4">Latest snapshots</h2>
+          <h2 className="text-sm font-semibold text-slate-700 mb-4">Latest snapshot details</h2>
           <div className="space-y-4">
             {latestSnapshots.map((snapshot) => {
               const newPosts = Array.isArray(snapshot.new_blog_posts) ? snapshot.new_blog_posts : []
-              const isFromClem = clemReferenceUrls.includes(snapshot.competitor_url)
+              const isFromClem = clemReferenceUrls.some((u) => urlKey(u) === urlKey(snapshot.competitor_url))
               return (
                 <div key={snapshot.id} className="border border-slate-100 rounded-lg p-4">
                   <div className="flex items-start justify-between gap-3">
@@ -259,12 +291,7 @@ export default function CompetitorManager({
                         </a>
                       </div>
                       <div className="text-xs text-slate-400 mt-1">
-                        Last crawled:{' '}
-                        {new Date(snapshot.snapshot_date).toLocaleDateString('en-GB', {
-                          day: 'numeric',
-                          month: 'short',
-                          year: 'numeric',
-                        })}
+                        Last crawled: {fmtDate(snapshot.snapshot_date)}
                         {snapshot.page_count != null && ` · ${snapshot.page_count} pages`}
                       </div>
                     </div>
@@ -295,12 +322,7 @@ export default function CompetitorManager({
                         {(newPosts as { title?: string; url?: string }[]).slice(0, 5).map((post, i) => (
                           <li key={i} className="text-xs text-slate-600">
                             {post.url ? (
-                              <a
-                                href={post.url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-indigo-600 hover:underline"
-                              >
+                              <a href={post.url} target="_blank" rel="noopener noreferrer" className="text-indigo-600 hover:underline">
                                 {post.title ?? post.url}
                               </a>
                             ) : (
