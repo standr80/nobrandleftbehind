@@ -35,9 +35,22 @@ export default function CompetitorManager({
   const [error, setError] = useState<string | null>(null)
   const router = useRouter()
 
-  // Index snapshots by URL for quick lookup
+  // Normalise a URL to a bare hostname+path key for comparison,
+  // so https://multi-signs.com, multi-signs.com, and
+  // https://multi-signs.com/ all resolve to the same key.
+  function urlKey(raw: string): string {
+    try {
+      const withScheme = /^https?:\/\//i.test(raw) ? raw : 'https://' + raw
+      const u = new URL(withScheme)
+      return (u.hostname + u.pathname).replace(/\/$/, '').toLowerCase()
+    } catch {
+      return raw.toLowerCase().replace(/^https?:\/\//, '').replace(/\/$/, '')
+    }
+  }
+
+  // Index snapshots by normalised URL key for reliable lookup
   const snapshotByUrl = latestSnapshots.reduce<Record<string, Snapshot>>((acc, s) => {
-    acc[s.competitor_url] = s
+    acc[urlKey(s.competitor_url)] = s
     return acc
   }, {})
 
@@ -125,8 +138,8 @@ export default function CompetitorManager({
                   </span>
                   <span className="text-sm text-slate-600 truncate flex-1">{url}</span>
                   <span className="text-xs text-slate-400 shrink-0">
-                    {snap
-                      ? `Last crawled ${new Date(snap.snapshot_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}`
+                    {snapshotByUrl[urlKey(url)]
+                      ? `Last crawled ${new Date(snapshotByUrl[urlKey(url)].snapshot_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}`
                       : 'Not yet crawled'}
                   </span>
                 </div>
@@ -149,7 +162,7 @@ export default function CompetitorManager({
           <>
             <div className="space-y-3">
               {extraUrls.map((url, i) => {
-                const snap = url ? snapshotByUrl[url] ?? snapshotByUrl[url.replace(/\/$/, '')] : null
+                const snap = url ? snapshotByUrl[urlKey(url)] : null
                 return (
                   <div key={i} className="flex gap-2 items-center">
                     <input
