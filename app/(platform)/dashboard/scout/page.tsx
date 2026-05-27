@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getActiveWorkspace } from '@/lib/workspace/active'
 import ScoutRunButton from '@/components/scout/ScoutRunButton'
+import ScoutAlertsList from '@/components/scout/ScoutAlertsList'
 
 async function getScoutOverview(tenantId: string) {
   const db = createAdminClient()
@@ -59,8 +60,6 @@ export default async function ScoutOverviewPage() {
   const { allCompetitorUrls, latestBriefing, alerts, pendingOpportunities } =
     await getScoutOverview(workspace.tenantId)
 
-  const urgentAlerts = alerts.filter((a) => a.severity === 'urgent')
-  const watchAlerts = alerts.filter((a) => a.severity === 'watch')
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
@@ -91,7 +90,7 @@ export default async function ScoutOverviewPage() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
         {[
           { label: 'Competitors monitored', value: allCompetitorUrls.length, href: '/dashboard/scout/competitors' },
-          { label: 'Unactioned alerts', value: alerts.length, accent: urgentAlerts.length > 0 },
+          { label: 'Unactioned alerts', value: alerts.length, accent: alerts.some((a) => a.severity === 'urgent') },
           { label: 'Pending opportunities', value: pendingOpportunities.length, href: '/dashboard/scout/keywords' },
           {
             label: 'Latest briefing',
@@ -128,30 +127,7 @@ export default async function ScoutOverviewPage() {
         {/* Alerts */}
         <div className="bg-white rounded-lg border border-slate-200 p-5">
           <h2 className="text-sm font-semibold text-slate-700 mb-4">Active alerts</h2>
-          {alerts.length === 0 ? (
-            <p className="text-sm text-slate-400">No active alerts.</p>
-          ) : (
-            <div className="space-y-3">
-              {urgentAlerts.map((alert) => (
-                <div key={alert.id} className="flex gap-3 p-3 bg-red-50 border border-red-100 rounded-lg">
-                  <span className="text-base leading-none mt-0.5">🔴</span>
-                  <div>
-                    <div className="text-sm font-medium text-slate-900">{alert.title}</div>
-                    {alert.detail && <div className="text-xs text-slate-500 mt-0.5">{alert.detail}</div>}
-                  </div>
-                </div>
-              ))}
-              {watchAlerts.map((alert) => (
-                <div key={alert.id} className="flex gap-3 p-3 bg-amber-50 border border-amber-100 rounded-lg">
-                  <span className="text-base leading-none mt-0.5">🟡</span>
-                  <div>
-                    <div className="text-sm font-medium text-slate-900">{alert.title}</div>
-                    {alert.detail && <div className="text-xs text-slate-500 mt-0.5">{alert.detail}</div>}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
+          <ScoutAlertsList initialAlerts={alerts} />
         </div>
 
         {/* Latest briefing summary */}
