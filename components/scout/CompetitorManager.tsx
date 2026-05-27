@@ -126,25 +126,22 @@ export default function CompetitorManager({
             These reference URLs are set in your Clem AI settings and are automatically monitored by Scout.
           </p>
           <div className="space-y-2">
-            {clemReferenceUrls.map((url) => {
-              const snap = snapshotByUrl[url]
-              return (
-                <div
-                  key={url}
-                  className="flex items-center gap-2 px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg"
-                >
-                  <span className="text-xs px-1.5 py-0.5 bg-indigo-50 text-indigo-600 rounded font-medium shrink-0">
-                    Clem
-                  </span>
-                  <span className="text-sm text-slate-600 truncate flex-1">{url}</span>
-                  <span className="text-xs text-slate-400 shrink-0">
-                    {snapshotByUrl[urlKey(url)]
-                      ? `Last crawled ${new Date(snapshotByUrl[urlKey(url)].snapshot_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}`
-                      : 'Not yet crawled'}
-                  </span>
-                </div>
-              )
-            })}
+            {clemReferenceUrls.map((url) => (
+              <div
+                key={url}
+                className="flex items-center gap-2 px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg"
+              >
+                <span className="text-xs px-1.5 py-0.5 bg-indigo-50 text-indigo-600 rounded font-medium shrink-0">
+                  Clem
+                </span>
+                <span className="text-sm text-slate-600 truncate flex-1">{url}</span>
+                <span className="text-xs text-slate-400 shrink-0">
+                  {snapshotByUrl[urlKey(url)]
+                    ? `Last crawled ${new Date(snapshotByUrl[urlKey(url)].snapshot_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}`
+                    : 'Not yet crawled'}
+                </span>
+              </div>
+            ))}
           </div>
         </div>
       )}
@@ -173,8 +170,8 @@ export default function CompetitorManager({
                     />
                     {url && (
                       <span className="text-xs text-slate-400 shrink-0 w-32 text-right">
-                        {snap
-                          ? new Date(snap.snapshot_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+                        {snapshotByUrl[urlKey(url)]
+                          ? new Date(snapshotByUrl[urlKey(url)].snapshot_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
                           : 'Not yet crawled'}
                       </span>
                     )}
