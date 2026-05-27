@@ -44,9 +44,6 @@ export async function PATCH(request: Request) {
 
   const workspace = await getActiveWorkspace(userId)
   if (!workspace) return NextResponse.json({ error: 'No workspace' }, { status: 400 })
-  if (workspace.role !== 'admin') {
-    return NextResponse.json({ error: 'Admin only' }, { status: 403 })
-  }
 
   const body = await request.json()
   const allowed = ['enabled', 'briefing_day', 'briefing_time', 'competitor_urls', 'dataforseo_enabled']

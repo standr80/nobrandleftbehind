@@ -26,7 +26,6 @@ export default async function ScoutSettingsPage() {
       </p>
       <ScoutSettingsForm
         initialConfig={config}
-        isAdmin={workspace.role === 'admin'}
         hasDatasforSeoKey={!!process.env.DATAFORSEO_LOGIN}
       />
     </div>

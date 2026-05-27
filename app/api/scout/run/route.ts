@@ -17,9 +17,6 @@ export async function POST() {
 
   const workspace = await getActiveWorkspace(userId)
   if (!workspace) return NextResponse.json({ error: 'No workspace' }, { status: 400 })
-  if (workspace.role !== 'admin') {
-    return NextResponse.json({ error: 'Admin only' }, { status: 403 })
-  }
 
   const result = await runScoutForTenant(workspace.tenantId)
 

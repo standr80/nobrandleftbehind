@@ -12,13 +12,12 @@ interface ScoutConfig {
 
 interface Props {
   initialConfig: ScoutConfig | null
-  isAdmin: boolean
   hasDatasforSeoKey: boolean
 }
 
 const DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
 
-export default function ScoutSettingsForm({ initialConfig, isAdmin, hasDatasforSeoKey }: Props) {
+export default function ScoutSettingsForm({ initialConfig, hasDatasforSeoKey }: Props) {
   const [enabled, setEnabled] = useState(initialConfig?.enabled ?? true)
   const [briefingDay, setBriefingDay] = useState(initialConfig?.briefing_day ?? 'monday')
   const [briefingTime, setBriefingTime] = useState(initialConfig?.briefing_time ?? '07:00')
@@ -67,10 +66,10 @@ export default function ScoutSettingsForm({ initialConfig, isAdmin, hasDatasforS
             type="button"
             role="switch"
             aria-checked={enabled}
-            onClick={() => isAdmin && setEnabled(!enabled)}
+            onClick={() => setEnabled(!enabled)}
             className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
               enabled ? 'bg-indigo-600' : 'bg-slate-200'
-            } ${!isAdmin ? 'opacity-50 cursor-not-allowed' : ''}`}
+            }`}
           >
             <span
               className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
@@ -96,8 +95,7 @@ export default function ScoutSettingsForm({ initialConfig, isAdmin, hasDatasforS
             <select
               value={briefingDay}
               onChange={(e) => setBriefingDay(e.target.value)}
-              disabled={!isAdmin}
-              className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-50 capitalize"
+              className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 capitalize"
             >
               {DAYS.map((d) => (
                 <option key={d} value={d} className="capitalize">
@@ -112,8 +110,7 @@ export default function ScoutSettingsForm({ initialConfig, isAdmin, hasDatasforS
               type="time"
               value={briefingTime}
               onChange={(e) => setBriefingTime(e.target.value)}
-              disabled={!isAdmin}
-              className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-50"
+              className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
             />
           </div>
         </div>
@@ -143,10 +140,10 @@ export default function ScoutSettingsForm({ initialConfig, isAdmin, hasDatasforS
                   type="button"
                   role="switch"
                   aria-checked={dataforseoEnabled}
-                  onClick={() => isAdmin && setDataforseoEnabled(!dataforseoEnabled)}
+                  onClick={() => setDataforseoEnabled(!dataforseoEnabled)}
                   className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
                     dataforseoEnabled ? 'bg-indigo-600' : 'bg-slate-200'
-                  } ${!isAdmin ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  }`}
                 >
                   <span
                     className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${
@@ -170,19 +167,17 @@ export default function ScoutSettingsForm({ initialConfig, isAdmin, hasDatasforS
         </div>
       </div>
 
-      {isAdmin && (
-        <div className="flex items-center gap-3">
-          <button
-            onClick={handleSave}
-            disabled={saving}
-            className="px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 disabled:opacity-50 transition-colors"
-          >
-            {saving ? 'Saving…' : 'Save settings'}
-          </button>
-          {saved && <span className="text-sm text-green-600">✓ Saved</span>}
-          {error && <span className="text-sm text-red-500">{error}</span>}
-        </div>
-      )}
+      <div className="flex items-center gap-3">
+        <button
+          onClick={handleSave}
+          disabled={saving}
+          className="px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 disabled:opacity-50 transition-colors"
+        >
+          {saving ? 'Saving…' : 'Save settings'}
+        </button>
+        {saved && <span className="text-sm text-green-600">✓ Saved</span>}
+        {error && <span className="text-sm text-red-500">{error}</span>}
+      </div>
     </div>
   )
 }

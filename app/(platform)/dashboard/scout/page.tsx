@@ -61,8 +61,6 @@ export default async function ScoutOverviewPage() {
 
   const urgentAlerts = alerts.filter((a) => a.severity === 'urgent')
   const watchAlerts = alerts.filter((a) => a.severity === 'watch')
-  const isAdmin = workspace.role === 'admin'
-
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
@@ -72,9 +70,7 @@ export default async function ScoutOverviewPage() {
             Market intelligence for {workspace.tenant.name}
           </p>
         </div>
-        {isAdmin && (
-          <ScoutRunButton />
-        )}
+        <ScoutRunButton />
       </div>
 
       {/* No config warning */}
