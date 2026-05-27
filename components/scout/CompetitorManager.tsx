@@ -19,14 +19,12 @@ interface Props {
   clemReferenceUrls: string[]
   scoutExtraUrls: string[]
   latestSnapshots: Snapshot[]
-  isAdmin: boolean
 }
 
 export default function CompetitorManager({
   clemReferenceUrls,
   scoutExtraUrls,
   latestSnapshots,
-  isAdmin,
 }: Props) {
   // Scout-specific extras only — Clem reference URLs are managed in Settings
   const [extraUrls, setExtraUrls] = useState<string[]>(
@@ -36,6 +34,12 @@ export default function CompetitorManager({
   const [saved, setSaved] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const router = useRouter()
+
+  // Index snapshots by URL for quick lookup
+  const snapshotByUrl = latestSnapshots.reduce<Record<string, Snapshot>>((acc, s) => {
+    acc[s.competitor_url] = s
+    return acc
+  }, {})
 
   // Combined list (Clem first, then Scout extras), capped at 5
   const allMonitored = [
@@ -102,36 +106,45 @@ export default function CompetitorManager({
             These reference URLs are set in your Clem AI settings and are automatically monitored by Scout.
           </p>
           <div className="space-y-2">
-            {clemReferenceUrls.map((url) => (
-              <div
-                key={url}
-                className="flex items-center gap-2 px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg"
-              >
-                <span className="text-xs px-1.5 py-0.5 bg-indigo-50 text-indigo-600 rounded font-medium shrink-0">
-                  Clem
-                </span>
-                <span className="text-sm text-slate-600 truncate">{url}</span>
-              </div>
-            ))}
+            {clemReferenceUrls.map((url) => {
+              const snap = snapshotByUrl[url]
+              return (
+                <div
+                  key={url}
+                  className="flex items-center gap-2 px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg"
+                >
+                  <span className="text-xs px-1.5 py-0.5 bg-indigo-50 text-indigo-600 rounded font-medium shrink-0">
+                    Clem
+                  </span>
+                  <span className="text-sm text-slate-600 truncate flex-1">{url}</span>
+                  <span className="text-xs text-slate-400 shrink-0">
+                    {snap
+                      ? `Last crawled ${new Date(snap.snapshot_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}`
+                      : 'Not yet crawled'}
+                  </span>
+                </div>
+              )
+            })}
           </div>
         </div>
       )}
 
       {/* Scout-specific additions */}
-      {isAdmin && (
-        <div className="bg-white rounded-lg border border-slate-200 p-5">
-          <h2 className="text-sm font-semibold text-slate-700 mb-1">Scout-only additions</h2>
-          <p className="text-xs text-slate-400 mb-4">
-            {remainingSlots > 0
-              ? `Add up to ${remainingSlots} more competitor URL${remainingSlots !== 1 ? 's' : ''} to monitor (${5 - clemReferenceUrls.length - scoutExtraUrls.filter(Boolean).length} slot${5 - clemReferenceUrls.length - scoutExtraUrls.filter(Boolean).length !== 1 ? 's' : ''} remaining).`
-              : 'All 5 competitor slots are filled by your Clem reference URLs.'}
-          </p>
+      <div className="bg-white rounded-lg border border-slate-200 p-5">
+        <h2 className="text-sm font-semibold text-slate-700 mb-1">Scout-only additions</h2>
+        <p className="text-xs text-slate-400 mb-4">
+          {remainingSlots > 0
+            ? `Add up to ${remainingSlots} more competitor URL${remainingSlots !== 1 ? 's' : ''} to monitor (${5 - clemReferenceUrls.length - scoutExtraUrls.filter(Boolean).length} slot${5 - clemReferenceUrls.length - scoutExtraUrls.filter(Boolean).length !== 1 ? 's' : ''} remaining).`
+            : 'All 5 competitor slots are filled by your Clem reference URLs.'}
+        </p>
 
-          {remainingSlots > 0 && (
-            <>
-              <div className="space-y-3">
-                {extraUrls.map((url, i) => (
-                  <div key={i} className="flex gap-2">
+        {remainingSlots > 0 && (
+          <>
+            <div className="space-y-3">
+              {extraUrls.map((url, i) => {
+                const snap = url ? snapshotByUrl[url] ?? snapshotByUrl[url.replace(/\/$/, '')] : null
+                return (
+                  <div key={i} className="flex gap-2 items-center">
                     <input
                       type="url"
                       value={url}
@@ -139,6 +152,13 @@ export default function CompetitorManager({
                       placeholder="https://www.competitor.com"
                       className="flex-1 px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
                     />
+                    {url && (
+                      <span className="text-xs text-slate-400 shrink-0 w-32 text-right">
+                        {snap
+                          ? new Date(snap.snapshot_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+                          : 'Not yet crawled'}
+                      </span>
+                    )}
                     <button
                       onClick={() => removeUrl(i)}
                       className="px-2 py-2 text-slate-400 hover:text-red-500 transition-colors"
@@ -147,31 +167,31 @@ export default function CompetitorManager({
                       ✕
                     </button>
                   </div>
-                ))}
-              </div>
-              {extraUrls.filter(Boolean).length < remainingSlots && (
-                <button
-                  onClick={addUrl}
-                  className="mt-3 text-sm text-indigo-600 hover:text-indigo-800 font-medium"
-                >
-                  + Add another
-                </button>
-              )}
-              <div className="flex items-center gap-3 mt-4">
-                <button
-                  onClick={handleSave}
-                  disabled={saving}
-                  className="px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 disabled:opacity-50 transition-colors"
-                >
-                  {saving ? 'Saving…' : 'Save'}
-                </button>
-                {saved && <span className="text-sm text-green-600">✓ Saved</span>}
-                {error && <span className="text-sm text-red-500">{error}</span>}
-              </div>
-            </>
-          )}
-        </div>
-      )}
+                )
+              })}
+            </div>
+            {extraUrls.filter(Boolean).length < remainingSlots && (
+              <button
+                onClick={addUrl}
+                className="mt-3 text-sm text-indigo-600 hover:text-indigo-800 font-medium"
+              >
+                + Add another
+              </button>
+            )}
+            <div className="flex items-center gap-3 mt-4">
+              <button
+                onClick={handleSave}
+                disabled={saving}
+                className="px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 disabled:opacity-50 transition-colors"
+              >
+                {saving ? 'Saving…' : 'Save'}
+              </button>
+              {saved && <span className="text-sm text-green-600">✓ Saved</span>}
+              {error && <span className="text-sm text-red-500">{error}</span>}
+            </div>
+          </>
+        )}
+      </div>
 
       {/* Summary of all monitored URLs */}
       {allMonitored.length > 0 && (
