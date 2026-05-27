@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import ScoutRunButton from '@/components/scout/ScoutRunButton'
 
 interface Snapshot {
   id: string
@@ -194,17 +195,25 @@ export default function CompetitorManager({
                 + Add another
               </button>
             )}
-            <div className="flex items-center gap-3 mt-4">
-              <button
-                onClick={handleSave}
-                disabled={saving}
-                className="px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 disabled:opacity-50 transition-colors"
-              >
-                {saving ? 'Saving…' : 'Save'}
-              </button>
-              {saved && <span className="text-sm text-green-600">✓ Saved</span>}
-              {error && <span className="text-sm text-red-500">{error}</span>}
-            </div>
+              <div className="mt-4 space-y-3">
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={handleSave}
+                    disabled={saving}
+                    className="px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 disabled:opacity-50 transition-colors"
+                  >
+                    {saving ? 'Saving…' : 'Save'}
+                  </button>
+                  {error && <span className="text-sm text-red-500">{error}</span>}
+                </div>
+                {saved && (
+                  <div className="flex items-center gap-3 bg-indigo-50 border border-indigo-100 rounded-lg px-4 py-3">
+                    <span className="text-sm text-indigo-700 font-medium">✓ Saved.</span>
+                    <span className="text-sm text-indigo-600">Now crawl these URLs:</span>
+                    <ScoutRunButton />
+                  </div>
+                )}
+              </div>
           </>
         )}
       </div>
