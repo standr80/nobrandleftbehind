@@ -5,7 +5,7 @@ import { useState } from 'react'
 interface Alert {
   id: string
   alert_type: string
-  severity: string
+  severity: string | null
   title: string
   detail: string | null
   created_at: string | null
@@ -53,13 +53,13 @@ export default function ScoutAlertsList({ initialAlerts }: Props) {
     return <p className="text-sm text-slate-400">No active alerts.</p>
   }
 
-  const urgent = alerts.filter((a) => a.severity === 'urgent')
+  const urgent = alerts.filter((a) => a.severity === 'urgent' || a.severity === null)
   const watch = alerts.filter((a) => a.severity === 'watch')
 
   return (
     <div className="space-y-2">
       {[...urgent, ...watch].map((alert) => {
-        const isUrgent = alert.severity === 'urgent'
+        const isUrgent = alert.severity === 'urgent' || alert.severity === null
         return (
           <div
             key={alert.id}
