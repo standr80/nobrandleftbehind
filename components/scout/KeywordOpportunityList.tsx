@@ -149,7 +149,19 @@ export default function KeywordOpportunityList({ initialOpportunities }: Props) 
                 </div>
 
                 {opp.status === 'sent_to_clem' && (
-                  <span className="text-xs text-indigo-600 font-medium shrink-0">✓ In Clem queue</span>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span className="text-xs text-indigo-600 font-medium">✓ In Clem queue</span>
+                    <button
+                      onClick={() => updateStatus(opp.id, 'dismissed')}
+                      disabled={actionLoading === opp.id}
+                      title="Dismiss"
+                      className="text-slate-300 hover:text-slate-500 transition-colors disabled:opacity-40"
+                    >
+                      <svg className="w-3.5 h-3.5" viewBox="0 0 16 16" fill="currentColor">
+                        <path d="M4.293 4.293a1 1 0 011.414 0L8 6.586l2.293-2.293a1 1 0 111.414 1.414L9.414 8l2.293 2.293a1 1 0 01-1.414 1.414L8 9.414l-2.293 2.293a1 1 0 01-1.414-1.414L6.586 8 4.293 5.707a1 1 0 010-1.414z" />
+                      </svg>
+                    </button>
+                  </div>
                 )}
                 {opp.status === 'dismissed' && (
                   <span className="text-xs text-slate-400 shrink-0">Dismissed</span>

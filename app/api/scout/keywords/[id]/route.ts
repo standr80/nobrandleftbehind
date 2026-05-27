@@ -47,8 +47,13 @@ export async function PATCH(request: Request, { params }: Props) {
     return NextResponse.json({ error: 'Opportunity not found' }, { status: 404 })
   }
 
-  if (opp.status !== 'pending') {
-    return NextResponse.json({ error: 'Opportunity is not pending' }, { status: 409 })
+  // Allow dismissing from either pending or sent_to_clem
+  // (approving/adding to Clem is only valid from pending)
+  if (status === 'sent_to_clem' && opp.status !== 'pending') {
+    return NextResponse.json({ error: 'Can only add to Clem from pending status' }, { status: 409 })
+  }
+  if (opp.status === 'dismissed') {
+    return NextResponse.json({ error: 'Already dismissed' }, { status: 409 })
   }
 
   // ── Dismiss: just update the status ──────────────────────────────────────────
