@@ -162,7 +162,6 @@ export default function CompetitorManager({
           <>
             <div className="space-y-3">
               {extraUrls.map((url, i) => {
-                const snap = url ? snapshotByUrl[urlKey(url)] : null
                 return (
                   <div key={i} className="flex gap-2 items-center">
                     <input
