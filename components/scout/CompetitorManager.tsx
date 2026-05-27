@@ -63,11 +63,18 @@ export default function CompetitorManager({
     setExtraUrls(next)
   }
 
+  function normaliseUrl(raw: string): string {
+    const trimmed = raw.trim()
+    if (!trimmed) return ''
+    if (/^https?:\/\//i.test(trimmed)) return trimmed
+    return 'https://' + trimmed
+  }
+
   async function handleSave() {
     setSaving(true)
     setSaved(false)
     setError(null)
-    const validUrls = extraUrls.map((u) => u.trim()).filter((u) => u.length > 0)
+    const validUrls = extraUrls.map(normaliseUrl).filter((u) => u.length > 0)
     try {
       const res = await fetch('/api/scout/config', {
         method: 'PATCH',
@@ -146,7 +153,7 @@ export default function CompetitorManager({
                 return (
                   <div key={i} className="flex gap-2 items-center">
                     <input
-                      type="url"
+                      type="text"
                       value={url}
                       onChange={(e) => updateUrl(i, e.target.value)}
                       placeholder="https://www.competitor.com"
