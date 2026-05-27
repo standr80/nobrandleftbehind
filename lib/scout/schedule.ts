@@ -60,6 +60,7 @@ export async function runScoutForTenant(tenantId: string): Promise<ScoutRunResul
     risingTrends: [],
     totalAdded: 0,
     stepErrors: [],
+    rawPAACount: 0,
   }
 
   // Pipeline 2 — Competitor intelligence
@@ -80,7 +81,7 @@ export async function runScoutForTenant(tenantId: string): Promise<ScoutRunResul
       const diagnosticParts = [
         `Seed keywords used: ${seedKeywords.slice(0, 5).join(', ')}${seedKeywords.length > 5 ? ` (+${seedKeywords.length - 5} more)` : ''}`,
         `Featured snippets: ${searchResults.featuredSnippetTargets.length}`,
-        `PAA questions: ${searchResults.paaQuestions.length}`,
+        `PAA questions: ${searchResults.paaQuestions.length} (${searchResults.rawPAACount} raw from API)`,
         `Seasonal windows: ${searchResults.seasonalWindows.length}`,
         `Rising trends: ${searchResults.risingTrends.length}`,
         `Total added to opportunities: ${searchResults.totalAdded}`,

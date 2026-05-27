@@ -193,7 +193,7 @@ export async function getPeopleAlsoAsk(
   const settled = await Promise.allSettled(
     keywords.map((kw) =>
       post<Resp>('/serp/google/organic/live/advanced', [
-        { keyword: kw, location_code: locationCode, language_code: 'en', depth: 3 },
+        { keyword: kw, location_code: locationCode, language_code: 'en', depth: 10 },
       ]),
     ),
   )

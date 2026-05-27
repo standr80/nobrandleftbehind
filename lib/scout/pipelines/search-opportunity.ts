@@ -28,6 +28,7 @@ export interface SearchOpportunityResult {
   risingTrends: OpportunityItem[]
   totalAdded: number
   stepErrors: string[]
+  rawPAACount: number
 }
 
 export interface OpportunityItem {
@@ -69,7 +70,7 @@ function hasSeasonalPattern(item: DfsTrendItem): boolean {
   if (monthly.length < 6) return false
   const max = Math.max(...monthly.map((p) => p.search_volume))
   const min = Math.min(...monthly.map((p) => p.search_volume))
-  return max > 0 && min / max < 0.4 // peak is at least 2.5x the trough
+  return max > 0 && min / max < 0.5 // peak is at least 2x the trough
 }
 
 // ─── Main pipeline function ───────────────────────────────────────────────────
@@ -127,6 +128,7 @@ export async function runSearchOpportunityPipeline(
 
   // ── 3.3 PAA mining ──
   const paaQuestions: OpportunityItem[] = []
+  let rawPAACount = 0
   const topQueryKeywords = [...seedKeywords, ...clientRankingKeywords.slice(0, 10)]
   if (topQueryKeywords.length) {
     try {
@@ -144,6 +146,7 @@ export async function runSearchOpportunityPipeline(
       let freshPAAResults: Record<string, { question: string; serp_position?: number }[]> = {}
       if (uncachedKeywords.length) {
         freshPAAResults = await getPeopleAlsoAsk(uncachedKeywords)
+        rawPAACount = Object.values(freshPAAResults).reduce((s, qs) => s + qs.length, 0)
 
         // Cache fresh results
         const cacheInserts = Object.entries(freshPAAResults).map(([keyword, questions]) => ({
@@ -231,7 +234,7 @@ export async function runSearchOpportunityPipeline(
         }
 
         // Rising: volume growing > 20% month-on-month
-        if (trend.growth_pct !== null && trend.growth_pct > 20) {
+        if (trend.growth_pct !== null && trend.growth_pct > 10) {
           const opp: OpportunityItem = {
             keyword: trend.keyword,
             searchVolume: trend.search_volume,
@@ -280,5 +283,6 @@ export async function runSearchOpportunityPipeline(
     risingTrends,
     totalAdded,
     stepErrors: errors,
+    rawPAACount,
   }
 }
