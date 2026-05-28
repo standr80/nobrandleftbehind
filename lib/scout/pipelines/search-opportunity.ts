@@ -143,7 +143,12 @@ export async function runSearchOpportunityPipeline(
     expandedKeywords = merged.slice(0, 200)
     console.log(`[Scout] Expanded ${seedKeywords.length} seed keywords to ${expandedKeywords.length} via DataForSEO suggestions`)
   } catch (err) {
-    console.error('[Scout] Keyword expansion failed, using original seeds:', err)
+    const msg = err instanceof Error ? err.message : String(err)
+    if (msg.includes('402') || msg.includes('40200') || msg.includes('Payment Required')) {
+      console.warn('[Scout] Keyword expansion skipped — DataForSEO account balance low:', msg)
+    } else {
+      console.error('[Scout] Keyword expansion failed, using original seeds:', err)
+    }
     expandedKeywords = seedKeywords
   }
 
@@ -283,7 +288,14 @@ export async function runSearchOpportunityPipeline(
         }
       }
     } catch (err) {
-      errors.push(`getKeywordTrends: ${err instanceof Error ? err.message : String(err)}`)
+      const msg = err instanceof Error ? err.message : String(err)
+      // 402 / 40200 = DataForSEO billing issue — log but don't surface as a
+      // pipeline error in the UI since it's an account state, not a bug.
+      if (msg.includes('402') || msg.includes('40200') || msg.includes('Payment Required')) {
+        console.warn('[Scout] Keyword trends skipped — DataForSEO account balance low:', msg)
+      } else {
+        errors.push(`getKeywordTrends: ${msg}`)
+      }
     }
   }
 
