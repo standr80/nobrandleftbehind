@@ -350,6 +350,75 @@ export async function getKeywordTrends(
   return results
 }
 
+// ─── PAA + AI Overview (combined SERP parse, zero extra API cost) ─────────────
+
+export interface DfsSerpKeywordData {
+  paaQuestions: DfsPAAItem[]
+  hasAiOverview: boolean
+  aiOverviewSnippet: string | null
+}
+
+export async function getPeopleAlsoAskWithAIOverview(
+  keywords: string[],
+  locationCode = 2826,
+): Promise<Record<string, DfsSerpKeywordData>> {
+  if (!keywords.length) return {}
+
+  type AiOverviewItem = {
+    type: string
+    text?: string
+    items?: Array<{ type: string; title?: string; featured_title?: string }>
+  }
+
+  type Resp = {
+    tasks?: Array<{
+      result?: Array<{
+        keyword: string
+        items?: Array<AiOverviewItem>
+      }>
+    }>
+  }
+
+  const settled = await Promise.allSettled(
+    keywords.map((kw) =>
+      post<Resp>('/serp/google/organic/live/advanced', [
+        { keyword: kw, location_code: locationCode, language_code: 'en', depth: 10 },
+      ]),
+    ),
+  )
+
+  const result: Record<string, DfsSerpKeywordData> = {}
+
+  for (const outcome of settled) {
+    if (outcome.status === 'rejected') continue
+    for (const task of outcome.value?.tasks ?? []) {
+      for (const r of task.result ?? []) {
+        if (!r.keyword) continue
+
+        // Extract PAA
+        const paaBlocks = r.items?.filter((i) => i.type === 'people_also_ask') ?? []
+        const paaQuestions: DfsPAAItem[] = []
+        let pos = 1
+        for (const block of paaBlocks) {
+          for (const q of block.items ?? []) {
+            const text = q.title ?? q.featured_title
+            if (text) paaQuestions.push({ question: text, serp_position: pos++ })
+          }
+        }
+
+        // Extract AI Overview
+        const aiOverviewItem = r.items?.find((i) => i.type === 'ai_overview') ?? null
+        const hasAiOverview = aiOverviewItem !== null
+        const aiOverviewSnippet = aiOverviewItem?.text ?? null
+
+        result[r.keyword] = { paaQuestions, hasAiOverview, aiOverviewSnippet }
+      }
+    }
+  }
+
+  return result
+}
+
 // ─── Backlinks (new referring domains for a target) ───────────────────────────
 
 export interface DfsBacklinkItem {
@@ -377,4 +446,130 @@ export async function getNewBacklinks(
     },
   ])
   return data?.tasks?.[0]?.result?.[0]?.items ?? []
+}
+
+// ─── Historical Rank Overview (domain-level ranking history) ─────────────────
+
+export interface DfsRankHistoryItem {
+  keyword: string
+  position: number | null
+  url: string | null
+  search_volume: number | null
+}
+
+export async function getDomainRankSnapshot(
+  domain: string,
+  locationCode = 2826,
+  limit = 100,
+): Promise<DfsRankHistoryItem[]> {
+  // Use ranked_keywords/live for per-keyword current positions
+  // (historical_rank_overview gives aggregate domain metrics, not per-keyword positions)
+  type Resp = {
+    tasks?: Array<{
+      result?: Array<{
+        items?: Array<{
+          keyword_data?: {
+            keyword?: string
+            keyword_info?: { search_volume?: number }
+          }
+          ranked_serp_element?: {
+            serp_item?: { rank_absolute?: number; url?: string }
+          }
+        }>
+      }>
+    }>
+  }
+  const data = await post<Resp>('/dataforseo_labs/google/ranked_keywords/live', [
+    {
+      target: domain,
+      location_code: locationCode,
+      limit,
+      order_by: ['ranked_serp_element.serp_item.rank_absolute,asc'],
+    },
+  ])
+  const rankItems = data?.tasks?.[0]?.result?.[0]?.items ?? []
+  return rankItems.map((item) => ({
+    keyword: item.keyword_data?.keyword ?? '',
+    position: item.ranked_serp_element?.serp_item?.rank_absolute ?? null,
+    url: item.ranked_serp_element?.serp_item?.url ?? null,
+    search_volume: item.keyword_data?.keyword_info?.search_volume ?? null,
+  })).filter((i) => i.keyword)
+}
+
+// ─── Keyword Suggestions (expand seed keywords) ───────────────────────────────
+
+export interface DfsKeywordSuggestion {
+  keyword: string
+  search_volume: number | null
+  keyword_difficulty: number | null
+  competition: number | null
+}
+
+export async function getKeywordSuggestions(
+  seedKeywords: string[],
+  locationCode = 2826,
+  limitPerSeed = 50,
+): Promise<DfsKeywordSuggestion[]> {
+  if (!seedKeywords.length) return []
+
+  // Batch all seeds into one request array (cost efficient)
+  const batch = seedKeywords.slice(0, 15) // hard cap: 15 seeds per run
+  type SuggestResp = {
+    tasks?: Array<{
+      result?: Array<{
+        items?: Array<{
+          keyword_data?: {
+            keyword?: string
+            keyword_info?: {
+              search_volume?: number
+              keyword_difficulty?: number
+              competition?: number
+            }
+          }
+        }>
+      }>
+    }>
+  }
+
+  const settled = await Promise.allSettled(
+    batch.map((seed) =>
+      post<SuggestResp>('/dataforseo_labs/google/keyword_suggestions/live', [
+        {
+          keyword: seed,
+          location_code: locationCode,
+          language_name: 'English',
+          limit: limitPerSeed,
+          filters: [
+            ['keyword_data.keyword_info.search_volume', '>', 50],
+            'and',
+            ['keyword_data.keyword_info.keyword_difficulty', '<', 70],
+          ],
+        },
+      ]),
+    ),
+  )
+
+  const seen = new Set<string>()
+  const results: DfsKeywordSuggestion[] = []
+
+  for (const outcome of settled) {
+    if (outcome.status === 'rejected') continue
+    for (const task of outcome.value?.tasks ?? []) {
+      for (const r of task.result ?? []) {
+        for (const item of r.items ?? []) {
+          const kw = item.keyword_data?.keyword
+          if (!kw || seen.has(kw)) continue
+          seen.add(kw)
+          results.push({
+            keyword: kw,
+            search_volume: item.keyword_data?.keyword_info?.search_volume ?? null,
+            keyword_difficulty: item.keyword_data?.keyword_info?.keyword_difficulty ?? null,
+            competition: item.keyword_data?.keyword_info?.competition ?? null,
+          })
+        }
+      }
+    }
+  }
+
+  return results.slice(0, 200) // hard cap: 200 total keywords forward
 }

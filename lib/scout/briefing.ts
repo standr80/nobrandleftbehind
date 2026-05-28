@@ -286,6 +286,8 @@ export async function generateAndDeliverBriefing(
   competitorResults: CompetitorResult[],
   searchResults: SearchOpportunityResult,
   handoffResult: HandoffResult,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  _rankSummary?: import('./pipelines/own-site').RankSnapshotSummary | null,
 ): Promise<string> {
   const weekStarting = new Date().toISOString().slice(0, 10)
   const dashboardUrl = `${process.env.NEXT_PUBLIC_APP_URL ?? 'https://nobrandleftbehind.com'}/dashboard/scout`

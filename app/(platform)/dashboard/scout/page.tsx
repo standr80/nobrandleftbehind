@@ -5,6 +5,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { getActiveWorkspace } from '@/lib/workspace/active'
 import ScoutRunButton from '@/components/scout/ScoutRunButton'
 import ScoutAlertsList from '@/components/scout/ScoutAlertsList'
+import RankTracker from '@/components/scout/RankTracker'
 
 async function getScoutOverview(tenantId: string) {
   const db = createAdminClient()
@@ -59,6 +60,7 @@ export default async function ScoutOverviewPage() {
 
   const { allCompetitorUrls, latestBriefing, alerts, pendingOpportunities } =
     await getScoutOverview(workspace.tenantId)
+  const tenantId = workspace.tenantId
 
   return (
     <div>
@@ -189,6 +191,12 @@ export default async function ScoutOverviewPage() {
             </div>
           )}
         </div>
+      </div>
+
+      {/* Rank tracker */}
+      <div className="bg-white rounded-lg border border-slate-200 p-5 mt-6">
+        <h2 className="text-sm font-semibold text-slate-700 mb-4">📈 Keyword Rankings</h2>
+        <RankTracker tenantId={tenantId} />
       </div>
     </div>
   )

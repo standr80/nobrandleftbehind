@@ -15,8 +15,10 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import {
   getDomainRankings,
   getPeopleAlsoAsk,
+  getPeopleAlsoAskWithAIOverview,
   getSerpFeatures,
   getKeywordTrends,
+  getKeywordSuggestions,
   type DfsTrendItem,
 } from '@/lib/integrations/dataforseo/client'
 
@@ -29,6 +31,8 @@ export interface SearchOpportunityResult {
   totalAdded: number
   stepErrors: string[]
   rawPAACount: number
+  aiOverviewCount: number
+  expandedKeywordCount: number
 }
 
 export interface OpportunityItem {
@@ -40,6 +44,8 @@ export interface OpportunityItem {
   seasonalPeakMonth?: number | null
   weeksUntilPeak?: number | null
   rationale: string
+  hasAiOverview?: boolean
+  aiOverviewSnippet?: string | null
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -126,10 +132,27 @@ export async function runSearchOpportunityPipeline(
     }
   }
 
+  // ── 3.2b Expand seed keywords via DataForSEO keyword suggestions ──
+  let expandedKeywords: string[] = seedKeywords
+  let expandedKeywordCount = 0
+  try {
+    const suggestions = await getKeywordSuggestions(seedKeywords.slice(0, 15))
+    expandedKeywordCount = suggestions.length
+    const suggestedKws = suggestions.map((s) => s.keyword)
+    // Merge: original seeds + expanded, deduped
+    const merged = Array.from(new Set([...seedKeywords, ...suggestedKws]))
+    expandedKeywords = merged.slice(0, 200)
+    console.log(`[Scout] Expanded ${seedKeywords.length} seed keywords to ${expandedKeywords.length} via DataForSEO suggestions`)
+  } catch (err) {
+    console.error('[Scout] Keyword expansion failed, using original seeds:', err)
+    expandedKeywords = seedKeywords
+  }
+
   // ── 3.3 PAA mining ──
   const paaQuestions: OpportunityItem[] = []
   let rawPAACount = 0
-  const topQueryKeywords = [...seedKeywords, ...clientRankingKeywords.slice(0, 10)]
+  const topQueryKeywords = [...expandedKeywords.slice(0, 30), ...clientRankingKeywords.slice(0, 10)]
+  const aiOverviewByKeyword: Record<string, { hasAiOverview: boolean; aiOverviewSnippet: string | null }> = {}
   if (topQueryKeywords.length) {
     try {
       // Check cache first — don't re-fetch PAA within 14 days
@@ -145,8 +168,16 @@ export async function runSearchOpportunityPipeline(
 
       let freshPAAResults: Record<string, { question: string; serp_position?: number }[]> = {}
       if (uncachedKeywords.length) {
-        freshPAAResults = await getPeopleAlsoAsk(uncachedKeywords)
-        rawPAACount = Object.values(freshPAAResults).reduce((s, qs) => s + qs.length, 0)
+        const freshSerpData = await getPeopleAlsoAskWithAIOverview(uncachedKeywords)
+        rawPAACount = Object.values(freshSerpData).reduce((s, d) => s + d.paaQuestions.length, 0)
+        // Reshape to match existing freshPAAResults usage
+        freshPAAResults = Object.fromEntries(
+          Object.entries(freshSerpData).map(([kw, d]) => [kw, d.paaQuestions])
+        )
+        // Capture AI overview flags per keyword
+        for (const [kw, d] of Object.entries(freshSerpData)) {
+          aiOverviewByKeyword[kw] = { hasAiOverview: d.hasAiOverview, aiOverviewSnippet: d.aiOverviewSnippet }
+        }
 
         // Cache fresh results
         const cacheInserts = Object.entries(freshPAAResults).map(([keyword, questions]) => ({
@@ -177,16 +208,22 @@ export async function runSearchOpportunityPipeline(
       // Simple heuristic: question keyword not in clientRankingKeywords
       const clientKeywordSet = new Set(clientRankingKeywords.map((k) => k.toLowerCase()))
       for (const [seedKw, questions] of Object.entries(allPAA)) {
+        const aiInfo = aiOverviewByKeyword[seedKw]
         for (const question of questions) {
           const words = question.toLowerCase().split(/\s+/)
           const isAnswered = words.some((w) => clientKeywordSet.has(w))
           if (!isAnswered) {
+            const aiNote = aiInfo?.hasAiOverview
+              ? '. NOTE FOR CLEM: Google shows an AI Overview for this keyword. Write this post in structured Q&A format with a clear direct answer in the opening paragraph. Aim to be the source Google\'s AI Overview cites.'
+              : ''
             const opp: OpportunityItem = {
               keyword: question,
               searchVolume: null,
               keywordDifficulty: null,
               opportunityType: 'paa',
-              rationale: `People searching for "${seedKw}" also ask: "${question}". You don't currently cover this.`,
+              rationale: `People searching for "${seedKw}" also ask: "${question}". You don't currently cover this.${aiNote}`,
+              hasAiOverview: aiInfo?.hasAiOverview ?? false,
+              aiOverviewSnippet: aiInfo?.aiOverviewSnippet ?? null,
             }
             paaQuestions.push(opp)
             opportunityItems.push(opp)
@@ -203,7 +240,7 @@ export async function runSearchOpportunityPipeline(
   // ── 3.4 Seasonal trends + 3.5 Rising trends ──
   const seasonalWindows: OpportunityItem[] = []
   const risingTrends: OpportunityItem[] = []
-  const trendKeywords = [...seedKeywords, ...clientRankingKeywords.slice(0, 20)]
+  const trendKeywords = [...expandedKeywords, ...clientRankingKeywords.slice(0, 20)]
     .filter((k) => typeof k === 'string' && k.trim().length > 0)
     .slice(0, 30)
 
@@ -269,6 +306,8 @@ export async function runSearchOpportunityPipeline(
       seasonal_peak_month: item.seasonalPeakMonth ?? null,
       weeks_until_peak: item.weeksUntilPeak ?? null,
       status: 'pending' as const,
+      has_ai_overview: item.hasAiOverview ?? false,
+      ai_overview_snippet: item.aiOverviewSnippet ?? null,
     }))
     const { error } = await db.from('scout_keyword_opportunities').insert(inserts)
     if (!error) totalAdded = inserts.length
@@ -284,5 +323,8 @@ export async function runSearchOpportunityPipeline(
     totalAdded,
     stepErrors: errors,
     rawPAACount,
+    aiOverviewCount: opportunityItems.filter((i) => i.hasAiOverview).length,
+    expandedKeywordCount,
   }
 }
+

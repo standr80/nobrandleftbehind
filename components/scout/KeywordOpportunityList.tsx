@@ -15,6 +15,8 @@ interface Opportunity {
   status: string | null
   clem_suggestion_id: string | null
   discovered_at: string | null
+  has_ai_overview: boolean | null
+  ai_overview_snippet: string | null
 }
 
 interface Props {
@@ -124,7 +126,17 @@ export default function KeywordOpportunityList({ initialOpportunities }: Props) 
                 </span>
 
                 <div className="flex-1 min-w-0">
-                  <div className="text-sm font-medium text-slate-900 truncate">{opp.keyword}</div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-medium text-slate-900 truncate">{opp.keyword}</span>
+                    {opp.has_ai_overview && (
+                      <span
+                        title="Google shows an AI Overview for this keyword. Structured Q&A format recommended."
+                        className="text-xs px-1.5 py-0.5 rounded bg-violet-50 text-violet-700 font-medium cursor-help shrink-0"
+                      >
+                        🤖 AI Overview
+                      </span>
+                    )}
+                  </div>
                   <div className="flex gap-3 mt-0.5 text-xs text-slate-400">
                     {opp.search_volume != null && (
                       <span>{opp.search_volume.toLocaleString()} / mo</span>

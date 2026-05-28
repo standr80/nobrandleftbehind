@@ -10,6 +10,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { runCompetitorPipeline } from './pipelines/competitors'
 import { runSearchOpportunityPipeline } from './pipelines/search-opportunity'
 import { generateAndDeliverBriefing } from './briefing'
+import { captureRankSnapshot, type RankSnapshotSummary } from './pipelines/own-site'
 
 export interface ScoutRunResult {
   tenantId: string
@@ -61,6 +62,8 @@ export async function runScoutForTenant(tenantId: string): Promise<ScoutRunResul
     totalAdded: 0,
     stepErrors: [],
     rawPAACount: 0,
+    aiOverviewCount: 0,
+    expandedKeywordCount: 0,
   }
 
   // Pipeline 2 — Competitor intelligence
@@ -80,8 +83,10 @@ export async function runScoutForTenant(tenantId: string): Promise<ScoutRunResul
       // (auto-actioned so it doesn't clutter the dashboard after the first run)
       const diagnosticParts = [
         `Seed keywords used: ${seedKeywords.slice(0, 5).join(', ')}${seedKeywords.length > 5 ? ` (+${seedKeywords.length - 5} more)` : ''}`,
+        `Expanded keywords: ${searchResults.expandedKeywordCount}`,
         `Featured snippets: ${searchResults.featuredSnippetTargets.length}`,
         `PAA questions: ${searchResults.paaQuestions.length} (${searchResults.rawPAACount} raw from API)`,
+        `AI Overview keywords: ${searchResults.aiOverviewCount ?? 0}`,
         `Seasonal windows: ${searchResults.seasonalWindows.length}`,
         `Rising trends: ${searchResults.risingTrends.length}`,
         `Total added to opportunities: ${searchResults.totalAdded}`,
@@ -132,6 +137,16 @@ export async function runScoutForTenant(tenantId: string): Promise<ScoutRunResul
     }
   }
 
+  // Rank snapshot
+  let rankSummary: RankSnapshotSummary | null = null
+  if (process.env.DATAFORSEO_LOGIN && process.env.DATAFORSEO_PASSWORD) {
+    try {
+      rankSummary = await captureRankSnapshot(tenantId, tenant.domain)
+    } catch (err) {
+      console.error(`[Scout] Rank snapshot failed for tenant ${tenantId}:`, err)
+    }
+  }
+
   // Opportunities are left in 'pending' state for the user to review
   // on the Keywords page. They are sent to Clem only when manually approved.
   const handoffResult = { suggestionsCreated: 0, opportunitiesUpdated: 0 }
@@ -144,6 +159,7 @@ export async function runScoutForTenant(tenantId: string): Promise<ScoutRunResul
       competitorResults,
       searchResults,
       handoffResult,
+      rankSummary,
     )
     return { tenantId, briefingId }
   } catch (err) {

@@ -14,7 +14,7 @@ export default async function KeywordsPage() {
   const db = createAdminClient()
   const { data: opportunities } = await db
     .from('scout_keyword_opportunities')
-    .select('id, keyword, search_volume, keyword_difficulty, opportunity_type, competitor_ranking_url, seasonal_peak_month, weeks_until_peak, status, clem_suggestion_id, discovered_at')
+    .select('id, keyword, search_volume, keyword_difficulty, opportunity_type, competitor_ranking_url, seasonal_peak_month, weeks_until_peak, status, clem_suggestion_id, discovered_at, has_ai_overview, ai_overview_snippet')
     .eq('tenant_id', workspace.tenantId)
     .order('discovered_at', { ascending: false })
     .limit(100)

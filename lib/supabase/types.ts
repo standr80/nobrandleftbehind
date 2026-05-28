@@ -446,10 +446,12 @@ export type Database = {
       }
       scout_keyword_opportunities: {
         Row: {
+          ai_overview_snippet: string | null
           clem_suggestion_id: string | null
           competitor_ranking_url: string | null
           created_at: string | null
           discovered_at: string | null
+          has_ai_overview: boolean | null
           id: string
           keyword: string
           keyword_difficulty: number | null
@@ -461,10 +463,12 @@ export type Database = {
           weeks_until_peak: number | null
         }
         Insert: {
+          ai_overview_snippet?: string | null
           clem_suggestion_id?: string | null
           competitor_ranking_url?: string | null
           created_at?: string | null
           discovered_at?: string | null
+          has_ai_overview?: boolean | null
           id?: string
           keyword: string
           keyword_difficulty?: number | null
@@ -476,10 +480,12 @@ export type Database = {
           weeks_until_peak?: number | null
         }
         Update: {
+          ai_overview_snippet?: string | null
           clem_suggestion_id?: string | null
           competitor_ranking_url?: string | null
           created_at?: string | null
           discovered_at?: string | null
+          has_ai_overview?: boolean | null
           id?: string
           keyword?: string
           keyword_difficulty?: number | null
@@ -489,6 +495,48 @@ export type Database = {
           status?: string | null
           tenant_id?: string
           weeks_until_peak?: number | null
+        }
+        Relationships: []
+      }
+      scout_rank_history: {
+        Row: {
+          id: string
+          tenant_id: string
+          keyword: string
+          snapshot_date: string
+          position: number | null
+          previous_position: number | null
+          position_change: number | null
+          url: string | null
+          search_volume: number | null
+          source: string | null
+          created_at: string | null
+        }
+        Insert: {
+          id?: string
+          tenant_id: string
+          keyword: string
+          snapshot_date: string
+          position?: number | null
+          previous_position?: number | null
+          position_change?: number | null
+          url?: string | null
+          search_volume?: number | null
+          source?: string | null
+          created_at?: string | null
+        }
+        Update: {
+          id?: string
+          tenant_id?: string
+          keyword?: string
+          snapshot_date?: string
+          position?: number | null
+          previous_position?: number | null
+          position_change?: number | null
+          url?: string | null
+          search_volume?: number | null
+          source?: string | null
+          created_at?: string | null
         }
         Relationships: []
       }
