@@ -14,7 +14,6 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 import {
   getDomainRankings,
-  getPeopleAlsoAsk,
   getPeopleAlsoAskWithAIOverview,
   getSerpFeatures,
   getKeywordTrends,
