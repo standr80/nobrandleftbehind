@@ -4,7 +4,7 @@ import { createAdminClient } from '../supabase/admin'
 import type { BlogTheme, BlogNavLink } from '../blog/types'
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! })
-const CLAUDE_MODEL = 'claude-sonnet-4-20250514'
+const CLAUDE_MODEL = 'claude-sonnet-4-6'
 
 /**
  * Scrapes the tenant's homepage (single page, not a full crawl) and asks

@@ -4,7 +4,7 @@ import { createAdminClient } from '../supabase/admin'
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! })
 
-const CLAUDE_MODEL = 'claude-sonnet-4-20250514'
+const CLAUDE_MODEL = 'claude-sonnet-4-6'
 const CRAWL_EXPIRY_DAYS = 7
 const CRAWL_PAGE_LIMIT = 50
 const MAX_CRAWL_CHARS = 120_000

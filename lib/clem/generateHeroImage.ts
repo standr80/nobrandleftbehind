@@ -3,7 +3,7 @@ import sharp from 'sharp'
 import { createAdminClient } from '../supabase/admin'
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! })
-const CLAUDE_MODEL = 'claude-sonnet-4-20250514'
+const CLAUDE_MODEL = 'claude-sonnet-4-6'
 const BUCKET = 'hero-images'
 
 // Target: 1600×700 JPEG, ≤500 KB

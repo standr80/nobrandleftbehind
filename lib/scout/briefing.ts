@@ -12,6 +12,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import type { CompetitorResult } from './pipelines/competitors'
 import type { SearchOpportunityResult } from './pipelines/search-opportunity'
 import type { HandoffResult } from './clem-handoff'
+import type { RankSnapshotSummary } from './pipelines/own-site'
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 const resend = new Resend(process.env.RESEND_API_KEY)
@@ -50,9 +51,20 @@ async function synthesiseBriefing(
   competitorResults: CompetitorResult[],
   searchResults: SearchOpportunityResult,
   handoffResult: HandoffResult,
+  rankSummary: RankSnapshotSummary | null,
 ): Promise<BriefingJson> {
   const prompt = {
     tenantName,
+    rankingMovements: rankSummary
+      ? {
+          keywordsTracked: rankSummary.tracked,
+          improved: rankSummary.improved,
+          declined: rankSummary.declined,
+          enteredTop10: rankSummary.enteredTop10,
+          droppedFromTop10: rankSummary.droppedFromTop10,
+          biggestMover: rankSummary.biggestMover,
+        }
+      : null,
     competitorChanges: competitorResults.map((c) => ({
       url: c.competitorUrl,
       changed: c.changed,
@@ -76,16 +88,16 @@ async function synthesiseBriefing(
   }
 
   const msg = await anthropic.messages.create({
-    model: 'claude-sonnet-4-20250514',
+    model: 'claude-sonnet-4-6',
     max_tokens: 4000,
     system: `You are Scout, a market intelligence agent for ${tenantName}.
 Synthesise the provided data into a structured weekly briefing.
 Be direct and specific. Use plain English. No jargon.
 Every item must have a clear implication or recommended action.
 Categorise every item as:
-- urgent: needs action this week (pricing changes, major competitor moves, seasonal deadlines)
-- watch: monitor, no action needed yet (competitor new content, rising trends, backlinks)
-- win: positive signals (opportunities identified, actions taken)
+- urgent: needs action this week (pricing changes, major competitor moves, seasonal deadlines, keywords dropped from top 10)
+- watch: monitor, no action needed yet (competitor new content, rising trends, backlinks, keywords that improved or entered top 10)
+- win: positive signals (opportunities identified, actions taken, keyword improvements)
 
 Return ONLY valid JSON matching this structure exactly:
 {
@@ -286,8 +298,7 @@ export async function generateAndDeliverBriefing(
   competitorResults: CompetitorResult[],
   searchResults: SearchOpportunityResult,
   handoffResult: HandoffResult,
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  _rankSummary?: import('./pipelines/own-site').RankSnapshotSummary | null,
+  rankSummary?: RankSnapshotSummary | null,
 ): Promise<string> {
   const weekStarting = new Date().toISOString().slice(0, 10)
   const dashboardUrl = `${process.env.NEXT_PUBLIC_APP_URL ?? 'https://nobrandleftbehind.com'}/dashboard/scout`
@@ -298,6 +309,7 @@ export async function generateAndDeliverBriefing(
     competitorResults,
     searchResults,
     handoffResult,
+    rankSummary ?? null,
   )
 
   const briefingId = await saveBriefing(tenantId, briefing, dashboardUrl)
