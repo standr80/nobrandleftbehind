@@ -42,5 +42,32 @@ export async function GET() {
     snapshotDate: latestDate,
   }
 
-  return NextResponse.json({ rows: validRows, summary })
+  // Per-keyword position history for sparklines — last 12 snapshots, oldest first.
+  const { data: distinctDates } = await db
+    .from('scout_rank_history')
+    .select('snapshot_date')
+    .eq('tenant_id', workspace.tenantId)
+    .order('snapshot_date', { ascending: false })
+
+  const recentDates = Array.from(new Set((distinctDates ?? []).map((d) => d.snapshot_date)))
+    .slice(0, 12)
+    .reverse()
+
+  const history: Record<string, { date: string; position: number | null }[]> = {}
+  if (recentDates.length > 1) {
+    const { data: histRows } = await db
+      .from('scout_rank_history')
+      .select('keyword, position, snapshot_date')
+      .eq('tenant_id', workspace.tenantId)
+      .in('snapshot_date', recentDates)
+
+    for (const r of histRows ?? []) {
+      ;(history[r.keyword] ??= []).push({ date: r.snapshot_date, position: r.position })
+    }
+    for (const kw of Object.keys(history)) {
+      history[kw].sort((a, b) => a.date.localeCompare(b.date))
+    }
+  }
+
+  return NextResponse.json({ rows: validRows, summary, history })
 }

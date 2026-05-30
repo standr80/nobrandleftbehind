@@ -2,6 +2,9 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import RankSparkline from './RankSparkline'
+
+type RankHistory = Record<string, { date: string; position: number | null }[]>
 
 interface RankRow {
   keyword: string
@@ -23,6 +26,7 @@ interface Summary {
 export default function RankTracker({ tenantId }: { tenantId: string }) {
   const [rows, setRows] = useState<RankRow[]>([])
   const [summary, setSummary] = useState<Summary | null>(null)
+  const [history, setHistory] = useState<RankHistory>({})
   const [loading, setLoading] = useState(true)
   const [briefingLoading, setBriefingLoading] = useState<string | null>(null)
   const router = useRouter()
@@ -36,6 +40,7 @@ export default function RankTracker({ tenantId }: { tenantId: string }) {
       .then((d) => {
         setRows(d.rows ?? [])
         setSummary(d.summary ?? null)
+        setHistory(d.history ?? {})
       })
       .finally(() => setLoading(false))
   }, [])
@@ -99,6 +104,7 @@ export default function RankTracker({ tenantId }: { tenantId: string }) {
               <th className="text-left px-4 py-2.5 text-xs font-medium text-slate-500">Keyword</th>
               <th className="text-center px-3 py-2.5 text-xs font-medium text-slate-500 w-20">Position</th>
               <th className="text-center px-3 py-2.5 text-xs font-medium text-slate-500 w-20">Change</th>
+              <th className="text-center px-3 py-2.5 text-xs font-medium text-slate-500 w-28">Trend</th>
               <th className="text-right px-3 py-2.5 text-xs font-medium text-slate-500 w-24">Volume</th>
               <th className="text-right px-3 py-2.5 text-xs font-medium text-slate-500 w-24"></th>
             </tr>
@@ -145,6 +151,9 @@ export default function RankTracker({ tenantId }: { tenantId: string }) {
                     )}
                   </td>
                   <td className="px-3 py-2.5 text-center">{changeDisplay(row.position_change)}</td>
+                  <td className="px-3 py-2.5 text-center">
+                    <RankSparkline history={history[row.keyword] ?? []} />
+                  </td>
                   <td className="px-3 py-2.5 text-right text-slate-400 text-xs">
                     {row.search_volume != null ? row.search_volume.toLocaleString() : '—'}
                   </td>
