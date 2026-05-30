@@ -30,8 +30,8 @@ export default async function BlogLayout({ children }: BlogLayoutProps) {
   const { blog_theme: theme, name, blog_footer } = tenant
   const blogUrl = `https://${blogHost}`
 
-  const primaryRgb = hexToRgb(theme.primaryColor)
   const textRgb = hexToRgb(theme.textColor)
+  const headerTextRgb = hexToRgb(theme.headerTextColor)
 
   const globalCss = `
     *, *::before, *::after { box-sizing: border-box; }
@@ -54,7 +54,7 @@ export default async function BlogLayout({ children }: BlogLayoutProps) {
     .blog-nav-link {
       font-size: 0.875rem;
       font-family: ${theme.headingFont};
-      color: ${theme.textColor};
+      color: ${theme.headerTextColor};
       padding: 0.375rem 0.75rem;
       border-radius: 0.5rem;
       transition: background 0.15s;
@@ -62,17 +62,17 @@ export default async function BlogLayout({ children }: BlogLayoutProps) {
       text-decoration: none;
     }
     .blog-nav-link:hover {
-      background-color: rgba(${primaryRgb}, 0.08);
+      background-color: rgba(${headerTextRgb}, 0.10);
       text-decoration: none;
     }
     .blog-nav-active {
       font-size: 0.875rem;
       font-family: ${theme.headingFont};
-      color: ${theme.primaryColor};
+      color: ${theme.headerTextColor};
       font-weight: 600;
       padding: 0.375rem 0.75rem;
       border-radius: 0.5rem;
-      background-color: rgba(${primaryRgb}, 0.08);
+      background-color: rgba(${headerTextRgb}, 0.14);
       white-space: nowrap;
       text-decoration: none;
     }
@@ -102,8 +102,8 @@ export default async function BlogLayout({ children }: BlogLayoutProps) {
 
       {/* ── Header ── */}
       <header style={{
-        borderBottom: `1px solid rgba(${textRgb}, 0.1)`,
-        backgroundColor: theme.backgroundColor,
+        borderBottom: `1px solid rgba(${headerTextRgb}, 0.12)`,
+        backgroundColor: theme.headerBackgroundColor,
         position: 'sticky',
         top: 0,
         zIndex: 50,
@@ -131,7 +131,7 @@ export default async function BlogLayout({ children }: BlogLayoutProps) {
                 fontFamily: theme.headingFont,
                 fontWeight: 700,
                 fontSize: '1.1rem',
-                color: theme.primaryColor,
+                color: theme.headerTextColor,
               }}>
                 {name}
               </span>

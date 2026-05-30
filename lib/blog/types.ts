@@ -7,6 +7,10 @@ export interface BlogTheme {
   primaryColor: string
   backgroundColor: string
   textColor: string
+  /** Header bar background — may differ from the page background. */
+  headerBackgroundColor: string
+  /** Text/logo colour that sits on the header background. */
+  headerTextColor: string
   headingFont: string
   bodyFont: string
   logoUrl: string | null
@@ -19,6 +23,8 @@ export const DEFAULT_BLOG_THEME: BlogTheme = {
   primaryColor: '#4f46e5',
   backgroundColor: '#ffffff',
   textColor: '#1a1a1a',
+  headerBackgroundColor: '#ffffff',
+  headerTextColor: '#1a1a1a',
   headingFont: 'system-ui, -apple-system, sans-serif',
   bodyFont: 'Georgia, "Times New Roman", serif',
   logoUrl: null,
