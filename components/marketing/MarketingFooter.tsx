@@ -10,6 +10,7 @@ export default function MarketingFooter() {
         <Link href="/#how-it-works" className="hover:text-slate-600 transition-colors">How it works</Link>
         <Link href="/#features" className="hover:text-slate-600 transition-colors">Features</Link>
         <Link href="/academy" className="hover:text-slate-600 transition-colors">Academy</Link>
+        <a href="https://blog.nobrandleftbehind.com" className="hover:text-slate-600 transition-colors">Blog</a>
         <Link href="/sign-in" className="hover:text-slate-600 transition-colors">Sign in</Link>
         <Link href="/sign-up" className="hover:text-slate-600 transition-colors">Sign up</Link>
       </div>

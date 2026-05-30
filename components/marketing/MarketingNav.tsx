@@ -24,6 +24,9 @@ export default async function MarketingNav() {
         <Link href="/academy" className="text-sm text-slate-500 hover:text-slate-900 transition-colors">
           Academy
         </Link>
+        <a href="https://blog.nobrandleftbehind.com" className="text-sm text-slate-500 hover:text-slate-900 transition-colors">
+          Blog
+        </a>
         {userId ? (
           <Link
             href="/dashboard"
