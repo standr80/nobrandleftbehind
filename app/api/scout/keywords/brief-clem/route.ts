@@ -15,6 +15,25 @@ export async function POST(request: Request) {
 
   const { keyword, position, search_volume } = await request.json()
 
+  const db = createAdminClient()
+
+  // Avoid creating duplicate briefs for the same keyword — and skip the Claude
+  // call entirely if one already exists in the queue.
+  const { data: existing } = await db
+    .from('suggestions')
+    .select('id, proposed_title')
+    .eq('tenant_id', workspace.tenantId)
+    .eq('source', 'scout')
+    .eq('source_type', 'rank_opportunity')
+    .eq('status', 'pending')
+    .contains('target_keywords', [keyword])
+    .limit(1)
+    .maybeSingle()
+
+  if (existing) {
+    return NextResponse.json({ id: existing.id, title: existing.proposed_title, alreadyExists: true })
+  }
+
   let title: string
   try {
     const msg = await anthropic.messages.create({
@@ -30,7 +49,6 @@ export async function POST(request: Request) {
     title = keyword
   }
 
-  const db = createAdminClient()
   const { data, error } = await db
     .from('suggestions')
     .insert({
@@ -46,5 +64,5 @@ export async function POST(request: Request) {
     .single()
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  return NextResponse.json({ id: data.id })
+  return NextResponse.json({ id: data.id, title, alreadyExists: false })
 }

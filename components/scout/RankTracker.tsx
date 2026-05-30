@@ -29,6 +29,9 @@ export default function RankTracker({ tenantId }: { tenantId: string }) {
   const [history, setHistory] = useState<RankHistory>({})
   const [loading, setLoading] = useState(true)
   const [briefingLoading, setBriefingLoading] = useState<string | null>(null)
+  const [briefResult, setBriefResult] = useState<
+    Record<string, { ok: boolean; alreadyExists?: boolean; error?: string }>
+  >({})
   const router = useRouter()
 
   // tenantId is used by the server-side API but included as a prop for future filtering
@@ -48,7 +51,7 @@ export default function RankTracker({ tenantId }: { tenantId: string }) {
   async function briefClem(row: RankRow) {
     setBriefingLoading(row.keyword)
     try {
-      await fetch('/api/scout/keywords/brief-clem', {
+      const res = await fetch('/api/scout/keywords/brief-clem', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -57,7 +60,21 @@ export default function RankTracker({ tenantId }: { tenantId: string }) {
           search_volume: row.search_volume,
         }),
       })
-      router.refresh()
+      const data = await res.json().catch(() => ({}))
+      if (res.ok) {
+        setBriefResult((prev) => ({
+          ...prev,
+          [row.keyword]: { ok: true, alreadyExists: !!data.alreadyExists },
+        }))
+        router.refresh()
+      } else {
+        setBriefResult((prev) => ({
+          ...prev,
+          [row.keyword]: { ok: false, error: data.error ?? 'Failed' },
+        }))
+      }
+    } catch {
+      setBriefResult((prev) => ({ ...prev, [row.keyword]: { ok: false, error: 'Network error' } }))
     } finally {
       setBriefingLoading(null)
     }
@@ -158,15 +175,40 @@ export default function RankTracker({ tenantId }: { tenantId: string }) {
                     {row.search_volume != null ? row.search_volume.toLocaleString() : '—'}
                   </td>
                   <td className="px-3 py-2.5 text-right">
-                    {isNearRanking && (
-                      <button
-                        onClick={() => briefClem(row)}
-                        disabled={briefingLoading === row.keyword}
-                        className="text-xs px-2 py-1 bg-indigo-600 text-white rounded hover:bg-indigo-700 disabled:opacity-50 transition-colors"
-                      >
-                        {briefingLoading === row.keyword ? '…' : 'Brief Clem'}
-                      </button>
-                    )}
+                    {(() => {
+                      const result = briefResult[row.keyword]
+                      if (result?.ok) {
+                        return (
+                          <span className="text-xs text-green-600 font-medium" title="View in Clem's queue">
+                            {result.alreadyExists ? '✓ Already queued' : '✓ Added to Clem'}
+                          </span>
+                        )
+                      }
+                      if (result && !result.ok) {
+                        return (
+                          <button
+                            onClick={() => briefClem(row)}
+                            disabled={briefingLoading === row.keyword}
+                            className="text-xs px-2 py-1 bg-red-50 text-red-600 rounded hover:bg-red-100 disabled:opacity-50 transition-colors"
+                            title={result.error}
+                          >
+                            {briefingLoading === row.keyword ? '…' : 'Retry'}
+                          </button>
+                        )
+                      }
+                      if (isNearRanking) {
+                        return (
+                          <button
+                            onClick={() => briefClem(row)}
+                            disabled={briefingLoading === row.keyword}
+                            className="text-xs px-2 py-1 bg-indigo-600 text-white rounded hover:bg-indigo-700 disabled:opacity-50 transition-colors"
+                          >
+                            {briefingLoading === row.keyword ? '…' : 'Brief Clem'}
+                          </button>
+                        )
+                      }
+                      return null
+                    })()}
                   </td>
                 </tr>
               )
