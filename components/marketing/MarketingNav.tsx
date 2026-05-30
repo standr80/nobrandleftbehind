@@ -15,6 +15,12 @@ export default async function MarketingNav() {
         </span>
       </div>
       <div className="flex items-center gap-3 sm:gap-5">
+        <Link href="/#how-it-works" className="hidden sm:inline text-sm text-slate-500 hover:text-slate-900 transition-colors">
+          How it works
+        </Link>
+        <Link href="/#features" className="hidden sm:inline text-sm text-slate-500 hover:text-slate-900 transition-colors">
+          Features
+        </Link>
         <Link href="/academy" className="text-sm text-slate-500 hover:text-slate-900 transition-colors">
           Academy
         </Link>

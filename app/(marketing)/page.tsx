@@ -62,7 +62,7 @@ export default function LandingPage() {
       <MarketingNav />
 
       {/* Hero */}
-      <section className="flex items-center justify-center px-6 py-20 text-center">
+      <section id="agents" className="flex items-center justify-center px-6 py-20 text-center scroll-mt-20">
         <div className="max-w-3xl w-full">
           <p className="text-sm font-medium text-indigo-600 mb-4 tracking-wide uppercase">
             AI-powered content agents
@@ -170,7 +170,7 @@ export default function LandingPage() {
       </section>
 
       {/* How it works */}
-      <section className="px-6 py-20 bg-slate-50 border-y border-slate-100">
+      <section id="how-it-works" className="px-6 py-20 bg-slate-50 border-y border-slate-100 scroll-mt-20">
         <div className="max-w-5xl mx-auto">
           <div className="text-center mb-14">
             <p className="text-sm font-medium text-indigo-600 mb-3 tracking-wide uppercase">How it works</p>
@@ -209,7 +209,7 @@ export default function LandingPage() {
       </section>
 
       {/* Features */}
-      <section className="px-6 py-20">
+      <section id="features" className="px-6 py-20 scroll-mt-20">
         <div className="max-w-5xl mx-auto">
           <div className="text-center mb-14">
             <p className="text-sm font-medium text-indigo-600 mb-3 tracking-wide uppercase">What you get</p>
