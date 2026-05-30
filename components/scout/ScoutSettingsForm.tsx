@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 
 interface ScoutConfig {
   enabled: boolean | null
+  auto_run_enabled: boolean | null
   briefing_day: string | null
   briefing_time: string | null
   dataforseo_enabled: boolean | null
@@ -23,6 +24,7 @@ const DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'
 
 export default function ScoutSettingsForm({ initialConfig, hasDatasforSeoKey }: Props) {
   const [enabled, setEnabled] = useState(initialConfig?.enabled ?? true)
+  const [autoRunEnabled, setAutoRunEnabled] = useState(initialConfig?.auto_run_enabled ?? false)
   const [briefingDay, setBriefingDay] = useState(initialConfig?.briefing_day ?? 'monday')
   const [briefingTime, setBriefingTime] = useState(initialConfig?.briefing_time ?? '07:00')
   const [dataforseoEnabled, setDataforseoEnabled] = useState(initialConfig?.dataforseo_enabled ?? true)
@@ -45,6 +47,7 @@ export default function ScoutSettingsForm({ initialConfig, hasDatasforSeoKey }: 
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           enabled,
+          auto_run_enabled: autoRunEnabled,
           briefing_day: briefingDay,
           briefing_time: briefingTime,
           dataforseo_enabled: dataforseoEnabled,
@@ -97,9 +100,36 @@ export default function ScoutSettingsForm({ initialConfig, hasDatasforSeoKey }: 
 
       {/* Briefing schedule */}
       <div className="bg-white rounded-lg border border-slate-200 p-5">
-        <h2 className="text-sm font-semibold text-slate-700 mb-4">Briefing schedule</h2>
-        <p className="text-xs text-slate-500 mb-4">
-          Scout generates and emails your weekly briefing on this schedule (UTC).
+        <h2 className="text-sm font-semibold text-slate-700 mb-4">Automatic weekly run</h2>
+
+        <label className="flex items-start gap-3 cursor-pointer mb-4">
+          <button
+            type="button"
+            role="switch"
+            aria-checked={autoRunEnabled}
+            aria-label="Automatic weekly run"
+            onClick={() => setAutoRunEnabled(!autoRunEnabled)}
+            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors shrink-0 mt-0.5 ${
+              autoRunEnabled ? 'bg-indigo-600' : 'bg-slate-200'
+            }`}
+          >
+            <span
+              className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                autoRunEnabled ? 'translate-x-6' : 'translate-x-1'
+              }`}
+            />
+          </button>
+          <span className="text-sm text-slate-700">
+            {autoRunEnabled ? 'Scout runs automatically every week' : 'Automatic weekly run is off'}
+            <span className="block text-xs text-slate-400 mt-0.5">
+              When off, Scout only runs when you click “Run Scout”. Automatic runs use paid
+              competitor-crawling and keyword APIs, so this is off by default.
+            </span>
+          </span>
+        </label>
+
+        <p className="text-xs text-slate-500 mb-4 pt-4 border-t border-slate-100">
+          When automatic runs are on, Scout generates and emails your briefing on this schedule (UTC).
         </p>
         <div className="grid grid-cols-2 gap-4">
           <div>

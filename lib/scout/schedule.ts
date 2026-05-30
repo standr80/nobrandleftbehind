@@ -175,21 +175,42 @@ export async function runScoutForTenant(tenantId: string): Promise<ScoutRunResul
 }
 
 /**
- * Run Scout for ALL tenants with Scout enabled.
+ * Run Scout for all tenants that have opted in to the automatic weekly run.
  * Used by the weekly cron job.
+ *
+ * Cost controls:
+ * - Emergency kill-switch: set SCOUT_AUTO_RUN_DISABLED=true to halt all
+ *   automatic runs immediately (manual /api/scout/run is unaffected).
+ * - Opt-in: only tenants with scout_config.auto_run_enabled = true are run.
+ * - Hard cap: at most SCOUT_MAX_TENANTS_PER_RUN tenants per invocation
+ *   (default 50) so a runaway can't bill unbounded.
  */
 export async function runScoutForAllTenants(): Promise<ScoutRunResult[]> {
+  if (process.env.SCOUT_AUTO_RUN_DISABLED === 'true') {
+    console.warn('[Scout] Automatic run skipped — SCOUT_AUTO_RUN_DISABLED is set')
+    return []
+  }
+
   const db = createAdminClient()
 
   const { data: configs, error } = await db
     .from('scout_config')
     .select('tenant_id')
     .eq('enabled', true)
+    .eq('auto_run_enabled', true)
 
   if (error || !configs?.length) return []
 
+  const cap = Number(process.env.SCOUT_MAX_TENANTS_PER_RUN) || 50
+  const toRun = configs.slice(0, cap)
+  if (configs.length > toRun.length) {
+    console.warn(
+      `[Scout] ${configs.length} tenants opted in but capped at ${cap} this run (SCOUT_MAX_TENANTS_PER_RUN)`,
+    )
+  }
+
   const results: ScoutRunResult[] = []
-  for (const config of configs) {
+  for (const config of toRun) {
     const result = await runScoutForTenant(config.tenant_id)
     results.push(result)
   }

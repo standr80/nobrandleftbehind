@@ -47,7 +47,7 @@ export async function PATCH(request: Request) {
 
   const body = await request.json()
   const allowed = [
-    'enabled', 'briefing_day', 'briefing_time', 'competitor_urls', 'dataforseo_enabled',
+    'enabled', 'auto_run_enabled', 'briefing_day', 'briefing_time', 'competitor_urls', 'dataforseo_enabled',
     'track_competitors', 'track_keywords', 'track_rankings', 'rank_alert_threshold',
   ]
   const updates: Record<string, unknown> = {}
