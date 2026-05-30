@@ -72,11 +72,14 @@ export async function extractTheme(tenantId: string, overrideUrl?: string): Prom
 
   const firecrawl = new FirecrawlApp({ apiKey: process.env.FIRECRAWL_API_KEY! })
 
-  // Single-page scrape with a full-page screenshot. The screenshot lets Claude
-  // *see* the rendered header bar, body background, and logo — far more reliable
-  // than inferring colours from raw HTML.
+  // Single-page scrape with an above-the-fold (viewport) screenshot. The
+  // screenshot lets Claude *see* the rendered header bar, body background, and
+  // logo — far more reliable than inferring colours from raw HTML. We use a
+  // viewport (not full-page) capture: the header/logo/primary palette all sit
+  // above the fold, and a full-page screenshot of a long site can exceed the
+  // vision API's 8000px max dimension.
   const scrapeResult = await firecrawl.scrape(url, {
-    formats: ['html', { type: 'screenshot', fullPage: true }],
+    formats: ['html', { type: 'screenshot', fullPage: false, viewport: { width: 1280, height: 1024 } }],
   })
 
   const rawHtml = (scrapeResult as unknown as { html?: string }).html ?? ''
@@ -90,7 +93,7 @@ export async function extractTheme(tenantId: string, overrideUrl?: string): Prom
     `[clem/extract-theme] Asking Claude to analyse design tokens… (screenshot: ${screenshotUrl ? 'yes' : 'no'}, logo: ${tenant.logo_url ? 'yes' : 'no'})`,
   )
 
-  const instructions = `You are a brand designer. Analyse this business website and extract design tokens so we can build a blog that visually matches the main site. ${screenshotUrl ? 'A full-page SCREENSHOT of the site is provided — rely on it as the source of truth for colours, and use the HTML to confirm fonts, the logo, and navigation links.' : 'Infer colours from the HTML and any inline/linked CSS.'}${tenant.logo_url ? ' The exact LOGO IMAGE that will be placed in the blog header is also provided — study it carefully.' : ''}
+  const instructions = `You are a brand designer. Analyse this business website and extract design tokens so we can build a blog that visually matches the main site. ${screenshotUrl ? 'A SCREENSHOT of the top of the site (header and hero, above the fold) is provided — rely on it as the source of truth for colours, and use the HTML to confirm fonts, the logo, and navigation links.' : 'Infer colours from the HTML and any inline/linked CSS.'}${tenant.logo_url ? ' The exact LOGO IMAGE that will be placed in the blog header is also provided — study it carefully.' : ''}
 
 Return a single valid JSON object — no markdown fences, no extra text:
 {
@@ -129,11 +132,25 @@ ${htmlSample}`
     content.push({ type: 'image', source: { type: 'url', url: tenant.logo_url } })
   }
 
-  const msg = await anthropic.messages.create({
-    model: CLAUDE_MODEL,
-    max_tokens: 2048,
-    messages: [{ role: 'user', content }],
-  })
+  let msg
+  try {
+    msg = await anthropic.messages.create({
+      model: CLAUDE_MODEL,
+      max_tokens: 2048,
+      messages: [{ role: 'user', content }],
+    })
+  } catch (err) {
+    // An oversized/invalid image (e.g. >8000px) hard-fails the request. Fall
+    // back to a text-only extraction so we still produce a usable theme.
+    console.warn(
+      `[clem/extract-theme] Vision request failed, retrying without images: ${err instanceof Error ? err.message : String(err)}`,
+    )
+    msg = await anthropic.messages.create({
+      model: CLAUDE_MODEL,
+      max_tokens: 2048,
+      messages: [{ role: 'user', content: instructions }],
+    })
+  }
 
   const responseText = msg.content[0].type === 'text' ? msg.content[0].text : ''
 
