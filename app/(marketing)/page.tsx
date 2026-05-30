@@ -1,5 +1,29 @@
+import type { Metadata } from 'next'
 import Link from 'next/link'
 import { auth } from '@clerk/nextjs/server'
+
+const SITE_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://nobrandleftbehind.com'
+const TITLE = 'No Brand Left Behind — AI agents that grow your brand'
+const DESCRIPTION =
+  'A suite of intelligent AI agents that handle the time-consuming work of growing your brand — from SEO blog writing to sales prospecting — so you can focus on what matters.'
+
+export const metadata: Metadata = {
+  title: TITLE,
+  description: DESCRIPTION,
+  alternates: { canonical: SITE_URL },
+  openGraph: {
+    type: 'website',
+    url: SITE_URL,
+    siteName: 'No Brand Left Behind',
+    title: TITLE,
+    description: DESCRIPTION,
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: TITLE,
+    description: DESCRIPTION,
+  },
+}
 
 // ── Agent roster ──────────────────────────────────────────────────────────────
 // Drop a 800×800 JPEG into /public/agents/ and set the photo property.
