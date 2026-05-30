@@ -10,6 +10,14 @@ import { repairMojibake } from '@/lib/mdx/repairMojibake'
 
 const TiptapEditor = dynamic(() => import('@/components/editor/TiptapEditor'), { ssr: false })
 
+// Posts publish via an hourly cron, so a scheduled time is only accurate to the
+// top of the hour. Zero out minutes/seconds before persisting.
+function toWholeHourISO(datetime: string): string {
+  const d = new Date(datetime)
+  d.setMinutes(0, 0, 0)
+  return d.toISOString()
+}
+
 // ============================================================
 // MDX frontmatter helpers
 // ============================================================
@@ -258,7 +266,7 @@ export default function PostReviewClient({ post, tenantId: _tenantId, imageGenEn
     if (action === 'approve') {
       payload.autoSchedule = schedule.mode === 'auto'
       if (schedule.mode === 'manual' && schedule.datetime) {
-        payload.scheduledFor = new Date(schedule.datetime).toISOString()
+        payload.scheduledFor = toWholeHourISO(schedule.datetime)
       }
       if (uploadedImageUrl) {
         payload.heroImageUrl = uploadedImageUrl
@@ -620,7 +628,7 @@ export default function PostReviewClient({ post, tenantId: _tenantId, imageGenEn
                       method: 'PATCH',
                       headers: { 'Content-Type': 'application/json' },
                       body: JSON.stringify({
-                        scheduled_for: new Date(schedule.datetime).toISOString(),
+                        scheduled_for: toWholeHourISO(schedule.datetime),
                         auto_scheduled: false,
                       }),
                     })

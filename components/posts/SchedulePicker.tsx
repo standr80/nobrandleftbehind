@@ -5,6 +5,14 @@ interface Props {
   onChange: (value: { mode: 'auto' | 'manual'; datetime: string }) => void
 }
 
+// Posts are published by an hourly cron, so scheduling is only accurate to the
+// top of the hour. Normalise any chosen datetime to HH:00 to match.
+function toWholeHour(datetime: string): string {
+  if (!datetime) return datetime
+  // datetime-local format is "YYYY-MM-DDTHH:mm"
+  return datetime.slice(0, 13) + ':00'
+}
+
 export default function SchedulePicker({ value, onChange }: Props) {
   return (
     <div className="space-y-3">
@@ -40,12 +48,19 @@ export default function SchedulePicker({ value, onChange }: Props) {
       )}
 
       {value.mode === 'manual' && (
-        <input
-          type="datetime-local"
-          value={value.datetime}
-          onChange={(e) => onChange({ ...value, datetime: e.target.value })}
-          className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-900 focus:outline-none focus:border-indigo-500"
-        />
+        <>
+          <input
+            type="datetime-local"
+            step={3600}
+            value={toWholeHour(value.datetime)}
+            onChange={(e) => onChange({ ...value, datetime: toWholeHour(e.target.value) })}
+            className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-900 focus:outline-none focus:border-indigo-500"
+          />
+          <p className="text-xs text-slate-400">
+            Posts are published on the hour, so scheduling is set to whole hours only.
+            A post set for 9:00 will go live during the 9 o&apos;clock run.
+          </p>
+        </>
       )}
     </div>
   )

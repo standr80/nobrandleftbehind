@@ -50,6 +50,7 @@ export async function PATCH(request: Request, { params }: Params) {
     hero_image_alt?: string | null
     scheduled_for?: string | null
     auto_scheduled?: boolean
+    status?: string
   }
 
   const allowedFields: (keyof PostUpdate)[] = [
@@ -60,6 +61,13 @@ export async function PATCH(request: Request, { params }: Params) {
   const updates: PostUpdate = {}
   for (const field of allowedFields) {
     if (field in body) (updates as Record<string, unknown>)[field] = body[field]
+  }
+
+  // Setting a publish date must also move the post into 'scheduled' status,
+  // otherwise the publish cron (which only selects status='scheduled') will
+  // never pick it up. Only applies when a non-null date is provided.
+  if ('scheduled_for' in updates && updates.scheduled_for) {
+    updates.status = 'scheduled'
   }
 
   const { error } = await db.from('blog_posts').update(updates).eq('id', postId)
