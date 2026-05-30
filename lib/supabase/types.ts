@@ -401,7 +401,11 @@ export type Database = {
           gsc_property_id: string | null
           gsc_refresh_token_enc: string | null
           id: string
+          rank_alert_threshold: number | null
           tenant_id: string
+          track_competitors: boolean | null
+          track_keywords: boolean | null
+          track_rankings: boolean | null
           updated_at: string | null
         }
         Insert: {
@@ -420,7 +424,11 @@ export type Database = {
           gsc_property_id?: string | null
           gsc_refresh_token_enc?: string | null
           id?: string
+          rank_alert_threshold?: number | null
           tenant_id: string
+          track_competitors?: boolean | null
+          track_keywords?: boolean | null
+          track_rankings?: boolean | null
           updated_at?: string | null
         }
         Update: {
@@ -439,7 +447,11 @@ export type Database = {
           gsc_property_id?: string | null
           gsc_refresh_token_enc?: string | null
           id?: string
+          rank_alert_threshold?: number | null
           tenant_id?: string
+          track_competitors?: boolean | null
+          track_keywords?: boolean | null
+          track_rankings?: boolean | null
           updated_at?: string | null
         }
         Relationships: []

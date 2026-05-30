@@ -8,6 +8,10 @@ interface ScoutConfig {
   briefing_day: string | null
   briefing_time: string | null
   dataforseo_enabled: boolean | null
+  track_competitors: boolean | null
+  track_keywords: boolean | null
+  track_rankings: boolean | null
+  rank_alert_threshold: number | null
 }
 
 interface Props {
@@ -22,6 +26,10 @@ export default function ScoutSettingsForm({ initialConfig, hasDatasforSeoKey }: 
   const [briefingDay, setBriefingDay] = useState(initialConfig?.briefing_day ?? 'monday')
   const [briefingTime, setBriefingTime] = useState(initialConfig?.briefing_time ?? '07:00')
   const [dataforseoEnabled, setDataforseoEnabled] = useState(initialConfig?.dataforseo_enabled ?? true)
+  const [trackCompetitors, setTrackCompetitors] = useState(initialConfig?.track_competitors ?? true)
+  const [trackKeywords, setTrackKeywords] = useState(initialConfig?.track_keywords ?? true)
+  const [trackRankings, setTrackRankings] = useState(initialConfig?.track_rankings ?? true)
+  const [rankAlertThreshold, setRankAlertThreshold] = useState(initialConfig?.rank_alert_threshold ?? 5)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -40,6 +48,10 @@ export default function ScoutSettingsForm({ initialConfig, hasDatasforSeoKey }: 
           briefing_day: briefingDay,
           briefing_time: briefingTime,
           dataforseo_enabled: dataforseoEnabled,
+          track_competitors: trackCompetitors,
+          track_keywords: trackKeywords,
+          track_rankings: trackRankings,
+          rank_alert_threshold: rankAlertThreshold,
         }),
       })
       if (!res.ok) {
@@ -114,6 +126,67 @@ export default function ScoutSettingsForm({ initialConfig, hasDatasforSeoKey }: 
             />
           </div>
         </div>
+      </div>
+
+      {/* Monitoring features */}
+      <div className="bg-white rounded-lg border border-slate-200 p-5">
+        <h2 className="text-sm font-semibold text-slate-700 mb-4">Monitoring</h2>
+        <p className="text-xs text-slate-500 mb-4">
+          Choose which checks Scout runs each week. Disabling one skips it entirely for this workspace.
+        </p>
+
+        <div className="space-y-1">
+          {[
+            { label: 'Competitor tracking', desc: 'New pages, blog posts, pricing and backlink changes', value: trackCompetitors, set: setTrackCompetitors },
+            { label: 'Keyword opportunities', desc: 'Gaps, featured snippets, PAA and trend detection', value: trackKeywords, set: setTrackKeywords },
+            { label: 'Rank tracking', desc: 'Weekly position snapshots and movement alerts', value: trackRankings, set: setTrackRankings },
+          ].map((feat) => (
+            <div key={feat.label} className="flex items-center justify-between py-2 border-b border-slate-100 last:border-0">
+              <div>
+                <div className="text-sm font-medium text-slate-700">{feat.label}</div>
+                <div className="text-xs text-slate-400">{feat.desc}</div>
+              </div>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={feat.value}
+                aria-label={feat.label}
+                onClick={() => feat.set(!feat.value)}
+                className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors shrink-0 ${
+                  feat.value ? 'bg-indigo-600' : 'bg-slate-200'
+                }`}
+              >
+                <span
+                  className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${
+                    feat.value ? 'translate-x-5' : 'translate-x-1'
+                  }`}
+                />
+              </button>
+            </div>
+          ))}
+        </div>
+
+        {/* Rank alert threshold — only relevant when rank tracking is on */}
+        {trackRankings && (
+          <div className="mt-4 pt-4 border-t border-slate-100">
+            <label className="block text-xs font-medium text-slate-600 mb-1.5">
+              Rank alert threshold
+            </label>
+            <div className="flex items-center gap-3">
+              <input
+                type="number"
+                min={1}
+                max={50}
+                value={rankAlertThreshold}
+                onChange={(e) => setRankAlertThreshold(Math.max(1, Math.min(50, Number(e.target.value) || 1)))}
+                className="w-20 px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              />
+              <span className="text-xs text-slate-500">
+                Alert me when a keyword moves at least this many places (up or down).
+              </span>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Data sources */}

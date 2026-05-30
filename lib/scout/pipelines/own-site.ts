@@ -21,6 +21,7 @@ export interface RankSnapshotSummary {
 export async function captureRankSnapshot(
   tenantId: string,
   domain: string,
+  alertThreshold = 5,
 ): Promise<RankSnapshotSummary> {
   const db = createAdminClient()
   const today = new Date().toISOString().slice(0, 10)
@@ -149,7 +150,7 @@ export async function captureRankSnapshot(
     }
 
     // Big improvement
-    if (change !== null && change > 5) {
+    if (change !== null && change > alertThreshold) {
       alerts.push({
         tenant_id: tenantId,
         alert_type: 'rank_improvement',
@@ -160,7 +161,7 @@ export async function captureRankSnapshot(
     }
 
     // Big decline
-    if (change !== null && change < -5) {
+    if (change !== null && change < -alertThreshold) {
       alerts.push({
         tenant_id: tenantId,
         alert_type: 'rank_decline',

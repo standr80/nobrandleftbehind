@@ -46,7 +46,10 @@ export async function PATCH(request: Request) {
   if (!workspace) return NextResponse.json({ error: 'No workspace' }, { status: 400 })
 
   const body = await request.json()
-  const allowed = ['enabled', 'briefing_day', 'briefing_time', 'competitor_urls', 'dataforseo_enabled']
+  const allowed = [
+    'enabled', 'briefing_day', 'briefing_time', 'competitor_urls', 'dataforseo_enabled',
+    'track_competitors', 'track_keywords', 'track_rankings', 'rank_alert_threshold',
+  ]
   const updates: Record<string, unknown> = {}
   for (const key of allowed) {
     if (key in body) updates[key] = body[key]

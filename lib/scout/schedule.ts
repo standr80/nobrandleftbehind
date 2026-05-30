@@ -66,8 +66,14 @@ export async function runScoutForTenant(tenantId: string): Promise<ScoutRunResul
     expandedKeywordCount: 0,
   }
 
+  // Per-feature toggles (default on when config/column is absent)
+  const trackCompetitors = config?.track_competitors ?? true
+  const trackKeywords = config?.track_keywords ?? true
+  const trackRankings = config?.track_rankings ?? true
+  const rankAlertThreshold = config?.rank_alert_threshold ?? 5
+
   // Pipeline 2 — Competitor intelligence
-  if (competitorUrls.length) {
+  if (trackCompetitors && competitorUrls.length) {
     try {
       competitorResults = await runCompetitorPipeline(tenantId, tenant.domain, competitorUrls)
     } catch (err) {
@@ -76,7 +82,7 @@ export async function runScoutForTenant(tenantId: string): Promise<ScoutRunResul
   }
 
   // Pipeline 3 — Search opportunity (requires DataForSEO)
-  if (process.env.DATAFORSEO_LOGIN && process.env.DATAFORSEO_PASSWORD) {
+  if (trackKeywords && process.env.DATAFORSEO_LOGIN && process.env.DATAFORSEO_PASSWORD) {
     try {
       searchResults = await runSearchOpportunityPipeline(tenantId, tenant.domain, seedKeywords)
       // Post a one-time diagnostic watch alert showing what Pipeline 3 found
@@ -139,9 +145,9 @@ export async function runScoutForTenant(tenantId: string): Promise<ScoutRunResul
 
   // Rank snapshot
   let rankSummary: RankSnapshotSummary | null = null
-  if (process.env.DATAFORSEO_LOGIN && process.env.DATAFORSEO_PASSWORD) {
+  if (trackRankings && process.env.DATAFORSEO_LOGIN && process.env.DATAFORSEO_PASSWORD) {
     try {
-      rankSummary = await captureRankSnapshot(tenantId, tenant.domain)
+      rankSummary = await captureRankSnapshot(tenantId, tenant.domain, rankAlertThreshold)
     } catch (err) {
       console.error(`[Scout] Rank snapshot failed for tenant ${tenantId}:`, err)
     }
