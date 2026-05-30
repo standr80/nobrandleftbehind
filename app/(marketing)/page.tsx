@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
-import { auth } from '@clerk/nextjs/server'
+import MarketingNav from '@/components/marketing/MarketingNav'
+import MarketingFooter from '@/components/marketing/MarketingFooter'
 
 const SITE_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://nobrandleftbehind.com'
 const TITLE = 'No Brand Left Behind — AI agents that grow your brand'
@@ -55,45 +56,13 @@ const agents = [
   },
 ]
 
-export default async function LandingPage() {
-  const { userId } = await auth()
-
+export default function LandingPage() {
   return (
     <main className="min-h-screen bg-white text-slate-900 flex flex-col">
-      {/* Nav */}
-      <nav className="border-b border-slate-100 px-6 py-4 flex items-center justify-between max-w-7xl mx-auto w-full">
-        <div className="flex items-center gap-2">
-          <span className="text-xl font-bold tracking-tight text-slate-900">nobrandleftbehind</span>
-          <span className="text-xs bg-indigo-50 text-indigo-600 border border-indigo-100 px-2 py-0.5 rounded-full font-medium">
-            beta
-          </span>
-        </div>
-        <div className="flex items-center gap-3">
-          {userId ? (
-            <Link
-              href="/dashboard"
-              className="text-sm bg-slate-900 hover:bg-slate-700 text-white px-4 py-2 rounded-lg transition-colors font-medium"
-            >
-              Dashboard →
-            </Link>
-          ) : (
-            <>
-              <Link href="/sign-in" className="text-sm text-slate-500 hover:text-slate-900 transition-colors">
-                Sign in
-              </Link>
-              <Link
-                href="/sign-up"
-                className="text-sm bg-slate-900 hover:bg-slate-700 text-white px-4 py-2 rounded-lg transition-colors font-medium"
-              >
-                Get started
-              </Link>
-            </>
-          )}
-        </div>
-      </nav>
+      <MarketingNav />
 
       {/* Hero */}
-      <section className="flex-1 flex items-center justify-center px-6 py-20 text-center">
+      <section className="flex items-center justify-center px-6 py-20 text-center">
         <div className="max-w-3xl w-full">
           <p className="text-sm font-medium text-indigo-600 mb-4 tracking-wide uppercase">
             AI-powered content agents
@@ -200,16 +169,100 @@ export default async function LandingPage() {
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="border-t border-slate-100 px-6 py-6 max-w-7xl mx-auto w-full flex flex-col sm:flex-row items-center justify-between gap-3">
-        <p className="text-xs text-slate-400">
-          © {new Date().getFullYear()} nobrandleftbehind. All rights reserved.
-        </p>
-        <div className="flex items-center gap-4 text-xs text-slate-400">
-          <Link href="/sign-in" className="hover:text-slate-600 transition-colors">Sign in</Link>
-          <Link href="/sign-up" className="hover:text-slate-600 transition-colors">Sign up</Link>
+      {/* How it works */}
+      <section className="px-6 py-20 bg-slate-50 border-y border-slate-100">
+        <div className="max-w-5xl mx-auto">
+          <div className="text-center mb-14">
+            <p className="text-sm font-medium text-indigo-600 mb-3 tracking-wide uppercase">How it works</p>
+            <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-slate-900">
+              Live in minutes, not months
+            </h2>
+          </div>
+          <div className="grid sm:grid-cols-3 gap-8">
+            {[
+              {
+                step: '1',
+                title: 'Connect your brand',
+                body: 'Tell us your website, voice, and audience. Your agents learn what your brand sounds like and who it speaks to.',
+              },
+              {
+                step: '2',
+                title: 'Agents do the work',
+                body: 'Clem researches keywords and drafts SEO-ready posts. Scout watches competitors and surfaces ranking opportunities — automatically.',
+              },
+              {
+                step: '3',
+                title: 'You stay in control',
+                body: 'Review, edit, and approve from one dashboard. Publish on a schedule you set, or let your agents queue it for you.',
+              },
+            ].map((s) => (
+              <div key={s.step} className="text-center sm:text-left">
+                <div className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-indigo-600 text-white font-bold text-sm mb-4">
+                  {s.step}
+                </div>
+                <h3 className="text-lg font-semibold text-slate-900 mb-2">{s.title}</h3>
+                <p className="text-sm text-slate-500 leading-relaxed">{s.body}</p>
+              </div>
+            ))}
+          </div>
         </div>
-      </footer>
+      </section>
+
+      {/* Features */}
+      <section className="px-6 py-20">
+        <div className="max-w-5xl mx-auto">
+          <div className="text-center mb-14">
+            <p className="text-sm font-medium text-indigo-600 mb-3 tracking-wide uppercase">What you get</p>
+            <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-slate-900">
+              Everything you need to grow with content
+            </h2>
+          </div>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {[
+              { icon: '✍️', title: 'SEO blog writing', body: 'Clem researches search intent and drafts publish-ready posts in your brand voice.' },
+              { icon: '🗓️', title: 'Scheduled publishing', body: 'Queue posts to go live automatically on the days and times you choose.' },
+              { icon: '🔭', title: 'Market intelligence', body: 'Scout monitors competitors for new content, pricing moves, and backlink gains.' },
+              { icon: '📈', title: 'Rank tracking', body: 'Weekly keyword position snapshots with movement alerts and trend sparklines.' },
+              { icon: '💡', title: 'Keyword opportunities', body: 'Surface gaps, featured-snippet targets, and rising trends — then brief Clem in one click.' },
+              { icon: '📬', title: 'Weekly briefings', body: 'A concise, RAG-coded summary of what changed and what to do about it, in your inbox.' },
+            ].map((f) => (
+              <div key={f.title} className="rounded-2xl border border-slate-200 p-6 hover:border-indigo-200 hover:shadow-sm transition-all">
+                <div className="text-2xl mb-3">{f.icon}</div>
+                <h3 className="text-base font-semibold text-slate-900 mb-1.5">{f.title}</h3>
+                <p className="text-sm text-slate-500 leading-relaxed">{f.body}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Contact CTA */}
+      <section className="px-6 py-20 bg-slate-900">
+        <div className="max-w-3xl mx-auto text-center">
+          <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-white mb-4">
+            Ready to put your content on autopilot?
+          </h2>
+          <p className="text-lg text-slate-300 mb-10 max-w-xl mx-auto leading-relaxed">
+            Tell us about your brand and we&apos;ll show you what your agents can do. No commitment — just a conversation.
+          </p>
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+            <a
+              href="mailto:hello@nobrandleftbehind.com?subject=Book a demo"
+              className="w-full sm:w-auto text-sm bg-white hover:bg-slate-100 text-slate-900 px-6 py-3 rounded-lg transition-colors font-medium"
+            >
+              Book a demo
+            </a>
+            <Link
+              href="/sign-up"
+              className="w-full sm:w-auto text-sm bg-indigo-600 hover:bg-indigo-500 text-white px-6 py-3 rounded-lg transition-colors font-medium"
+            >
+              Get started free →
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      <MarketingFooter />
     </main>
   )
 }
