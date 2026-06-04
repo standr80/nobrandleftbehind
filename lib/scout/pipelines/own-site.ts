@@ -22,6 +22,7 @@ export async function captureRankSnapshot(
   tenantId: string,
   domain: string,
   alertThreshold = 5,
+  locationCode = 2826,
 ): Promise<RankSnapshotSummary> {
   const db = createAdminClient()
   const today = new Date().toISOString().slice(0, 10)
@@ -33,7 +34,7 @@ export async function captureRankSnapshot(
       .select('keyword')
       .eq('tenant_id', tenantId)
       .neq('status', 'dismissed'),
-    getDomainRankSnapshot(domain, 2826, 100),
+    getDomainRankSnapshot(domain, locationCode, 100),
   ])
 
   const oppKeywords = new Set((oppsRes.data ?? []).map((o) => o.keyword.toLowerCase()))

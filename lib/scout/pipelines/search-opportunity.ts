@@ -84,6 +84,7 @@ export async function runSearchOpportunityPipeline(
   tenantId: string,
   clientDomain: string,
   seedKeywords: string[],
+  locationCode = 2826,
 ): Promise<SearchOpportunityResult> {
   const db = createAdminClient()
 
@@ -93,7 +94,7 @@ export async function runSearchOpportunityPipeline(
   // ── 3.1 DataForSEO domain rankings to understand where client currently ranks ──
   let clientRankingKeywords: string[] = []
   try {
-    const rankings = await getDomainRankings(clientDomain, 2826, 100)
+    const rankings = await getDomainRankings(clientDomain, locationCode, 100)
     clientRankingKeywords = rankings
       .map((r) => r.keyword)
       .filter((k): k is string => typeof k === 'string' && k.trim().length > 0)
@@ -107,7 +108,7 @@ export async function runSearchOpportunityPipeline(
     try {
       // Use keywords where client ranks 4-20 (near-ranking)
       const nearRankingKeywords = clientRankingKeywords.slice(0, 30)
-      const serpFeatures = await getSerpFeatures(nearRankingKeywords, clientDomain)
+      const serpFeatures = await getSerpFeatures(nearRankingKeywords, clientDomain, locationCode)
       for (const item of serpFeatures) {
         if (
           item.has_featured_snippet &&
@@ -135,7 +136,7 @@ export async function runSearchOpportunityPipeline(
   let expandedKeywords: string[] = seedKeywords
   let expandedKeywordCount = 0
   try {
-    const suggestions = await getKeywordSuggestions(seedKeywords.slice(0, 15))
+    const suggestions = await getKeywordSuggestions(seedKeywords.slice(0, 15), locationCode)
     expandedKeywordCount = suggestions.length
     const suggestedKws = suggestions.map((s) => s.keyword)
     // Merge: original seeds + expanded, deduped
@@ -172,7 +173,7 @@ export async function runSearchOpportunityPipeline(
 
       let freshPAAResults: Record<string, { question: string; serp_position?: number }[]> = {}
       if (uncachedKeywords.length) {
-        const freshSerpData = await getPeopleAlsoAskWithAIOverview(uncachedKeywords)
+        const freshSerpData = await getPeopleAlsoAskWithAIOverview(uncachedKeywords, locationCode)
         rawPAACount = Object.values(freshSerpData).reduce((s, d) => s + d.paaQuestions.length, 0)
         // Reshape to match existing freshPAAResults usage
         freshPAAResults = Object.fromEntries(
@@ -250,7 +251,7 @@ export async function runSearchOpportunityPipeline(
 
   if (trendKeywords.length) {
     try {
-      const trends = await getKeywordTrends(trendKeywords)
+      const trends = await getKeywordTrends(trendKeywords, locationCode)
 
       for (const trend of trends) {
         // Seasonal: clear seasonal pattern with peak 6-10 weeks away

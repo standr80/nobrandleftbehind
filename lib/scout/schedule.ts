@@ -71,11 +71,13 @@ export async function runScoutForTenant(tenantId: string): Promise<ScoutRunResul
   const trackKeywords = config?.track_keywords ?? true
   const trackRankings = config?.track_rankings ?? true
   const rankAlertThreshold = config?.rank_alert_threshold ?? 5
+  // Search location for all DataForSEO calls (default UK / google.co.uk)
+  const locationCode = config?.location_code ?? 2826
 
   // Pipeline 2 — Competitor intelligence
   if (trackCompetitors && competitorUrls.length) {
     try {
-      competitorResults = await runCompetitorPipeline(tenantId, tenant.domain, competitorUrls)
+      competitorResults = await runCompetitorPipeline(tenantId, tenant.domain, competitorUrls, locationCode)
     } catch (err) {
       console.error(`[Scout] Pipeline 2 failed for tenant ${tenantId}:`, err)
     }
@@ -84,7 +86,7 @@ export async function runScoutForTenant(tenantId: string): Promise<ScoutRunResul
   // Pipeline 3 — Search opportunity (requires DataForSEO)
   if (trackKeywords && process.env.DATAFORSEO_LOGIN && process.env.DATAFORSEO_PASSWORD) {
     try {
-      searchResults = await runSearchOpportunityPipeline(tenantId, tenant.domain, seedKeywords)
+      searchResults = await runSearchOpportunityPipeline(tenantId, tenant.domain, seedKeywords, locationCode)
       // Post a one-time diagnostic watch alert showing what Pipeline 3 found
       // (auto-actioned so it doesn't clutter the dashboard after the first run)
       const diagnosticParts = [
@@ -147,7 +149,7 @@ export async function runScoutForTenant(tenantId: string): Promise<ScoutRunResul
   let rankSummary: RankSnapshotSummary | null = null
   if (trackRankings && process.env.DATAFORSEO_LOGIN && process.env.DATAFORSEO_PASSWORD) {
     try {
-      rankSummary = await captureRankSnapshot(tenantId, tenant.domain, rankAlertThreshold)
+      rankSummary = await captureRankSnapshot(tenantId, tenant.domain, rankAlertThreshold, locationCode)
     } catch (err) {
       console.error(`[Scout] Rank snapshot failed for tenant ${tenantId}:`, err)
     }

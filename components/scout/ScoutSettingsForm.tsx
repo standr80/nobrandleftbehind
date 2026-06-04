@@ -13,7 +13,24 @@ interface ScoutConfig {
   track_keywords: boolean | null
   track_rankings: boolean | null
   rank_alert_threshold: number | null
+  location_code: number | null
 }
+
+// Common DataForSEO Google location codes. Full list:
+// https://docs.dataforseo.com/v3/serp/google/locations/
+const LOCATIONS: { code: number; label: string }[] = [
+  { code: 2826, label: 'United Kingdom (google.co.uk)' },
+  { code: 2840, label: 'United States (google.com)' },
+  { code: 2372, label: 'Ireland (google.ie)' },
+  { code: 2036, label: 'Australia (google.com.au)' },
+  { code: 2124, label: 'Canada (google.ca)' },
+  { code: 2554, label: 'New Zealand (google.co.nz)' },
+  { code: 2276, label: 'Germany (google.de)' },
+  { code: 2250, label: 'France (google.fr)' },
+  { code: 2724, label: 'Spain (google.es)' },
+  { code: 2380, label: 'Italy (google.it)' },
+  { code: 2528, label: 'Netherlands (google.nl)' },
+]
 
 interface Props {
   initialConfig: ScoutConfig | null
@@ -32,6 +49,7 @@ export default function ScoutSettingsForm({ initialConfig, hasDatasforSeoKey }: 
   const [trackKeywords, setTrackKeywords] = useState(initialConfig?.track_keywords ?? true)
   const [trackRankings, setTrackRankings] = useState(initialConfig?.track_rankings ?? true)
   const [rankAlertThreshold, setRankAlertThreshold] = useState(initialConfig?.rank_alert_threshold ?? 5)
+  const [locationCode, setLocationCode] = useState(initialConfig?.location_code ?? 2826)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -55,6 +73,7 @@ export default function ScoutSettingsForm({ initialConfig, hasDatasforSeoKey }: 
           track_keywords: trackKeywords,
           track_rankings: trackRankings,
           rank_alert_threshold: rankAlertThreshold,
+          location_code: locationCode,
         }),
       })
       if (!res.ok) {
@@ -156,6 +175,31 @@ export default function ScoutSettingsForm({ initialConfig, hasDatasforSeoKey }: 
             />
           </div>
         </div>
+      </div>
+
+      {/* Search location */}
+      <div className="bg-white rounded-lg border border-slate-200 p-5">
+        <h2 className="text-sm font-semibold text-slate-700 mb-4">Search location</h2>
+        <p className="text-xs text-slate-500 mb-4">
+          The Google region Scout tracks rankings and keyword data against. Choose the country your
+          audience searches from.
+        </p>
+        <select
+          value={locationCode}
+          onChange={(e) => setLocationCode(Number(e.target.value))}
+          className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+        >
+          {LOCATIONS.map((loc) => (
+            <option key={loc.code} value={loc.code}>
+              {loc.label}
+            </option>
+          ))}
+        </select>
+        {!LOCATIONS.some((l) => l.code === locationCode) && (
+          <p className="text-xs text-amber-600 mt-2">
+            Current location code {locationCode} isn&apos;t in the list — saving will keep it unless you pick another.
+          </p>
+        )}
       </div>
 
       {/* Monitoring features */}

@@ -402,6 +402,7 @@ export type Database = {
           gsc_property_id: string | null
           gsc_refresh_token_enc: string | null
           id: string
+          location_code: number | null
           rank_alert_threshold: number | null
           tenant_id: string
           track_competitors: boolean | null
@@ -426,6 +427,7 @@ export type Database = {
           gsc_property_id?: string | null
           gsc_refresh_token_enc?: string | null
           id?: string
+          location_code?: number | null
           rank_alert_threshold?: number | null
           tenant_id: string
           track_competitors?: boolean | null
@@ -450,6 +452,7 @@ export type Database = {
           gsc_property_id?: string | null
           gsc_refresh_token_enc?: string | null
           id?: string
+          location_code?: number | null
           rank_alert_threshold?: number | null
           tenant_id?: string
           track_competitors?: boolean | null

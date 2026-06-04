@@ -223,6 +223,7 @@ export async function runCompetitorPipeline(
   tenantId: string,
   clientDomain: string,
   competitorUrls: string[],
+  locationCode = 2826,
 ): Promise<CompetitorResult[]> {
   const db = createAdminClient()
   const today = new Date().toISOString().slice(0, 10)
@@ -231,7 +232,7 @@ export async function runCompetitorPipeline(
   // Fetch keyword gaps across all competitors in one DataForSEO call
   let allKeywordGaps: DfsGapItem[] = []
   try {
-    allKeywordGaps = await getKeywordGap(clientDomain, competitorUrls)
+    allKeywordGaps = await getKeywordGap(clientDomain, competitorUrls, locationCode)
   } catch (err) {
     console.error('[Scout] DataForSEO keyword gap error:', err)
   }
