@@ -1,4 +1,3 @@
--- ============================================================
 -- Migration 011: RLS policies for Scout tables + Data API grants
 --
 -- 1. Adds tenant-scoped SELECT policies for all Scout tables,
@@ -118,3 +117,4 @@ grant select on scout_alerts                to authenticated;
 grant select on scout_paa_cache             to authenticated;
 grant select on workspace_invitations       to authenticated;
 grant select on workspace_quotas            to authenticated;
+-- ============================================================

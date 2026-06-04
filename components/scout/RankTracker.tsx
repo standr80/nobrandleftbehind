@@ -95,23 +95,44 @@ export default function RankTracker({ tenantId }: { tenantId: string }) {
       </div>
     )
 
+  const rankingCount = rows.filter((r) => r.position !== null).length
+  const hasRankingData = rankingCount > 0
+
   return (
     <div className="space-y-4">
-      {summary && (
-        <div className="grid grid-cols-3 gap-3">
-          <div className="bg-green-50 border border-green-100 rounded-lg p-3 text-center">
-            <div className="text-xl font-bold text-green-700">↑ {summary.improved}</div>
-            <div className="text-xs text-green-600">improved</div>
+      {hasRankingData ? (
+        summary && (
+          <div className="grid grid-cols-3 gap-3">
+            <div className="bg-green-50 border border-green-100 rounded-lg p-3 text-center">
+              <div className="text-xl font-bold text-green-700">↑ {summary.improved}</div>
+              <div className="text-xs text-green-600">improved</div>
+            </div>
+            <div className="bg-red-50 border border-red-100 rounded-lg p-3 text-center">
+              <div className="text-xl font-bold text-red-600">↓ {summary.declined}</div>
+              <div className="text-xs text-red-500">declined</div>
+            </div>
+            <div className="bg-indigo-50 border border-indigo-100 rounded-lg p-3 text-center">
+              <div className="text-xl font-bold text-indigo-700">★ {summary.enteredTop10}</div>
+              <div className="text-xs text-indigo-600">new top 10</div>
+            </div>
           </div>
-          <div className="bg-red-50 border border-red-100 rounded-lg p-3 text-center">
-            <div className="text-xl font-bold text-red-600">↓ {summary.declined}</div>
-            <div className="text-xs text-red-500">declined</div>
-          </div>
-          <div className="bg-indigo-50 border border-indigo-100 rounded-lg p-3 text-center">
-            <div className="text-xl font-bold text-indigo-700">★ {summary.enteredTop10}</div>
-            <div className="text-xs text-indigo-600">new top 10</div>
-          </div>
+        )
+      ) : (
+        <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+          <p className="text-sm font-medium text-amber-800">No ranking positions found yet</p>
+          <p className="text-sm text-amber-700 mt-1 leading-relaxed">
+            We couldn&apos;t find any keywords this domain currently ranks for in the top 100.
+            This is normal for newer or lower-traffic sites — positions will appear here as the
+            site builds search visibility. The keywords below are opportunities Scout is tracking
+            for you to target.
+          </p>
         </div>
+      )}
+
+      {hasRankingData && (
+        <p className="text-xs text-slate-400">
+          Tracking {rows.length} keyword{rows.length !== 1 ? 's' : ''} · {rankingCount} ranking in the top 100
+        </p>
       )}
 
       <div className="bg-white border border-slate-200 rounded-lg overflow-hidden">
