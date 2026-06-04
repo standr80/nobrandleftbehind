@@ -54,7 +54,23 @@ export async function GET(request: Request) {
     .order('position', { ascending: true, nullsFirst: false })
     .limit(100)
 
-  const validRows = rows ?? []
+  // Brand terms for branded/non-branded classification. Explicit config terms,
+  // falling back to significant words from the tenant name.
+  const { data: cfg } = await db
+    .from('scout_config')
+    .select('brand_terms')
+    .eq('tenant_id', tenantId)
+    .maybeSingle()
+  const nameTerms = (workspace.tenant?.name ?? '')
+    .toLowerCase()
+    .split(/\s+/)
+    .filter((w) => w.length > 2)
+  const brandTerms = Array.from(
+    new Set([...((cfg?.brand_terms as string[] | null) ?? []).map((t) => t.toLowerCase()), ...nameTerms]),
+  ).filter(Boolean)
+  const isBranded = (kw: string) => brandTerms.some((t) => kw.toLowerCase().includes(t))
+
+  const validRows = (rows ?? []).map((r) => ({ ...r, branded: isBranded(r.keyword) }))
 
   // Visibility metrics over keywords that actually rank (position present).
   const ranking = validRows.filter((r) => r.position !== null) as Array<

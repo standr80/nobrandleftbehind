@@ -15,6 +15,7 @@ interface ScoutConfig {
   rank_alert_threshold: number | null
   location_code: number | null
   rank_location_codes: number[] | null
+  brand_terms: string[] | null
 }
 
 // Common DataForSEO Google location codes. Full list:
@@ -54,6 +55,7 @@ export default function ScoutSettingsForm({ initialConfig, hasDatasforSeoKey }: 
   const [rankLocations, setRankLocations] = useState<number[]>(
     initialConfig?.rank_location_codes ?? [initialConfig?.location_code ?? 2826],
   )
+  const [brandTerms, setBrandTerms] = useState((initialConfig?.brand_terms ?? []).join(', '))
 
   // The primary location is always tracked for rankings.
   const rankSet = new Set<number>([locationCode, ...rankLocations])
@@ -91,6 +93,7 @@ export default function ScoutSettingsForm({ initialConfig, hasDatasforSeoKey }: 
           rank_alert_threshold: rankAlertThreshold,
           location_code: locationCode,
           rank_location_codes: Array.from(new Set([locationCode, ...rankLocations])),
+          brand_terms: brandTerms.split(',').map((t) => t.trim()).filter(Boolean),
         }),
       })
       if (!res.ok) {
@@ -251,6 +254,21 @@ export default function ScoutSettingsForm({ initialConfig, hasDatasforSeoKey }: 
               )
             })}
           </div>
+        </div>
+
+        {/* Brand terms */}
+        <div className="mt-5 pt-4 border-t border-slate-100">
+          <label className="block text-xs font-medium text-slate-600 mb-1.5">Brand terms</label>
+          <p className="text-xs text-slate-400 mb-2">
+            Comma-separated. Keywords containing any of these are tagged “branded” so you can filter
+            them out of rank reports. Your workspace name is always included automatically.
+          </p>
+          <input
+            value={brandTerms}
+            onChange={(e) => setBrandTerms(e.target.value)}
+            placeholder="e.g. acme, acme prints, acmeshop"
+            className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          />
         </div>
       </div>
 

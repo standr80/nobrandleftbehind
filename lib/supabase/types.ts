@@ -387,6 +387,7 @@ export type Database = {
       scout_config: {
         Row: {
           auto_run_enabled: boolean | null
+          brand_terms: string[] | null
           briefing_day: string | null
           briefing_time: string | null
           competitor_urls: string[] | null
@@ -413,6 +414,7 @@ export type Database = {
         }
         Insert: {
           auto_run_enabled?: boolean | null
+          brand_terms?: string[] | null
           briefing_day?: string | null
           briefing_time?: string | null
           competitor_urls?: string[] | null
@@ -439,6 +441,7 @@ export type Database = {
         }
         Update: {
           auto_run_enabled?: boolean | null
+          brand_terms?: string[] | null
           briefing_day?: string | null
           briefing_time?: string | null
           competitor_urls?: string[] | null

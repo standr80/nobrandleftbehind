@@ -20,7 +20,10 @@ interface RankRow {
   url: string | null
   search_volume: number | null
   snapshot_date: string
+  branded?: boolean
 }
+
+type BrandFilter = 'all' | 'nonbranded' | 'branded'
 
 interface Summary {
   improved: number
@@ -42,6 +45,7 @@ export default function RankTracker({ tenantId }: { tenantId: string }) {
   const [loading, setLoading] = useState(true)
   const [locations, setLocations] = useState<number[]>([])
   const [location, setLocation] = useState<number | null>(null)
+  const [brandFilter, setBrandFilter] = useState<BrandFilter>('all')
   const [briefingLoading, setBriefingLoading] = useState<string | null>(null)
   const [briefResult, setBriefResult] = useState<
     Record<string, { ok: boolean; alreadyExists?: boolean; error?: string }>
@@ -139,10 +143,40 @@ export default function RankTracker({ tenantId }: { tenantId: string }) {
 
   const rankingCount = rows.filter((r) => r.position !== null).length
   const hasRankingData = rankingCount > 0
+  const hasBrandData = rows.some((r) => r.branded)
+  const displayRows =
+    brandFilter === 'all'
+      ? rows
+      : rows.filter((r) => (brandFilter === 'branded' ? r.branded : !r.branded))
+
+  const brandToggle = hasBrandData && (
+    <div className="flex items-center gap-1 bg-slate-100 rounded-lg p-1 w-fit">
+      {([
+        ['all', 'All'],
+        ['nonbranded', 'Non-branded'],
+        ['branded', 'Branded'],
+      ] as [BrandFilter, string][]).map(([key, label]) => (
+        <button
+          key={key}
+          onClick={() => setBrandFilter(key)}
+          className={`text-xs px-3 py-1.5 rounded-md font-medium transition-colors ${
+            brandFilter === key ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-800'
+          }`}
+        >
+          {label}
+        </button>
+      ))}
+    </div>
+  )
 
   return (
     <div className="space-y-4">
-      {locationToggle}
+      {(locationToggle || brandToggle) && (
+        <div className="flex flex-wrap items-center gap-3">
+          {locationToggle}
+          {brandToggle}
+        </div>
+      )}
       {hasRankingData ? (
         summary && (
           <div className="space-y-3">
@@ -221,7 +255,7 @@ export default function RankTracker({ tenantId }: { tenantId: string }) {
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
-            {rows.map((row) => {
+            {displayRows.map((row) => {
               const isTop10 = row.position !== null && row.position <= 10
               const isNewTop10 =
                 isTop10 && (row.previous_position === null || row.previous_position > 10)
