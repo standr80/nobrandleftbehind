@@ -6,6 +6,12 @@ import RankSparkline from './RankSparkline'
 
 type RankHistory = Record<string, { date: string; position: number | null }[]>
 
+const LOCATION_LABELS: Record<number, string> = {
+  2826: 'UK', 2840: 'US', 2372: 'Ireland', 2036: 'Australia', 2124: 'Canada',
+  2554: 'New Zealand', 2276: 'Germany', 2250: 'France', 2724: 'Spain', 2380: 'Italy', 2528: 'Netherlands',
+}
+const locationLabel = (code: number) => LOCATION_LABELS[code] ?? `Loc ${code}`
+
 interface RankRow {
   keyword: string
   position: number | null
@@ -28,6 +34,8 @@ export default function RankTracker({ tenantId }: { tenantId: string }) {
   const [summary, setSummary] = useState<Summary | null>(null)
   const [history, setHistory] = useState<RankHistory>({})
   const [loading, setLoading] = useState(true)
+  const [locations, setLocations] = useState<number[]>([])
+  const [location, setLocation] = useState<number | null>(null)
   const [briefingLoading, setBriefingLoading] = useState<string | null>(null)
   const [briefResult, setBriefResult] = useState<
     Record<string, { ok: boolean; alreadyExists?: boolean; error?: string }>
@@ -38,15 +46,19 @@ export default function RankTracker({ tenantId }: { tenantId: string }) {
   void tenantId
 
   useEffect(() => {
-    fetch('/api/scout/ranks')
+    setLoading(true)
+    const qs = location !== null ? `?location=${location}` : ''
+    fetch(`/api/scout/ranks${qs}`)
       .then((r) => r.json())
       .then((d) => {
         setRows(d.rows ?? [])
         setSummary(d.summary ?? null)
         setHistory(d.history ?? {})
+        setLocations(d.locations ?? [])
+        if (location === null && d.location != null) setLocation(d.location)
       })
       .finally(() => setLoading(false))
-  }, [])
+  }, [location])
 
   async function briefClem(row: RankRow) {
     setBriefingLoading(row.keyword)
@@ -88,11 +100,34 @@ export default function RankTracker({ tenantId }: { tenantId: string }) {
     return <span className="text-red-500 font-medium">↓ {Math.abs(change)}</span>
   }
 
-  if (loading) return <div className="text-sm text-slate-400">Loading rank data…</div>
+  const locationToggle = locations.length > 1 && location !== null && (
+    <div className="flex items-center gap-1 bg-slate-100 rounded-lg p-1 w-fit">
+      {locations.map((code) => (
+        <button
+          key={code}
+          onClick={() => setLocation(code)}
+          className={`text-xs px-3 py-1.5 rounded-md font-medium transition-colors ${
+            code === location ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-800'
+          }`}
+        >
+          {locationLabel(code)}
+        </button>
+      ))}
+    </div>
+  )
+
+  // Only block the whole panel on the very first load.
+  if (loading && location === null)
+    return <div className="text-sm text-slate-400">Loading rank data…</div>
+
   if (!rows.length)
     return (
-      <div className="text-sm text-slate-400">
-        No rank history yet. Run Scout to capture a snapshot.
+      <div className="space-y-4">
+        {locationToggle}
+        <div className="text-sm text-slate-400">
+          No rank history yet for {location !== null ? locationLabel(location) : 'this workspace'}.
+          Run Scout to capture a snapshot.
+        </div>
       </div>
     )
 
@@ -101,6 +136,7 @@ export default function RankTracker({ tenantId }: { tenantId: string }) {
 
   return (
     <div className="space-y-4">
+      {locationToggle}
       {hasRankingData ? (
         summary && (
           <div className="grid grid-cols-3 gap-3">

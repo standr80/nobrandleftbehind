@@ -14,6 +14,7 @@ interface ScoutConfig {
   track_rankings: boolean | null
   rank_alert_threshold: number | null
   location_code: number | null
+  rank_location_codes: number[] | null
 }
 
 // Common DataForSEO Google location codes. Full list:
@@ -50,6 +51,21 @@ export default function ScoutSettingsForm({ initialConfig, hasDatasforSeoKey }: 
   const [trackRankings, setTrackRankings] = useState(initialConfig?.track_rankings ?? true)
   const [rankAlertThreshold, setRankAlertThreshold] = useState(initialConfig?.rank_alert_threshold ?? 5)
   const [locationCode, setLocationCode] = useState(initialConfig?.location_code ?? 2826)
+  const [rankLocations, setRankLocations] = useState<number[]>(
+    initialConfig?.rank_location_codes ?? [initialConfig?.location_code ?? 2826],
+  )
+
+  // The primary location is always tracked for rankings.
+  const rankSet = new Set<number>([locationCode, ...rankLocations])
+  function toggleRankLocation(code: number) {
+    setRankLocations((prev) => {
+      const next = new Set(prev)
+      if (next.has(code)) next.delete(code)
+      else next.add(code)
+      next.add(locationCode) // never drop the primary
+      return Array.from(next)
+    })
+  }
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -74,6 +90,7 @@ export default function ScoutSettingsForm({ initialConfig, hasDatasforSeoKey }: 
           track_rankings: trackRankings,
           rank_alert_threshold: rankAlertThreshold,
           location_code: locationCode,
+          rank_location_codes: Array.from(new Set([locationCode, ...rankLocations])),
         }),
       })
       if (!res.ok) {
@@ -200,6 +217,41 @@ export default function ScoutSettingsForm({ initialConfig, hasDatasforSeoKey }: 
             Current location code {locationCode} isn&apos;t in the list — saving will keep it unless you pick another.
           </p>
         )}
+
+        {/* Additional rank-tracking markets */}
+        <div className="mt-5 pt-4 border-t border-slate-100">
+          <label className="block text-xs font-medium text-slate-600 mb-1.5">
+            Track rankings in additional markets
+          </label>
+          <p className="text-xs text-slate-400 mb-3">
+            Capture rank snapshots in more than one country. Keyword research still uses the primary
+            location above. Each extra market adds a small amount of DataForSEO usage per run.
+          </p>
+          <div className="grid grid-cols-2 gap-2">
+            {LOCATIONS.map((loc) => {
+              const isPrimary = loc.code === locationCode
+              const checked = rankSet.has(loc.code)
+              return (
+                <label
+                  key={loc.code}
+                  className={`flex items-center gap-2 text-sm rounded-lg border px-3 py-2 cursor-pointer transition-colors ${
+                    checked ? 'border-indigo-300 bg-indigo-50' : 'border-slate-200 hover:border-slate-300'
+                  } ${isPrimary ? 'opacity-70 cursor-not-allowed' : ''}`}
+                >
+                  <input
+                    type="checkbox"
+                    checked={checked}
+                    disabled={isPrimary}
+                    onChange={() => toggleRankLocation(loc.code)}
+                    className="accent-indigo-600"
+                  />
+                  <span className="text-slate-700">{loc.label.replace(/ \(.*\)$/, '')}</span>
+                  {isPrimary && <span className="text-xs text-slate-400 ml-auto">primary</span>}
+                </label>
+              )
+            })}
+          </div>
+        </div>
       </div>
 
       {/* Monitoring features */}
