@@ -77,6 +77,7 @@ export async function runScoutForTenant(tenantId: string): Promise<ScoutRunResul
   const rankLocationCodes = Array.from(
     new Set<number>([locationCode, ...((config?.rank_location_codes as number[] | null) ?? [2826])]),
   )
+  const rankDevices = (config?.rank_devices as string[] | null) ?? ['desktop']
 
   // Pipeline 2 — Competitor intelligence
   if (trackCompetitors && competitorUrls.length) {
@@ -153,7 +154,7 @@ export async function runScoutForTenant(tenantId: string): Promise<ScoutRunResul
   let rankSummary: RankSnapshotSummary | null = null
   if (trackRankings && process.env.DATAFORSEO_LOGIN && process.env.DATAFORSEO_PASSWORD) {
     try {
-      rankSummary = await captureRankSnapshot(tenantId, tenant.domain, rankAlertThreshold, rankLocationCodes)
+      rankSummary = await captureRankSnapshot(tenantId, tenant.domain, rankAlertThreshold, rankLocationCodes, rankDevices)
     } catch (err) {
       console.error(`[Scout] Rank snapshot failed for tenant ${tenantId}:`, err)
     }

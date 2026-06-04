@@ -405,6 +405,7 @@ export type Database = {
           id: string
           location_code: number | null
           rank_alert_threshold: number | null
+          rank_devices: string[] | null
           rank_location_codes: number[] | null
           tenant_id: string
           track_competitors: boolean | null
@@ -432,6 +433,7 @@ export type Database = {
           id?: string
           location_code?: number | null
           rank_alert_threshold?: number | null
+          rank_devices?: string[] | null
           rank_location_codes?: number[] | null
           tenant_id: string
           track_competitors?: boolean | null
@@ -459,6 +461,7 @@ export type Database = {
           id?: string
           location_code?: number | null
           rank_alert_threshold?: number | null
+          rank_devices?: string[] | null
           rank_location_codes?: number[] | null
           tenant_id?: string
           track_competitors?: boolean | null
@@ -528,6 +531,7 @@ export type Database = {
           tenant_id: string
           keyword: string
           location_code: number
+          device: string
           snapshot_date: string
           position: number | null
           previous_position: number | null
@@ -542,6 +546,7 @@ export type Database = {
           tenant_id: string
           keyword: string
           location_code?: number
+          device?: string
           snapshot_date: string
           position?: number | null
           previous_position?: number | null
@@ -556,6 +561,7 @@ export type Database = {
           tenant_id?: string
           keyword?: string
           location_code?: number
+          device?: string
           snapshot_date?: string
           position?: number | null
           previous_position?: number | null

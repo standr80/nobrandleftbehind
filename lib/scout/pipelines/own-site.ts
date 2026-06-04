@@ -46,6 +46,7 @@ export async function captureRankSnapshot(
   domain: string,
   alertThreshold = 5,
   locationCodes: number | number[] = 2826,
+  devices: string[] = ['desktop'],
 ): Promise<RankSnapshotSummary> {
   const db = createAdminClient()
   const today = new Date().toISOString().slice(0, 10)
@@ -54,7 +55,8 @@ export async function captureRankSnapshot(
     new Set((Array.isArray(locationCodes) ? locationCodes : [locationCodes]).filter((c) => Number.isFinite(c))),
   )
   if (!locations.length) locations.push(2826)
-  const multi = locations.length > 1
+  const deviceList = Array.from(new Set(devices.length ? devices : ['desktop']))
+  const multi = locations.length > 1 || deviceList.length > 1
 
   // Shared, location-independent keyword set: tracked opportunities, with
   // search volume so we can prioritise which to spend a live SERP check on.
@@ -70,26 +72,29 @@ export async function captureRankSnapshot(
   let maxTracked = 0
 
   for (const locationCode of locations) {
-    const locSummary = await captureForLocation(
-      db,
-      tenantId,
-      domain,
-      locationCode,
-      alertThreshold,
-      oppVolume,
-      today,
-      multi,
-    )
-    aggregate.improved += locSummary.improved
-    aggregate.declined += locSummary.declined
-    aggregate.enteredTop10 += locSummary.enteredTop10
-    aggregate.droppedFromTop10 += locSummary.droppedFromTop10
-    maxTracked = Math.max(maxTracked, locSummary.tracked)
-    if (
-      locSummary.biggestMover &&
-      (!aggregate.biggestMover || locSummary.biggestMover.change > aggregate.biggestMover.change)
-    ) {
-      aggregate.biggestMover = locSummary.biggestMover
+    for (const device of deviceList) {
+      const locSummary = await captureForLocation(
+        db,
+        tenantId,
+        domain,
+        locationCode,
+        device,
+        alertThreshold,
+        oppVolume,
+        today,
+        multi,
+      )
+      aggregate.improved += locSummary.improved
+      aggregate.declined += locSummary.declined
+      aggregate.enteredTop10 += locSummary.enteredTop10
+      aggregate.droppedFromTop10 += locSummary.droppedFromTop10
+      maxTracked = Math.max(maxTracked, locSummary.tracked)
+      if (
+        locSummary.biggestMover &&
+        (!aggregate.biggestMover || locSummary.biggestMover.change > aggregate.biggestMover.change)
+      ) {
+        aggregate.biggestMover = locSummary.biggestMover
+      }
     }
   }
 
@@ -102,16 +107,21 @@ async function captureForLocation(
   tenantId: string,
   domain: string,
   locationCode: number,
+  device: string,
   alertThreshold: number,
   oppVolume: Map<string, number>,
   today: string,
   multi: boolean,
 ): Promise<RankSnapshotSummary> {
-  const locTag = multi ? ` (${LOCATION_LABELS[locationCode] ?? locationCode})` : ''
+  const isDesktop = device === 'desktop'
+  const locTag = multi
+    ? ` (${LOCATION_LABELS[locationCode] ?? locationCode}${isDesktop ? '' : ` ${device}`})`
+    : ''
   const oppKeywords = new Set(oppVolume.keys())
 
-  // Broad, cheap coverage: every keyword the domain already ranks for (1 call).
-  const rankingsLive = await getDomainRankSnapshot(domain, locationCode, 100)
+  // Broad, cheap coverage from Labs — desktop only (Labs is desktop-oriented).
+  // Non-desktop devices rely on the live SERP checks below.
+  const rankingsLive = isDesktop ? await getDomainRankSnapshot(domain, locationCode, 100) : []
   const liveByKeyword = new Map(rankingsLive.map((r) => [r.keyword.toLowerCase(), r]))
 
   const allKeywords = new Set<string>([
@@ -130,7 +140,7 @@ async function captureForLocation(
     .slice(0, cap)
   if (missing.length) {
     try {
-      const liveRanks = await getLiveDomainRankings(missing, domain, locationCode, 'desktop')
+      const liveRanks = await getLiveDomainRankings(missing, domain, locationCode, device as 'desktop' | 'mobile')
       for (const [kw, item] of liveRanks) {
         liveByKeyword.set(kw, {
           keyword: kw,
@@ -144,12 +154,13 @@ async function captureForLocation(
     }
   }
 
-  // Previous snapshots for THIS location only.
+  // Previous snapshots for THIS location and device only.
   const { data: prevSnapshots } = await db
     .from('scout_rank_history')
     .select('keyword, position, snapshot_date')
     .eq('tenant_id', tenantId)
     .eq('location_code', locationCode)
+    .eq('device', device)
     .in('keyword', keywords)
     .order('snapshot_date', { ascending: false })
 
@@ -162,6 +173,7 @@ async function captureForLocation(
     tenant_id: string
     keyword: string
     location_code: number
+    device: string
     snapshot_date: string
     position: number | null
     previous_position: number | null
@@ -184,6 +196,7 @@ async function captureForLocation(
       tenant_id: tenantId,
       keyword: kw,
       location_code: locationCode,
+      device,
       snapshot_date: today,
       position: currentPos,
       previous_position: prevPos,
@@ -250,7 +263,7 @@ async function captureForLocation(
   if (inserts.length) {
     await db
       .from('scout_rank_history')
-      .upsert(inserts, { onConflict: 'tenant_id,keyword,snapshot_date,location_code', ignoreDuplicates: true })
+      .upsert(inserts, { onConflict: 'tenant_id,keyword,snapshot_date,location_code,device', ignoreDuplicates: true })
   }
 
   for (const alert of alerts) {

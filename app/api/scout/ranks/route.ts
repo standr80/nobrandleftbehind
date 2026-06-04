@@ -13,36 +13,48 @@ export async function GET(request: Request) {
   const db = createAdminClient()
   const tenantId = workspace.tenantId
 
-  // Which locations have rank data? Drives the UI's market toggle.
-  const { data: locRows } = await db
+  // Which locations / devices have rank data? Drives the UI toggles.
+  const { data: dimRows } = await db
     .from('scout_rank_history')
-    .select('location_code')
+    .select('location_code, device')
     .eq('tenant_id', tenantId)
-  const locations = Array.from(new Set((locRows ?? []).map((r) => r.location_code))).sort(
+  const locations = Array.from(new Set((dimRows ?? []).map((r) => r.location_code))).sort(
     (a, b) => a - b,
   )
+  const devices = Array.from(new Set((dimRows ?? []).map((r) => r.device ?? 'desktop')))
 
   if (!locations.length) {
-    return NextResponse.json({ rows: [], summary: null, history: {}, locations: [], location: null })
+    return NextResponse.json({
+      rows: [], summary: null, history: {}, locations: [], location: null, devices: [], device: null,
+    })
   }
 
+  const params = new URL(request.url).searchParams
   // Selected location: requested ?location=, else default (UK if present, else first).
-  const requested = Number(new URL(request.url).searchParams.get('location'))
+  const requested = Number(params.get('location'))
   const location =
     locations.includes(requested) ? requested : locations.includes(2826) ? 2826 : locations[0]
+  // Selected device: requested ?device=, else desktop if present, else first.
+  const reqDevice = params.get('device') ?? ''
+  const device = devices.includes(reqDevice)
+    ? reqDevice
+    : devices.includes('desktop')
+      ? 'desktop'
+      : devices[0]
 
-  // Most recent snapshot date FOR THIS LOCATION.
+  // Most recent snapshot date FOR THIS LOCATION + DEVICE.
   const { data: dates } = await db
     .from('scout_rank_history')
     .select('snapshot_date')
     .eq('tenant_id', tenantId)
     .eq('location_code', location)
+    .eq('device', device)
     .order('snapshot_date', { ascending: false })
     .limit(1)
 
   const latestDate = dates?.[0]?.snapshot_date
   if (!latestDate) {
-    return NextResponse.json({ rows: [], summary: null, history: {}, locations, location })
+    return NextResponse.json({ rows: [], summary: null, history: {}, locations, location, devices, device })
   }
 
   const { data: rows } = await db
@@ -50,6 +62,7 @@ export async function GET(request: Request) {
     .select('keyword, position, previous_position, position_change, url, search_volume, snapshot_date')
     .eq('tenant_id', tenantId)
     .eq('location_code', location)
+    .eq('device', device)
     .eq('snapshot_date', latestDate)
     .order('position', { ascending: true, nullsFirst: false })
     .limit(100)
@@ -120,6 +133,7 @@ export async function GET(request: Request) {
     .select('snapshot_date')
     .eq('tenant_id', tenantId)
     .eq('location_code', location)
+    .eq('device', device)
     .order('snapshot_date', { ascending: false })
 
   const recentDates = Array.from(new Set((distinctDates ?? []).map((d) => d.snapshot_date)))
@@ -133,6 +147,7 @@ export async function GET(request: Request) {
       .select('keyword, position, snapshot_date')
       .eq('tenant_id', tenantId)
       .eq('location_code', location)
+      .eq('device', device)
       .in('snapshot_date', recentDates)
 
     for (const r of histRows ?? []) {
@@ -143,5 +158,5 @@ export async function GET(request: Request) {
     }
   }
 
-  return NextResponse.json({ rows: validRows, summary, history, locations, location })
+  return NextResponse.json({ rows: validRows, summary, history, locations, location, devices, device })
 }

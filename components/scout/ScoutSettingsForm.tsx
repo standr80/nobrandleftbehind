@@ -16,6 +16,7 @@ interface ScoutConfig {
   location_code: number | null
   rank_location_codes: number[] | null
   brand_terms: string[] | null
+  rank_devices: string[] | null
 }
 
 // Common DataForSEO Google location codes. Full list:
@@ -56,6 +57,17 @@ export default function ScoutSettingsForm({ initialConfig, hasDatasforSeoKey }: 
     initialConfig?.rank_location_codes ?? [initialConfig?.location_code ?? 2826],
   )
   const [brandTerms, setBrandTerms] = useState((initialConfig?.brand_terms ?? []).join(', '))
+  const [rankDevices, setRankDevices] = useState<string[]>(initialConfig?.rank_devices ?? ['desktop'])
+
+  function toggleDevice(d: string) {
+    setRankDevices((prev) => {
+      const next = new Set(prev)
+      if (next.has(d)) next.delete(d)
+      else next.add(d)
+      if (!next.size) next.add('desktop') // always keep at least one
+      return Array.from(next)
+    })
+  }
 
   // The primary location is always tracked for rankings.
   const rankSet = new Set<number>([locationCode, ...rankLocations])
@@ -94,6 +106,7 @@ export default function ScoutSettingsForm({ initialConfig, hasDatasforSeoKey }: 
           location_code: locationCode,
           rank_location_codes: Array.from(new Set([locationCode, ...rankLocations])),
           brand_terms: brandTerms.split(',').map((t) => t.trim()).filter(Boolean),
+          rank_devices: rankDevices.length ? rankDevices : ['desktop'],
         }),
       })
       if (!res.ok) {
@@ -250,6 +263,39 @@ export default function ScoutSettingsForm({ initialConfig, hasDatasforSeoKey }: 
                   />
                   <span className="text-slate-700">{loc.label.replace(/ \(.*\)$/, '')}</span>
                   {isPrimary && <span className="text-xs text-slate-400 ml-auto">primary</span>}
+                </label>
+              )
+            })}
+          </div>
+        </div>
+
+        {/* Devices */}
+        <div className="mt-5 pt-4 border-t border-slate-100">
+          <label className="block text-xs font-medium text-slate-600 mb-1.5">Devices</label>
+          <p className="text-xs text-slate-400 mb-3">
+            Track desktop and/or mobile rankings. Mobile rankings are checked via live SERP for your
+            tracked keywords, so it adds DataForSEO usage per run.
+          </p>
+          <div className="flex gap-2">
+            {[
+              { code: 'desktop', label: '🖥 Desktop' },
+              { code: 'mobile', label: '📱 Mobile' },
+            ].map((dev) => {
+              const checked = rankDevices.includes(dev.code)
+              return (
+                <label
+                  key={dev.code}
+                  className={`flex items-center gap-2 text-sm rounded-lg border px-3 py-2 cursor-pointer transition-colors ${
+                    checked ? 'border-indigo-300 bg-indigo-50' : 'border-slate-200 hover:border-slate-300'
+                  }`}
+                >
+                  <input
+                    type="checkbox"
+                    checked={checked}
+                    onChange={() => toggleDevice(dev.code)}
+                    className="accent-indigo-600"
+                  />
+                  <span className="text-slate-700">{dev.label}</span>
                 </label>
               )
             })}

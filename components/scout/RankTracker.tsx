@@ -45,6 +45,8 @@ export default function RankTracker({ tenantId }: { tenantId: string }) {
   const [loading, setLoading] = useState(true)
   const [locations, setLocations] = useState<number[]>([])
   const [location, setLocation] = useState<number | null>(null)
+  const [devices, setDevices] = useState<string[]>([])
+  const [device, setDevice] = useState<string | null>(null)
   const [brandFilter, setBrandFilter] = useState<BrandFilter>('all')
   const [briefingLoading, setBriefingLoading] = useState<string | null>(null)
   const [briefResult, setBriefResult] = useState<
@@ -57,18 +59,23 @@ export default function RankTracker({ tenantId }: { tenantId: string }) {
 
   useEffect(() => {
     setLoading(true)
-    const qs = location !== null ? `?location=${location}` : ''
-    fetch(`/api/scout/ranks${qs}`)
+    const qs = new URLSearchParams()
+    if (location !== null) qs.set('location', String(location))
+    if (device !== null) qs.set('device', device)
+    const suffix = qs.toString() ? `?${qs.toString()}` : ''
+    fetch(`/api/scout/ranks${suffix}`)
       .then((r) => r.json())
       .then((d) => {
         setRows(d.rows ?? [])
         setSummary(d.summary ?? null)
         setHistory(d.history ?? {})
         setLocations(d.locations ?? [])
+        setDevices(d.devices ?? [])
         if (location === null && d.location != null) setLocation(d.location)
+        if (device === null && d.device != null) setDevice(d.device)
       })
       .finally(() => setLoading(false))
-  }, [location])
+  }, [location, device])
 
   async function briefClem(row: RankRow) {
     setBriefingLoading(row.keyword)
@@ -126,6 +133,22 @@ export default function RankTracker({ tenantId }: { tenantId: string }) {
     </div>
   )
 
+  const deviceToggle = devices.length > 1 && device !== null && (
+    <div className="flex items-center gap-1 bg-slate-100 rounded-lg p-1 w-fit">
+      {devices.map((d) => (
+        <button
+          key={d}
+          onClick={() => setDevice(d)}
+          className={`text-xs px-3 py-1.5 rounded-md font-medium capitalize transition-colors ${
+            d === device ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-800'
+          }`}
+        >
+          {d === 'desktop' ? '🖥 Desktop' : d === 'mobile' ? '📱 Mobile' : d}
+        </button>
+      ))}
+    </div>
+  )
+
   // Only block the whole panel on the very first load.
   if (loading && location === null)
     return <div className="text-sm text-slate-400">Loading rank data…</div>
@@ -133,7 +156,12 @@ export default function RankTracker({ tenantId }: { tenantId: string }) {
   if (!rows.length)
     return (
       <div className="space-y-4">
-        {locationToggle}
+        {(locationToggle || deviceToggle) && (
+          <div className="flex flex-wrap items-center gap-3">
+            {locationToggle}
+            {deviceToggle}
+          </div>
+        )}
         <div className="text-sm text-slate-400">
           No rank history yet for {location !== null ? locationLabel(location) : 'this workspace'}.
           Run Scout to capture a snapshot.
@@ -171,9 +199,10 @@ export default function RankTracker({ tenantId }: { tenantId: string }) {
 
   return (
     <div className="space-y-4">
-      {(locationToggle || brandToggle) && (
+      {(locationToggle || deviceToggle || brandToggle) && (
         <div className="flex flex-wrap items-center gap-3">
           {locationToggle}
+          {deviceToggle}
           {brandToggle}
         </div>
       )}
