@@ -245,7 +245,7 @@ export async function runCompetitorPipeline(
       // Check if crawled in last 24h (avoid redundant Firecrawl cost)
       const { data: recentSnapshot } = await db
         .from('scout_competitor_snapshots')
-        .select('id, raw_crawl_hash, pricing_page_content, snapshot_date')
+        .select('id, raw_crawl_hash, pricing_page_content, snapshot_date, page_urls')
         .eq('tenant_id', tenantId)
         .eq('competitor_url', competitorUrl)
         .order('created_at', { ascending: false })
@@ -284,27 +284,30 @@ export async function runCompetitorPipeline(
         continue
       }
 
-      // Determine previous page URLs from last snapshot
-      const prevPages = (recentSnapshot as { new_pages?: PageItem[] } | null)
-      const prevUrls: string[] = []
-      if (prevPages?.new_pages) {
-        for (const p of prevPages.new_pages) {
-          if (p.url) prevUrls.push(p.url)
-        }
-      }
+      // Previous page URLs = the FULL inventory captured last crawl. If this is
+      // the first snapshot we have no baseline, so we must not report the whole
+      // site as "new" — we record the inventory and flag isNew instead.
+      const rawPrevUrls = (recentSnapshot?.page_urls as unknown) ?? []
+      const prevUrls: string[] = Array.isArray(rawPrevUrls)
+        ? (rawPrevUrls.filter((u): u is string => typeof u === 'string'))
+        : []
+      const isFirstSnapshot = !recentSnapshot || prevUrls.length === 0
 
-      // Page diff
-      const currentUrls = new Set(pages.map((p) => p.url))
+      // Page diff against the previous full inventory
+      const currentUrlList = pages.map((p) => p.url).filter(Boolean)
+      const currentUrls = new Set(currentUrlList)
       const prevUrlSet = new Set(prevUrls)
-      const newPagesList: PageItem[] = pages
-        .filter((p) => !prevUrlSet.has(p.url))
-        .map((p) => ({ url: p.url, title: p.metadata?.title ?? p.title }))
-      const removedPages: PageItem[] = prevUrls
-        .filter((u) => !currentUrls.has(u))
-        .map((u) => ({ url: u }))
+      const newPagesList: PageItem[] = isFirstSnapshot
+        ? []
+        : pages
+            .filter((p) => !prevUrlSet.has(p.url))
+            .map((p) => ({ url: p.url, title: p.metadata?.title ?? p.title }))
+      const removedPages: PageItem[] = isFirstSnapshot
+        ? []
+        : prevUrls.filter((u) => !currentUrls.has(u)).map((u) => ({ url: u }))
 
-      // New blog posts
-      const newBlogPosts = detectBlogPosts(pages, prevUrls)
+      // New blog posts (none on the baseline crawl — nothing to compare against)
+      const newBlogPosts = isFirstSnapshot ? [] : detectBlogPosts(pages, prevUrls)
 
       // Pricing change detection
       let pricingChanged = false
@@ -354,6 +357,7 @@ export async function runCompetitorPipeline(
           competitor_url: competitorUrl,
           snapshot_date: today,
           page_count: pages.length,
+          page_urls: currentUrlList as unknown as import('@/lib/supabase/types').Json,
           new_pages: newPagesList as unknown as import('@/lib/supabase/types').Json,
           removed_pages: removedPages as unknown as import('@/lib/supabase/types').Json,
           new_blog_posts: newBlogPosts as unknown as import('@/lib/supabase/types').Json,

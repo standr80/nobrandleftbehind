@@ -332,6 +332,7 @@ export type Database = {
           new_blog_posts: Json | null
           new_pages: Json | null
           page_count: number | null
+          page_urls: Json | null
           pricing_change_summary: string | null
           pricing_changed: boolean | null
           pricing_page_content: string | null
@@ -352,6 +353,7 @@ export type Database = {
           new_blog_posts?: Json | null
           new_pages?: Json | null
           page_count?: number | null
+          page_urls?: Json | null
           pricing_change_summary?: string | null
           pricing_changed?: boolean | null
           pricing_page_content?: string | null
@@ -372,6 +374,7 @@ export type Database = {
           new_blog_posts?: Json | null
           new_pages?: Json | null
           page_count?: number | null
+          page_urls?: Json | null
           pricing_change_summary?: string | null
           pricing_changed?: boolean | null
           pricing_page_content?: string | null
