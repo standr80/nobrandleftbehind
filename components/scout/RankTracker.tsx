@@ -154,6 +154,11 @@ export default function RankTracker({ tenantId }: { tenantId: string }) {
                 isTop10 && (row.previous_position === null || row.previous_position > 10)
               const isNearRanking =
                 row.position !== null && row.position >= 4 && row.position <= 20
+              // A keyword that slipped is worth acting on regardless of how far
+              // down it sits — a declining position with real volume is a signal.
+              const isDeclining =
+                row.position_change !== null && row.position_change < 0
+              const isActionable = isNearRanking || isDeclining
               return (
                 <tr
                   key={row.keyword}
@@ -217,11 +222,12 @@ export default function RankTracker({ tenantId }: { tenantId: string }) {
                           </button>
                         )
                       }
-                      if (isNearRanking) {
+                      if (isActionable) {
                         return (
                           <button
                             onClick={() => briefClem(row)}
                             disabled={briefingLoading === row.keyword}
+                            title={isDeclining && !isNearRanking ? 'This keyword is declining — brief Clem to defend it' : undefined}
                             className="text-xs px-2 py-1 bg-indigo-600 text-white rounded hover:bg-indigo-700 disabled:opacity-50 transition-colors"
                           >
                             {briefingLoading === row.keyword ? '…' : 'Brief Clem'}
