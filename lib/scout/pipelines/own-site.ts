@@ -7,7 +7,7 @@
  */
 
 import { createAdminClient } from '@/lib/supabase/admin'
-import { getDomainRankSnapshot } from '@/lib/integrations/dataforseo/client'
+import { getDomainRankSnapshot, getLiveDomainRankings } from '@/lib/integrations/dataforseo/client'
 
 export interface RankSnapshotSummary {
   tracked: number
@@ -56,13 +56,15 @@ export async function captureRankSnapshot(
   if (!locations.length) locations.push(2826)
   const multi = locations.length > 1
 
-  // Shared, location-independent keyword set: tracked opportunities.
+  // Shared, location-independent keyword set: tracked opportunities, with
+  // search volume so we can prioritise which to spend a live SERP check on.
   const { data: opps } = await db
     .from('scout_keyword_opportunities')
-    .select('keyword')
+    .select('keyword, search_volume')
     .eq('tenant_id', tenantId)
     .neq('status', 'dismissed')
-  const oppKeywords = new Set((opps ?? []).map((o) => o.keyword.toLowerCase()))
+  const oppVolume = new Map<string, number>()
+  for (const o of opps ?? []) oppVolume.set(o.keyword.toLowerCase(), o.search_volume ?? 0)
 
   const aggregate = emptySummary()
   let maxTracked = 0
@@ -74,7 +76,7 @@ export async function captureRankSnapshot(
       domain,
       locationCode,
       alertThreshold,
-      oppKeywords,
+      oppVolume,
       today,
       multi,
     )
@@ -101,12 +103,14 @@ async function captureForLocation(
   domain: string,
   locationCode: number,
   alertThreshold: number,
-  oppKeywords: Set<string>,
+  oppVolume: Map<string, number>,
   today: string,
   multi: boolean,
 ): Promise<RankSnapshotSummary> {
   const locTag = multi ? ` (${LOCATION_LABELS[locationCode] ?? locationCode})` : ''
+  const oppKeywords = new Set(oppVolume.keys())
 
+  // Broad, cheap coverage: every keyword the domain already ranks for (1 call).
   const rankingsLive = await getDomainRankSnapshot(domain, locationCode, 100)
   const liveByKeyword = new Map(rankingsLive.map((r) => [r.keyword.toLowerCase(), r]))
 
@@ -115,6 +119,30 @@ async function captureForLocation(
     ...rankingsLive.map((r) => r.keyword.toLowerCase()),
   ])
   const keywords = Array.from(allKeywords).slice(0, 100)
+
+  // Hybrid: tracked opportunity keywords that Labs doesn't know the domain ranks
+  // for (new/low-authority sites, or targets we don't yet rank for) get a true
+  // live SERP rank check. Capped and prioritised by search volume to control cost.
+  const cap = Number(process.env.SCOUT_MAX_RANK_SERP_CHECKS) || 25
+  const missing = Array.from(oppKeywords)
+    .filter((kw) => keywords.includes(kw) && !liveByKeyword.has(kw))
+    .sort((a, b) => (oppVolume.get(b) ?? 0) - (oppVolume.get(a) ?? 0))
+    .slice(0, cap)
+  if (missing.length) {
+    try {
+      const liveRanks = await getLiveDomainRankings(missing, domain, locationCode, 'desktop')
+      for (const [kw, item] of liveRanks) {
+        liveByKeyword.set(kw, {
+          keyword: kw,
+          position: item.position,
+          url: item.url,
+          search_volume: oppVolume.get(kw) || null,
+        })
+      }
+    } catch (err) {
+      console.error(`[Scout] Live rank check failed (loc ${locationCode}):`, err)
+    }
+  }
 
   // Previous snapshots for THIS location only.
   const { data: prevSnapshots } = await db

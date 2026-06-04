@@ -573,3 +573,68 @@ export async function getKeywordSuggestions(
 
   return results.slice(0, 200) // hard cap: 200 total keywords forward
 }
+
+// ─── Live per-keyword rank check (true SERP positions) ────────────────────────
+
+export interface LiveRankItem {
+  keyword: string
+  position: number | null // rank_absolute of our domain, or null if not in top 100
+  url: string | null
+}
+
+/**
+ * Checks the live Google SERP for each keyword and returns OUR domain's actual
+ * position (rank_absolute) and the ranking URL. Unlike DataForSEO Labs
+ * ranked_keywords (which only knows keywords a domain already ranks for in its
+ * index), this works for any site and any chosen keyword — the right tool for
+ * tracking specific target keywords. One task per keyword, run in parallel.
+ *
+ * Cost note: 1 SERP request per keyword. Callers must cap the input list.
+ */
+export async function getLiveDomainRankings(
+  keywords: string[],
+  domain: string,
+  locationCode = 2826,
+  device: 'desktop' | 'mobile' = 'desktop',
+): Promise<Map<string, LiveRankItem>> {
+  const out = new Map<string, LiveRankItem>()
+  if (!keywords.length) return out
+
+  type Resp = {
+    tasks?: Array<{
+      result?: Array<{
+        keyword?: string
+        items?: Array<{ type?: string; domain?: string; url?: string; rank_absolute?: number }>
+      }>
+    }>
+  }
+
+  const cleanDomain = domain.replace(/^https?:\/\//, '').replace(/^www\./, '').replace(/\/.*$/, '')
+
+  const settled = await Promise.allSettled(
+    keywords.map((kw) =>
+      post<Resp>('/serp/google/organic/live/regular', [
+        { keyword: kw, location_code: locationCode, language_code: 'en', device },
+      ]),
+    ),
+  )
+
+  for (const outcome of settled) {
+    if (outcome.status === 'rejected') continue
+    for (const task of outcome.value?.tasks ?? []) {
+      for (const r of task.result ?? []) {
+        if (!r.keyword) continue
+        const match = (r.items ?? []).find(
+          (i) => i.type === 'organic' && i.domain?.replace(/^www\./, '').includes(cleanDomain),
+        )
+        out.set(r.keyword.toLowerCase(), {
+          keyword: r.keyword.toLowerCase(),
+          position: match?.rank_absolute ?? null,
+          url: match?.url ?? null,
+        })
+      }
+    }
+  }
+
+  return out
+}
