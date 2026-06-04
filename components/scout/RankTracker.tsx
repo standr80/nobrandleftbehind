@@ -26,6 +26,12 @@ interface Summary {
   improved: number
   declined: number
   enteredTop10: number
+  rankedKeywords: number
+  avgPosition: number | null
+  top3: number
+  top10: number
+  rankedPages: number
+  visibilityScore: number | null
   snapshotDate: string
 }
 
@@ -139,18 +145,48 @@ export default function RankTracker({ tenantId }: { tenantId: string }) {
       {locationToggle}
       {hasRankingData ? (
         summary && (
-          <div className="grid grid-cols-3 gap-3">
-            <div className="bg-green-50 border border-green-100 rounded-lg p-3 text-center">
-              <div className="text-xl font-bold text-green-700">↑ {summary.improved}</div>
-              <div className="text-xs text-green-600">improved</div>
+          <div className="space-y-3">
+            {/* Visibility metrics */}
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+              <div className="bg-indigo-50 border border-indigo-100 rounded-lg p-3 text-center">
+                <div className="text-xl font-bold text-indigo-700">
+                  {summary.visibilityScore !== null ? `${summary.visibilityScore}%` : '—'}
+                </div>
+                <div className="text-xs text-indigo-600" title="Share of available search demand captured, weighted by position and volume">
+                  visibility
+                </div>
+              </div>
+              <div className="bg-white border border-slate-200 rounded-lg p-3 text-center">
+                <div className="text-xl font-bold text-slate-800">{summary.avgPosition ?? '—'}</div>
+                <div className="text-xs text-slate-500">avg position</div>
+              </div>
+              <div className="bg-white border border-slate-200 rounded-lg p-3 text-center">
+                <div className="text-xl font-bold text-slate-800">{summary.top3}</div>
+                <div className="text-xs text-slate-500">in top 3</div>
+              </div>
+              <div className="bg-white border border-slate-200 rounded-lg p-3 text-center">
+                <div className="text-xl font-bold text-slate-800">{summary.top10}</div>
+                <div className="text-xs text-slate-500">in top 10</div>
+              </div>
+              <div className="bg-white border border-slate-200 rounded-lg p-3 text-center">
+                <div className="text-xl font-bold text-slate-800">{summary.rankedPages}</div>
+                <div className="text-xs text-slate-500">ranked pages</div>
+              </div>
             </div>
-            <div className="bg-red-50 border border-red-100 rounded-lg p-3 text-center">
-              <div className="text-xl font-bold text-red-600">↓ {summary.declined}</div>
-              <div className="text-xs text-red-500">declined</div>
-            </div>
-            <div className="bg-indigo-50 border border-indigo-100 rounded-lg p-3 text-center">
-              <div className="text-xl font-bold text-indigo-700">★ {summary.enteredTop10}</div>
-              <div className="text-xs text-indigo-600">new top 10</div>
+            {/* Movement */}
+            <div className="grid grid-cols-3 gap-3">
+              <div className="bg-green-50 border border-green-100 rounded-lg p-3 text-center">
+                <div className="text-xl font-bold text-green-700">↑ {summary.improved}</div>
+                <div className="text-xs text-green-600">improved</div>
+              </div>
+              <div className="bg-red-50 border border-red-100 rounded-lg p-3 text-center">
+                <div className="text-xl font-bold text-red-600">↓ {summary.declined}</div>
+                <div className="text-xs text-red-500">declined</div>
+              </div>
+              <div className="bg-indigo-50 border border-indigo-100 rounded-lg p-3 text-center">
+                <div className="text-xl font-bold text-indigo-700">★ {summary.enteredTop10}</div>
+                <div className="text-xs text-indigo-600">new top 10</div>
+              </div>
             </div>
           </div>
         )

@@ -55,6 +55,32 @@ export async function GET(request: Request) {
     .limit(100)
 
   const validRows = rows ?? []
+
+  // Visibility metrics over keywords that actually rank (position present).
+  const ranking = validRows.filter((r) => r.position !== null) as Array<
+    { position: number; url: string | null; search_volume: number | null }
+  >
+  const rankedKeywords = ranking.length
+  const avgPosition = rankedKeywords
+    ? Math.round((ranking.reduce((s, r) => s + r.position, 0) / rankedKeywords) * 10) / 10
+    : null
+  const top3 = ranking.filter((r) => r.position <= 3).length
+  const top10 = ranking.filter((r) => r.position <= 10).length
+  const rankedPages = new Set(ranking.map((r) => r.url).filter(Boolean)).size
+
+  // Volume-weighted visibility: share of available search demand captured,
+  // using approximate organic CTR by position. 100 = everything ranked #1.
+  const ctr = (pos: number) => {
+    const table = [0.28, 0.15, 0.1, 0.07, 0.05, 0.04, 0.03, 0.025, 0.02, 0.015]
+    if (pos <= 10) return table[pos - 1]
+    if (pos <= 20) return 0.01
+    if (pos <= 50) return 0.005
+    return 0.001
+  }
+  const weightDenom = ranking.reduce((s, r) => s + (r.search_volume ?? 0) * ctr(1), 0)
+  const weightNumer = ranking.reduce((s, r) => s + (r.search_volume ?? 0) * ctr(r.position), 0)
+  const visibilityScore = weightDenom > 0 ? Math.round((weightNumer / weightDenom) * 100) : null
+
   const summary = {
     improved: validRows.filter((r) => (r.position_change ?? 0) > 0).length,
     declined: validRows.filter((r) => (r.position_change ?? 0) < 0).length,
@@ -62,6 +88,12 @@ export async function GET(request: Request) {
       (r) => r.position !== null && r.position <= 10 &&
         (r.previous_position === null || r.previous_position > 10)
     ).length,
+    rankedKeywords,
+    avgPosition,
+    top3,
+    top10,
+    rankedPages,
+    visibilityScore,
     snapshotDate: latestDate,
   }
 
