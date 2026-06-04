@@ -58,6 +58,7 @@ export default function RankTracker({ tenantId }: { tenantId: string }) {
           keyword: row.keyword,
           position: row.position,
           search_volume: row.search_volume,
+          position_change: row.position_change,
         }),
       })
       const data = await res.json().catch(() => ({}))

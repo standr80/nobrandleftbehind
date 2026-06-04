@@ -13,7 +13,10 @@ export async function POST(request: Request) {
   const workspace = await getActiveWorkspace(userId)
   if (!workspace) return NextResponse.json({ error: 'No workspace' }, { status: 400 })
 
-  const { keyword, position, search_volume } = await request.json()
+  const { keyword, position, search_volume, position_change } = await request.json()
+
+  const isDeclining = typeof position_change === 'number' && position_change < 0
+  const volumeStr = search_volume ? ` (${search_volume.toLocaleString()}/mo search volume)` : ''
 
   const db = createAdminClient()
 
@@ -34,6 +37,10 @@ export async function POST(request: Request) {
     return NextResponse.json({ id: existing.id, title: existing.proposed_title, alreadyExists: true })
   }
 
+  const titleIntent = isDeclining
+    ? `The site is losing ground for this keyword and needs a strong, refreshed post to defend and recover the ranking.`
+    : `The site ranks near the top for this keyword and a dedicated post could push it into the top 3.`
+
   let title: string
   try {
     const msg = await anthropic.messages.create({
@@ -41,7 +48,7 @@ export async function POST(request: Request) {
       max_tokens: 80,
       messages: [{
         role: 'user',
-        content: `Generate a single compelling blog post title for "${workspace.tenant.name}" targeting this keyword: "${keyword}". Rules: Title only, no quotes, no explanation, 6-12 words, SEO-friendly.`,
+        content: `Generate a single compelling blog post title for "${workspace.tenant.name}" targeting this keyword: "${keyword}". Context: ${titleIntent} Rules: Title only, no quotes, no explanation, 6-12 words, SEO-friendly.`,
       }],
     })
     title = (msg.content[0] as { type: 'text'; text: string }).text.trim()
@@ -49,12 +56,16 @@ export async function POST(request: Request) {
     title = keyword
   }
 
+  const rationale = isDeclining
+    ? `Slipped ${Math.abs(position_change)} place${Math.abs(position_change) !== 1 ? 's' : ''} to position ${position ?? 'unknown'} for "${keyword}"${volumeStr} — a refreshed, dedicated post could recover and defend this ranking.`
+    : `Currently ranking position ${position ?? 'unknown'} for "${keyword}"${volumeStr} — a dedicated post could push this into the top 3.`
+
   const { data, error } = await db
     .from('suggestions')
     .insert({
       tenant_id: workspace.tenantId,
       proposed_title: title,
-      rationale: `Currently ranking position ${position ?? 'unknown'} for "${keyword}"${search_volume ? ` (${search_volume.toLocaleString()}/mo search volume)` : ''} — a dedicated post could push this into the top 3.`,
+      rationale,
       target_keywords: [keyword],
       source: 'scout',
       source_type: 'rank_opportunity',
