@@ -638,3 +638,66 @@ export async function getLiveDomainRankings(
 
   return out
 }
+
+// ─── Historical SERPs (backfill rank trend) ───────────────────────────────────
+
+export interface HistoricalRankPoint {
+  date: string // YYYY-MM-DD
+  position: number | null
+  url: string | null
+}
+
+/**
+ * Fetches historical Google SERPs for a keyword and extracts OUR domain's
+ * position at each captured date — used to backfill a rank trend instantly
+ * rather than waiting weeks to accumulate weekly snapshots.
+ *
+ * Cost note: 1 request per keyword. Call for individual keywords on demand.
+ */
+export async function getHistoricalRankings(
+  keyword: string,
+  domain: string,
+  locationCode = 2826,
+  device: 'desktop' | 'mobile' = 'desktop',
+  monthsBack = 6,
+): Promise<HistoricalRankPoint[]> {
+  const to = new Date()
+  const from = new Date()
+  from.setMonth(from.getMonth() - monthsBack)
+  const dateFrom = from.toISOString().slice(0, 10)
+  const dateTo = to.toISOString().slice(0, 10)
+
+  type SerpItem = { type?: string; domain?: string; url?: string; rank_absolute?: number }
+  type Resp = {
+    tasks?: Array<{
+      result?: Array<{
+        items?: Array<{ datetime?: string; date?: string; items?: SerpItem[] }>
+      }>
+    }>
+  }
+
+  const data = await post<Resp>('/dataforseo_labs/google/historical_serps/live', [
+    { keyword, location_code: locationCode, language_code: 'en', device, date_from: dateFrom, date_to: dateTo },
+  ])
+
+  const cleanDomain = domain.replace(/^https?:\/\//, '').replace(/^www\./, '').replace(/\/.*$/, '')
+  const points: HistoricalRankPoint[] = []
+
+  for (const task of data?.tasks ?? []) {
+    for (const r of task.result ?? []) {
+      for (const snap of r.items ?? []) {
+        const date = (snap.datetime ?? snap.date ?? '').slice(0, 10)
+        if (!date) continue
+        const match = (snap.items ?? []).find(
+          (i) => i.type === 'organic' && i.domain?.replace(/^www\./, '').includes(cleanDomain),
+        )
+        points.push({ date, position: match?.rank_absolute ?? null, url: match?.url ?? null })
+      }
+    }
+  }
+
+  // Deduplicate by date (keep first), sort ascending.
+  const byDate = new Map<string, HistoricalRankPoint>()
+  for (const p of points) if (!byDate.has(p.date)) byDate.set(p.date, p)
+  return Array.from(byDate.values()).sort((a, b) => a.date.localeCompare(b.date))
+}

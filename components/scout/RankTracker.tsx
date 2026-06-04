@@ -48,6 +48,8 @@ export default function RankTracker({ tenantId }: { tenantId: string }) {
   const [devices, setDevices] = useState<string[]>([])
   const [device, setDevice] = useState<string | null>(null)
   const [brandFilter, setBrandFilter] = useState<BrandFilter>('all')
+  const [reloadKey, setReloadKey] = useState(0)
+  const [backfillLoading, setBackfillLoading] = useState<string | null>(null)
   const [briefingLoading, setBriefingLoading] = useState<string | null>(null)
   const [briefResult, setBriefResult] = useState<
     Record<string, { ok: boolean; alreadyExists?: boolean; error?: string }>
@@ -75,7 +77,21 @@ export default function RankTracker({ tenantId }: { tenantId: string }) {
         if (device === null && d.device != null) setDevice(d.device)
       })
       .finally(() => setLoading(false))
-  }, [location, device])
+  }, [location, device, reloadKey])
+
+  async function backfillHistory(keyword: string) {
+    setBackfillLoading(keyword)
+    try {
+      await fetch('/api/scout/keywords/backfill-history', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ keyword, location, device }),
+      })
+      setReloadKey((k) => k + 1)
+    } finally {
+      setBackfillLoading(null)
+    }
+  }
 
   async function briefClem(row: RankRow) {
     setBriefingLoading(row.keyword)
@@ -331,7 +347,18 @@ export default function RankTracker({ tenantId }: { tenantId: string }) {
                   </td>
                   <td className="px-3 py-2.5 text-center">{changeDisplay(row.position_change)}</td>
                   <td className="px-3 py-2.5 text-center">
-                    <RankSparkline history={history[row.keyword] ?? []} />
+                    {(history[row.keyword]?.length ?? 0) >= 2 ? (
+                      <RankSparkline history={history[row.keyword]} />
+                    ) : (
+                      <button
+                        onClick={() => backfillHistory(row.keyword)}
+                        disabled={backfillLoading === row.keyword}
+                        title="Backfill this keyword's rank history from the last 6 months"
+                        className="text-xs text-indigo-600 hover:text-indigo-800 disabled:opacity-50"
+                      >
+                        {backfillLoading === row.keyword ? '…' : 'Load history'}
+                      </button>
+                    )}
                   </td>
                   <td className="px-3 py-2.5 text-right text-slate-400 text-xs">
                     {row.search_volume != null ? row.search_volume.toLocaleString() : '—'}
