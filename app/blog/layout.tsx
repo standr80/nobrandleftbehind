@@ -1,7 +1,7 @@
 import { headers } from 'next/headers'
 import { notFound } from 'next/navigation'
 import { getTenantByBlogHost } from '@/lib/blog/getTenantByBlogHost'
-import type { BlogNavLink } from '@/lib/blog/types'
+import BlogNav from '@/components/blog/BlogNav'
 import type { ReactNode } from 'react'
 
 interface BlogLayoutProps {
@@ -76,6 +76,46 @@ export default async function BlogLayout({ children }: BlogLayoutProps) {
       white-space: nowrap;
       text-decoration: none;
     }
+    /* ── Responsive header nav ── */
+    .blog-nav-desktop { display: flex; align-items: center; gap: 0.25rem; flex-wrap: wrap; justify-content: flex-end; }
+    .blog-burger {
+      display: none;
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 0.5rem;
+      font-size: 1.5rem;
+      line-height: 1;
+      color: ${theme.headerTextColor};
+    }
+    .blog-mobile-menu {
+      position: absolute;
+      top: 100%;
+      left: 0;
+      right: 0;
+      z-index: 60;
+      display: flex;
+      flex-direction: column;
+      gap: 0.125rem;
+      padding: 0.5rem 1rem 1rem;
+      background-color: ${theme.headerBackgroundColor};
+      border-top: 1px solid rgba(${headerTextRgb}, 0.12);
+      box-shadow: 0 8px 16px rgba(0,0,0,0.08);
+    }
+    .blog-mobile-link {
+      display: block;
+      padding: 0.75rem 0.5rem;
+      font-size: 1rem;
+      font-family: ${theme.headingFont};
+      color: ${theme.headerTextColor};
+      text-decoration: none;
+      border-radius: 0.5rem;
+    }
+    .blog-mobile-link:hover { background-color: rgba(${headerTextRgb}, 0.10); text-decoration: none; }
+    @media (max-width: 640px) {
+      .blog-nav-desktop { display: none; }
+      .blog-burger { display: inline-flex; align-items: center; justify-content: center; }
+    }
     .skip-link {
       position: absolute;
       top: -100%;
@@ -138,14 +178,8 @@ export default async function BlogLayout({ children }: BlogLayoutProps) {
             )}
           </a>
 
-          {/* Navigation */}
-          <nav aria-label="Main navigation" style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', flexWrap: 'wrap' }}>
-            {theme.navLinks.map((link: BlogNavLink) => (
-              <a key={link.url} href={link.url} className="blog-nav-link">
-                {link.label}
-              </a>
-            ))}
-          </nav>
+          {/* Navigation — inline on desktop, hamburger dropdown on mobile */}
+          <BlogNav links={theme.navLinks} />
         </div>
       </header>
 
