@@ -188,6 +188,7 @@ export default function SettingsForm({
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          tenantId: tenant.id,
           name,
           domain: domain.replace(/^https?:\/\//, '').replace(/\/$/, ''),
           logo_url: logoUrl || null,
@@ -262,7 +263,7 @@ export default function SettingsForm({
       const res = await fetch('/api/tenant', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ reference_urls: referenceUrls }),
+        body: JSON.stringify({ tenantId: tenant.id, reference_urls: referenceUrls }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error ?? 'Save failed')
@@ -736,7 +737,7 @@ export default function SettingsForm({
                         await fetch('/api/tenant', {
                           method: 'PATCH',
                           headers: { 'Content-Type': 'application/json' },
-                          body: JSON.stringify({ theme_extract_url: extractUrl.trim() || null }),
+                          body: JSON.stringify({ tenantId: tenant.id, theme_extract_url: extractUrl.trim() || null }),
                         })
                         setSavingExtractUrl(false)
                         router.refresh()

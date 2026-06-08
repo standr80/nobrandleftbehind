@@ -25,6 +25,7 @@ export default async function ScoutSettingsPage() {
         Configure Scout&apos;s briefing schedule and data sources.
       </p>
       <ScoutSettingsForm
+        tenantId={workspace.tenantId}
         initialConfig={config}
         hasDatasforSeoKey={!!process.env.DATAFORSEO_LOGIN}
       />

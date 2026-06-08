@@ -72,6 +72,35 @@ export async function getActiveWorkspace(userId: string): Promise<ActiveWorkspac
 }
 
 /**
+ * Resolves the target workspace for a MUTATION. Prefers an explicit tenantId
+ * supplied by the client (the workspace the page was actually loaded with),
+ * verifying the user is a member, and only falls back to the active-workspace
+ * cookie when none is given. This prevents a second browser tab — which shares
+ * the single active-workspace cookie — from silently redirecting another tab's
+ * writes to the wrong tenant.
+ *
+ * Returns null if the user is not a member of the requested workspace.
+ */
+export async function resolveMutationWorkspace(
+  userId: string,
+  requestedTenantId?: string | null,
+): Promise<{ tenantId: string; role: string } | null> {
+  if (requestedTenantId) {
+    const db = createAdminClient()
+    const { data } = await db
+      .from('tenant_members')
+      .select('role')
+      .eq('clerk_user_id', userId)
+      .eq('tenant_id', requestedTenantId)
+      .maybeSingle()
+    if (!data) return null
+    return { tenantId: requestedTenantId, role: data.role }
+  }
+  const active = await getActiveWorkspace(userId)
+  return active ? { tenantId: active.tenantId, role: active.role } : null
+}
+
+/**
  * Returns ALL workspaces the user is a member of (for the switcher).
  */
 export async function getAllWorkspaces(userId: string) {

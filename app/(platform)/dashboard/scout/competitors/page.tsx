@@ -44,6 +44,7 @@ export default async function CompetitorsPage() {
       </p>
 
       <CompetitorManager
+        tenantId={workspace.tenantId}
         clemReferenceUrls={clemReferenceUrls}
         scoutExtraUrls={scoutExtraUrls}
         latestSnapshots={Object.values(latestByUrl)}

@@ -7,7 +7,8 @@
 
 import { auth } from '@clerk/nextjs/server'
 import { NextResponse } from 'next/server'
-import { getActiveWorkspace } from '@/lib/workspace/active'
+import { resolveMutationWorkspace } from '@/lib/workspace/active'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { runCompetitorPipeline } from '@/lib/scout/pipelines/competitors'
 
 export const maxDuration = 120
@@ -23,17 +24,22 @@ export async function POST(request: Request) {
   const { userId } = await auth()
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const workspace = await getActiveWorkspace(userId)
-  if (!workspace) return NextResponse.json({ error: 'No workspace' }, { status: 400 })
-
   const body = await request.json()
+
+  const workspace = await resolveMutationWorkspace(userId, body?.tenantId)
+  if (!workspace) return NextResponse.json({ error: 'Workspace not found or not a member' }, { status: 403 })
+
   const rawUrl = body?.url as string | undefined
   if (!rawUrl?.trim()) {
     return NextResponse.json({ error: 'url is required' }, { status: 400 })
   }
 
+  const db = createAdminClient()
+  const { data: tenant } = await db.from('tenants').select('domain').eq('id', workspace.tenantId).single()
+  if (!tenant?.domain) return NextResponse.json({ error: 'Tenant domain not set' }, { status: 400 })
+
   const url = normaliseUrl(rawUrl)
-  const clientDomain = workspace.tenant.domain
+  const clientDomain = tenant.domain
 
   try {
     const results = await runCompetitorPipeline(workspace.tenantId, clientDomain, [url])

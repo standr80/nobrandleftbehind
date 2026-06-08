@@ -6,7 +6,7 @@
 import { auth } from '@clerk/nextjs/server'
 import { NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { getActiveWorkspace } from '@/lib/workspace/active'
+import { getActiveWorkspace, resolveMutationWorkspace } from '@/lib/workspace/active'
 
 export async function GET() {
   const { userId } = await auth()
@@ -42,10 +42,13 @@ export async function PATCH(request: Request) {
   const { userId } = await auth()
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const workspace = await getActiveWorkspace(userId)
-  if (!workspace) return NextResponse.json({ error: 'No workspace' }, { status: 400 })
-
   const body = await request.json()
+
+  // Target the workspace the page was loaded with (explicit tenantId), verified
+  // against membership — not the shared active-workspace cookie.
+  const workspace = await resolveMutationWorkspace(userId, body.tenantId)
+  if (!workspace) return NextResponse.json({ error: 'Workspace not found or not a member' }, { status: 403 })
+
   const allowed = [
     'enabled', 'auto_run_enabled', 'briefing_day', 'briefing_time', 'competitor_urls', 'dataforseo_enabled',
     'track_competitors', 'track_keywords', 'track_rankings', 'rank_alert_threshold',
@@ -63,6 +66,7 @@ export async function PATCH(request: Request) {
   const { data, error } = await db
     .from('scout_config')
     .upsert({ tenant_id: workspace.tenantId, ...updates }, { onConflict: 'tenant_id' })
+    // (tenant_id from verified membership; body.tenantId is not a config column)
     .select('*')
     .single()
 

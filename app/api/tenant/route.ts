@@ -1,21 +1,25 @@
 import { auth } from '@clerk/nextjs/server'
 import { NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { getActiveWorkspace } from '@/lib/workspace/active'
+import { resolveMutationWorkspace } from '@/lib/workspace/active'
 
-// PATCH /api/tenant — update the active workspace config
+// PATCH /api/tenant — update a workspace config.
+// The target workspace comes from the explicit `tenantId` in the body (the
+// workspace the page was loaded with), verified against membership — NOT from
+// the shared active-workspace cookie, which a second browser tab can change
+// underneath, causing cross-workspace overwrites.
 export async function PATCH(request: Request) {
   const { userId } = await auth()
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const workspace = await getActiveWorkspace(userId)
-  if (!workspace) return NextResponse.json({ error: 'No workspace found' }, { status: 404 })
+  const body = await request.json()
+
+  const workspace = await resolveMutationWorkspace(userId, body.tenantId)
+  if (!workspace) return NextResponse.json({ error: 'Workspace not found or not a member' }, { status: 403 })
   if (workspace.role !== 'admin') return NextResponse.json({ error: 'Admin only' }, { status: 403 })
 
   const db = createAdminClient()
   const membership = { tenant_id: workspace.tenantId, role: workspace.role }
-
-  const body = await request.json()
 
   const updates: {
     name?: string

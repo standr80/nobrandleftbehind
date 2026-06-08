@@ -36,13 +36,14 @@ const LOCATIONS: { code: number; label: string }[] = [
 ]
 
 interface Props {
+  tenantId: string
   initialConfig: ScoutConfig | null
   hasDatasforSeoKey: boolean
 }
 
 const DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
 
-export default function ScoutSettingsForm({ initialConfig, hasDatasforSeoKey }: Props) {
+export default function ScoutSettingsForm({ tenantId, initialConfig, hasDatasforSeoKey }: Props) {
   const [enabled, setEnabled] = useState(initialConfig?.enabled ?? true)
   const [autoRunEnabled, setAutoRunEnabled] = useState(initialConfig?.auto_run_enabled ?? false)
   const [briefingDay, setBriefingDay] = useState(initialConfig?.briefing_day ?? 'monday')
@@ -94,6 +95,7 @@ export default function ScoutSettingsForm({ initialConfig, hasDatasforSeoKey }: 
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          tenantId,
           enabled,
           auto_run_enabled: autoRunEnabled,
           briefing_day: briefingDay,

@@ -16,6 +16,7 @@ interface Snapshot {
 }
 
 interface Props {
+  tenantId: string
   clemReferenceUrls: string[]
   scoutExtraUrls: string[]
   latestSnapshots: Snapshot[]
@@ -45,6 +46,7 @@ function fmtDate(dateStr: string) {
 }
 
 export default function CompetitorManager({
+  tenantId,
   clemReferenceUrls,
   scoutExtraUrls,
   latestSnapshots,
@@ -75,7 +77,7 @@ export default function CompetitorManager({
     const res = await fetch('/api/scout/config', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ competitor_urls: urls }),
+      body: JSON.stringify({ tenantId, competitor_urls: urls }),
     })
     if (!res.ok) {
       const d = await res.json()
@@ -127,7 +129,7 @@ export default function CompetitorManager({
       const res = await fetch('/api/scout/crawl-competitor', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url }),
+        body: JSON.stringify({ tenantId, url }),
       })
       const data = await res.json()
       if (!res.ok) {
