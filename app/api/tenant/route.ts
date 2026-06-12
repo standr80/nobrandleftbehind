@@ -36,7 +36,6 @@ export async function PATCH(request: Request) {
     publish_days?: string[] | null
     publish_time?: string | null
     post_cadence_active?: boolean | null
-    reference_urls?: string[]
     white_label_domain?: string | null
     blog_theme?: import('@/lib/supabase/types').Json | null
     theme_extract_url?: string | null
@@ -49,7 +48,7 @@ export async function PATCH(request: Request) {
     'name', 'domain', 'logo_url', 'brand_voice', 'target_audience', 'forbidden_words',
     'cms_type', 'git_repo', 'git_branch', 'git_blog_path',
     'publish_cadence', 'publish_days', 'publish_time', 'post_cadence_active',
-    'reference_urls', 'white_label_domain', 'blog_theme', 'theme_extract_url', 'blog_footer',
+    'white_label_domain', 'blog_theme', 'theme_extract_url', 'blog_footer',
     'ideogram_api_key', 'image_gen_enabled',
   ] as const
   for (const key of allowed) {

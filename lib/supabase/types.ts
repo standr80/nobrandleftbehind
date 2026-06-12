@@ -647,6 +647,47 @@ export type Database = {
           },
         ]
       }
+      tenant_sites: {
+        Row: {
+          created_at: string | null
+          id: string
+          is_competitor: boolean
+          is_reference: boolean
+          label: string | null
+          tenant_id: string
+          updated_at: string | null
+          url: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          is_competitor?: boolean
+          is_reference?: boolean
+          label?: string | null
+          tenant_id: string
+          updated_at?: string | null
+          url: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          is_competitor?: boolean
+          is_reference?: boolean
+          label?: string | null
+          tenant_id?: string
+          updated_at?: string | null
+          url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tenant_sites_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tenant_members: {
         Row: {
           clerk_user_id: string
@@ -706,6 +747,8 @@ export type Database = {
           publish_cadence: string | null
           publish_days: string[] | null
           publish_time: string | null
+          max_competitor_sites: number
+          max_reference_sites: number
           reference_urls: string[]
           stripe_customer_id: string | null
           target_audience: string | null
@@ -736,6 +779,8 @@ export type Database = {
           publish_cadence?: string | null
           publish_days?: string[] | null
           publish_time?: string | null
+          max_competitor_sites?: number
+          max_reference_sites?: number
           reference_urls?: string[]
           stripe_customer_id?: string | null
           target_audience?: string | null
@@ -766,6 +811,8 @@ export type Database = {
           publish_cadence?: string | null
           publish_days?: string[] | null
           publish_time?: string | null
+          max_competitor_sites?: number
+          max_reference_sites?: number
           reference_urls?: string[]
           stripe_customer_id?: string | null
           target_audience?: string | null

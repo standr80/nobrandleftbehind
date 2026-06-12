@@ -5,6 +5,7 @@ import { getActiveWorkspace } from '@/lib/workspace/active'
 import SettingsForm from './SettingsForm'
 import type { ReferenceSummary } from '@/lib/clem/suggest'
 import type { BlogTheme } from '@/lib/blog/types'
+import { getSiteLimits, getTenantSites } from '@/lib/sites'
 
 export default async function SettingsPage() {
   const { userId } = await auth()
@@ -17,7 +18,7 @@ export default async function SettingsPage() {
   const { tenant, role } = workspace
   const db = createAdminClient()
 
-  const [{ data: members }, { data: crawlCache }] = await Promise.all([
+  const [{ data: members }, { data: crawlCache }, sites, siteLimits] = await Promise.all([
     db
       .from('tenant_members')
       .select('id, name, email, role, clerk_user_id, created_at')
@@ -28,6 +29,8 @@ export default async function SettingsPage() {
       .select('crawled_at, reference_summaries')
       .eq('tenant_id', tenant.id)
       .maybeSingle(),
+    getTenantSites(tenant.id),
+    getSiteLimits(tenant.id),
   ])
 
   return (
@@ -49,6 +52,8 @@ export default async function SettingsPage() {
         isAdmin={role === 'admin'}
         crawledAt={crawlCache?.crawled_at ?? null}
         referenceSummaries={(crawlCache?.reference_summaries as unknown as ReferenceSummary[]) ?? []}
+        sites={sites}
+        siteLimits={siteLimits}
       />
     </div>
   )

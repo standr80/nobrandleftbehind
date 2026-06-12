@@ -2,6 +2,7 @@ import { auth } from '@clerk/nextjs/server'
 import { redirect } from 'next/navigation'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getActiveWorkspace } from '@/lib/workspace/active'
+import { getCompetitorUrls } from '@/lib/sites'
 import CompetitorManager from '@/components/scout/CompetitorManager'
 
 export default async function CompetitorsPage() {
@@ -13,19 +14,15 @@ export default async function CompetitorsPage() {
 
   const db = createAdminClient()
 
-  const [configRes, snapshotsRes, tenantRes] = await Promise.all([
-    db.from('scout_config').select('*').eq('tenant_id', workspace.tenantId).maybeSingle(),
+  const [snapshotsRes, competitorUrls] = await Promise.all([
     db
       .from('scout_competitor_snapshots')
       .select('id, competitor_url, snapshot_date, page_count, new_blog_posts, pricing_changed, pricing_change_summary, created_at')
       .eq('tenant_id', workspace.tenantId)
       .order('created_at', { ascending: false })
       .limit(50),
-    db.from('tenants').select('reference_urls').eq('id', workspace.tenantId).single(),
+    getCompetitorUrls(workspace.tenantId),
   ])
-
-  const clemReferenceUrls: string[] = tenantRes.data?.reference_urls ?? []
-  const scoutExtraUrls: string[] = configRes.data?.competitor_urls ?? []
 
   type SnapshotRow = NonNullable<typeof snapshotsRes.data>[number]
   // Group snapshots by competitor URL — latest per competitor
@@ -40,13 +37,13 @@ export default async function CompetitorsPage() {
     <div>
       <h1 className="text-xl font-bold text-slate-900 mb-2">Competitors</h1>
       <p className="text-sm text-slate-500 mb-6">
-        Scout monitors up to 5 competitor URLs. Add a URL, then crawl it immediately or let Scout pick it up on its weekly run.
+        Scout monitors the sites flagged as <strong>Competitor</strong> in Settings → Sites.
+        Crawl a site immediately below, or let Scout pick it up on its weekly run.
       </p>
 
       <CompetitorManager
         tenantId={workspace.tenantId}
-        clemReferenceUrls={clemReferenceUrls}
-        scoutExtraUrls={scoutExtraUrls}
+        competitorUrls={competitorUrls}
         latestSnapshots={Object.values(latestByUrl)}
       />
     </div>

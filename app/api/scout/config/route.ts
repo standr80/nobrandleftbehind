@@ -50,7 +50,7 @@ export async function PATCH(request: Request) {
   if (!workspace) return NextResponse.json({ error: 'Workspace not found or not a member' }, { status: 403 })
 
   const allowed = [
-    'enabled', 'auto_run_enabled', 'briefing_day', 'briefing_time', 'competitor_urls', 'dataforseo_enabled',
+    'enabled', 'auto_run_enabled', 'briefing_day', 'briefing_time', 'dataforseo_enabled',
     'track_competitors', 'track_keywords', 'track_rankings', 'rank_alert_threshold',
     'location_code', 'rank_location_codes', 'brand_terms', 'rank_devices',
   ]

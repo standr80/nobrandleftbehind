@@ -7,6 +7,7 @@
  */
 
 import { createAdminClient } from '@/lib/supabase/admin'
+import { getCompetitorUrls } from '@/lib/sites'
 import { runCompetitorPipeline } from './pipelines/competitors'
 import { runSearchOpportunityPipeline } from './pipelines/search-opportunity'
 import { generateAndDeliverBriefing } from './briefing'
@@ -21,10 +22,11 @@ export interface ScoutRunResult {
 export async function runScoutForTenant(tenantId: string): Promise<ScoutRunResult> {
   const db = createAdminClient()
 
-  // Load tenant + scout config
-  const [tenantRes, configRes] = await Promise.all([
-    db.from('tenants').select('name, domain, brand_voice, target_audience, reference_urls').eq('id', tenantId).single(),
+  // Load tenant + scout config + unified competitor sites (tenant_sites)
+  const [tenantRes, configRes, competitorUrls] = await Promise.all([
+    db.from('tenants').select('name, domain, brand_voice, target_audience').eq('id', tenantId).single(),
     db.from('scout_config').select('*').eq('tenant_id', tenantId).maybeSingle(),
+    getCompetitorUrls(tenantId),
   ])
 
   if (tenantRes.error || !tenantRes.data) {
@@ -39,12 +41,6 @@ export async function runScoutForTenant(tenantId: string): Promise<ScoutRunResul
     await db.from('scout_config').insert({ tenant_id: tenantId })
   }
 
-  // Merge Clem's reference_urls with Scout-specific competitor_urls, deduplicating.
-  // reference_urls is the primary source (set in Clem Settings); competitor_urls are Scout additions.
-  const competitorUrls: string[] = [
-    ...(tenant.reference_urls ?? []),
-    ...(config?.competitor_urls ?? []),
-  ].filter((v, i, arr) => arr.indexOf(v) === i).slice(0, 5)
   const seedKeywords: string[] = await extractSeedKeywords(
     tenant.brand_voice,
     tenant.target_audience,

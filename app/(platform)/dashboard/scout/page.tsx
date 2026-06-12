@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getActiveWorkspace } from '@/lib/workspace/active'
+import { getCompetitorUrls } from '@/lib/sites'
 import ScoutRunButton from '@/components/scout/ScoutRunButton'
 import ScoutAlertsList from '@/components/scout/ScoutAlertsList'
 import RankTracker from '@/components/scout/RankTracker'
@@ -10,10 +11,10 @@ import RankTracker from '@/components/scout/RankTracker'
 async function getScoutOverview(tenantId: string) {
   const db = createAdminClient()
 
-  const [configRes, tenantRes, latestBriefingRes, alertsRes, opportunitiesRes] =
+  const [configRes, allCompetitorUrls, latestBriefingRes, alertsRes, opportunitiesRes] =
     await Promise.all([
       db.from('scout_config').select('*').eq('tenant_id', tenantId).maybeSingle(),
-      db.from('tenants').select('reference_urls').eq('id', tenantId).single(),
+      getCompetitorUrls(tenantId),
       db
         .from('scout_briefings')
         .select('id, week_starting, status, urgent_count, watch_count, wins_count, clem_suggestions_added, created_at')
@@ -36,11 +37,6 @@ async function getScoutOverview(tenantId: string) {
         .order('discovered_at', { ascending: false })
         .limit(5),
     ])
-
-  // Combined competitor list — same logic as schedule.ts
-  const clemUrls: string[] = tenantRes.data?.reference_urls ?? []
-  const scoutUrls: string[] = configRes.data?.competitor_urls ?? []
-  const allCompetitorUrls = [...clemUrls, ...scoutUrls.filter((u) => !clemUrls.includes(u))].slice(0, 5)
 
   return {
     config: configRes.data,

@@ -15,7 +15,7 @@ export default async function WorkspacesPage() {
 
   const { data: tenants } = await db
     .from('tenants')
-    .select('id, name, domain, billing_tier, created_at, cms_type, publish_cadence')
+    .select('id, name, domain, billing_tier, created_at, cms_type, publish_cadence, max_competitor_sites, max_reference_sites')
     .order('created_at', { ascending: false })
 
   // Fetch all members and enrich with Clerk data
@@ -142,6 +142,8 @@ export default async function WorkspacesPage() {
                   workspaceId={t.id}
                   workspaceName={t.name}
                   members={members}
+                  maxCompetitorSites={t.max_competitor_sites ?? 3}
+                  maxReferenceSites={t.max_reference_sites ?? 3}
                 />
               </li>
             )

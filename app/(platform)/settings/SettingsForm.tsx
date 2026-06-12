@@ -4,6 +4,7 @@ import { useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import type { ReferenceSummary } from '@/lib/clem/suggest'
 import type { BlogTheme, BlogNavLink } from '@/lib/blog/types'
+import SitesManager, { type SiteRow, type SiteLimitsView } from '@/components/sites/SitesManager'
 
 const CADENCE_OPTIONS = ['1pw', '2pw', '3pw', '5pw', 'daily']
 const DAYS_OPTIONS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
@@ -56,9 +57,11 @@ interface Props {
   isAdmin: boolean
   crawledAt: string | null
   referenceSummaries: ReferenceSummary[]
+  sites: SiteRow[]
+  siteLimits: SiteLimitsView
 }
 
-type Section = 'basics' | 'clem' | 'brand' | 'publishing' | 'team' | 'embed'
+type Section = 'basics' | 'clem' | 'sites' | 'brand' | 'publishing' | 'team' | 'embed'
 
 function domainToSlug(domain: string): string {
   return domain.replace(/^https?:\/\//, '').replace(/^www\./, '').split('.')[0].toLowerCase()
@@ -77,7 +80,9 @@ export default function SettingsForm({
   members: initialMembers,
   isAdmin,
   crawledAt: initialCrawledAt,
-  referenceSummaries: initialReferenceSummaries,
+  referenceSummaries,
+  sites,
+  siteLimits,
 }: Props) {
   const router = useRouter()
   const [section, setSection] = useState<Section>('basics')
@@ -86,20 +91,6 @@ export default function SettingsForm({
   const [crawling, setCrawling] = useState(false)
   const [crawlMsg, setCrawlMsg] = useState('')
   const [crawledAt, setCrawledAt] = useState<string | null>(initialCrawledAt)
-
-  // ── Reference URLs state ─────────────────────────────────────
-  const [referenceUrls, setReferenceUrls] = useState<string[]>(
-    tenant.reference_urls?.filter(Boolean) ?? []
-  )
-  const [newRefUrl, setNewRefUrl] = useState('')
-  const [savingRefUrls, setSavingRefUrls] = useState(false)
-  const [refUrlMsg, setRefUrlMsg] = useState('')
-  // key = URL string, value = loading / success msg
-  const [refCrawling, setRefCrawling] = useState<Record<string, boolean>>({})
-  const [refCrawlMsgs, setRefCrawlMsgs] = useState<Record<string, string>>({})
-  const [referenceSummaries, setReferenceSummaries] = useState<ReferenceSummary[]>(
-    initialReferenceSummaries
-  )
 
   // ── Blog domain + theme state ─────────────────────────────────
   const [blogDomain, setBlogDomain] = useState(tenant.white_label_domain ?? '')
@@ -242,68 +233,6 @@ export default function SettingsForm({
     }
   }
 
-  // ── Reference URL management ──────────────────────────────────
-  function addReferenceUrl() {
-    const trimmed = newRefUrl.trim().replace(/^https?:\/\//i, '').replace(/\/$/, '')
-    if (!trimmed || referenceUrls.includes(trimmed) || referenceUrls.length >= 3) return
-    setReferenceUrls((prev) => [...prev, trimmed])
-    setNewRefUrl('')
-  }
-
-  function removeReferenceUrl(url: string) {
-    setReferenceUrls((prev) => prev.filter((u) => u !== url))
-    setReferenceSummaries((prev) => prev.filter((r) => r.url !== url))
-    setRefCrawlMsgs((prev) => { const next = { ...prev }; delete next[url]; return next })
-  }
-
-  async function saveReferenceUrls() {
-    setSavingRefUrls(true)
-    setRefUrlMsg('')
-    try {
-      const res = await fetch('/api/tenant', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ tenantId: tenant.id, reference_urls: referenceUrls }),
-      })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error ?? 'Save failed')
-      setRefUrlMsg('✓ Reference URLs saved')
-      router.refresh()
-      setTimeout(() => setRefUrlMsg(''), 2500)
-    } catch (err) {
-      setRefUrlMsg(err instanceof Error ? err.message : 'Save failed')
-    } finally {
-      setSavingRefUrls(false)
-    }
-  }
-
-  async function crawlReferenceUrl(url: string) {
-    setRefCrawling((prev) => ({ ...prev, [url]: true }))
-    setRefCrawlMsgs((prev) => ({ ...prev, [url]: '' }))
-    try {
-      const res = await fetch('/api/clem/crawl', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ tenantId: tenant.id, url }),
-      })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error ?? 'Crawl failed')
-      const now = new Date().toISOString()
-      setReferenceSummaries((prev) => [
-        ...prev.filter((r) => r.url !== url),
-        { url, summary: '', crawled_at: now },
-      ])
-      setRefCrawlMsgs((prev) => ({ ...prev, [url]: '✓ Crawled' }))
-    } catch (err) {
-      setRefCrawlMsgs((prev) => ({
-        ...prev,
-        [url]: err instanceof Error ? err.message : 'Crawl failed',
-      }))
-    } finally {
-      setRefCrawling((prev) => ({ ...prev, [url]: false }))
-    }
-  }
-
   // ── Generate suggestions ──────────────────────────────────────
   async function generateSuggestions() {
     setSuggesting(true)
@@ -390,6 +319,7 @@ export default function SettingsForm({
   const sections: { id: Section; label: string }[] = [
     { id: 'basics', label: 'Basics' },
     { id: 'clem', label: 'Clem AI' },
+    { id: 'sites', label: 'Sites' },
     { id: 'brand', label: 'Brand' },
     { id: 'publishing', label: 'Publishing' },
     { id: 'team', label: 'Team' },
@@ -507,104 +437,20 @@ export default function SettingsForm({
 
             <hr className="border-slate-100" />
 
-            {/* Reference URLs */}
+            {/* Reference sites — moved to the Sites tab */}
             <div>
               <p className="text-sm font-medium mb-1">Reference sites</p>
-              <p className="text-xs text-slate-400 mb-4">
-                Add up to 3 competitor or inspiration sites. Clem crawls these and uses them
-                to identify content gaps and differentiated angles for your blog suggestions.
-                Crawls are billed against your Firecrawl quota — only crawl when needed.
-              </p>
-
-              {/* Existing reference URLs */}
-              <div className="space-y-3 mb-4">
-                {referenceUrls.map((url) => {
-                  const summary = referenceSummaries.find((r) => r.url === url)
-                  const isCrawling = refCrawling[url] ?? false
-                  const msg = refCrawlMsgs[url] ?? ''
-                  return (
-                    <div key={url} className="flex items-start gap-3 bg-slate-50 border border-slate-200 rounded-xl px-4 py-3">
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm text-slate-800 font-mono truncate">{url}</p>
-                        <p className="text-xs text-slate-400 mt-0.5">
-                          Last crawled:{' '}
-                          <span className="text-slate-600">{formatTimestamp(summary?.crawled_at ?? null)}</span>
-                        </p>
-                        {msg && (
-                          <p className={`text-xs mt-1 ${msg.startsWith('✓') ? 'text-emerald-700' : 'text-red-600'}`}>
-                            {msg}
-                          </p>
-                        )}
-                      </div>
-                      <div className="flex gap-2 shrink-0">
-                        <button
-                          type="button"
-                          onClick={() => crawlReferenceUrl(url)}
-                          disabled={isCrawling}
-                          className="inline-flex items-center gap-1 px-3 py-1.5 text-xs bg-white border border-slate-200 hover:bg-slate-50 disabled:opacity-40 text-slate-700 rounded-lg transition-colors"
-                        >
-                          {isCrawling ? (
-                            <>
-                              <span className="w-2.5 h-2.5 border border-slate-300 border-t-slate-600 rounded-full animate-spin" />
-                              Crawling…
-                            </>
-                          ) : (
-                            '↺ Crawl'
-                          )}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => removeReferenceUrl(url)}
-                          className="px-2 py-1.5 text-xs text-slate-300 hover:text-red-500 transition-colors rounded-lg"
-                          title="Remove"
-                        >
-                          ✕
-                        </button>
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-
-              {/* Add reference URL */}
-              {referenceUrls.length < 3 ? (
-                <div className="flex gap-2">
-                  <input
-                    className={`${inputClass} flex-1`}
-                    value={newRefUrl}
-                    onChange={(e) => setNewRefUrl(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && addReferenceUrl()}
-                    placeholder="competitor.com"
-                  />
-                  <button
-                    type="button"
-                    onClick={addReferenceUrl}
-                    disabled={!newRefUrl.trim()}
-                    className="px-4 py-2 text-sm bg-white border border-slate-200 hover:bg-slate-50 disabled:opacity-40 text-slate-700 rounded-lg transition-colors shrink-0"
-                  >
-                    + Add
-                  </button>
-                </div>
-              ) : (
-                <p className="text-xs text-slate-400">Maximum of 3 reference sites reached.</p>
-              )}
-
-              {/* Save reference URLs */}
-              <div className="flex items-center gap-3 mt-3">
+              <p className="text-xs text-slate-400">
+                Competitor and reference sites are now managed in one place — the{' '}
                 <button
                   type="button"
-                  onClick={saveReferenceUrls}
-                  disabled={savingRefUrls}
-                  className="px-4 py-2 text-sm bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 text-white rounded-lg transition-colors"
+                  onClick={() => setSection('sites')}
+                  className="text-indigo-600 hover:underline font-medium"
                 >
-                  {savingRefUrls ? 'Saving…' : 'Save reference URLs'}
+                  Sites tab
                 </button>
-                {refUrlMsg && (
-                  <p className={`text-xs ${refUrlMsg.startsWith('✓') ? 'text-emerald-700' : 'text-red-600'}`}>
-                    {refUrlMsg}
-                  </p>
-                )}
-              </div>
+                . Sites flagged as <strong>Reference</strong> feed Clem&apos;s blog suggestions.
+              </p>
             </div>
 
             <hr className="border-slate-100" />
@@ -1070,6 +916,17 @@ export default function SettingsForm({
             </div>
 
           </div>
+        )}
+
+        {/* ── Sites ── */}
+        {section === 'sites' && (
+          <SitesManager
+            tenantId={tenant.id}
+            isAdmin={isAdmin}
+            initialSites={sites}
+            limits={siteLimits}
+            referenceCrawls={referenceSummaries.map((r) => ({ url: r.url, crawled_at: r.crawled_at ?? null }))}
+          />
         )}
 
         {/* ── Brand ── */}

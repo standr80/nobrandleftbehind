@@ -17,14 +17,28 @@ interface Props {
   workspaceId: string
   workspaceName: string
   members: Member[]
+  maxCompetitorSites: number
+  maxReferenceSites: number
 }
 
-export default function WorkspaceManage({ workspaceId, workspaceName, members: initialMembers }: Props) {
+export default function WorkspaceManage({
+  workspaceId,
+  workspaceName,
+  members: initialMembers,
+  maxCompetitorSites,
+  maxReferenceSites,
+}: Props) {
   const [open, setOpen] = useState(false)
   const [members, setMembers] = useState<Member[]>(initialMembers)
   const [removingId, setRemovingId] = useState<string | null>(null)
   const [deleting, setDeleting] = useState(false)
   const [error, setError] = useState('')
+
+  // Site limits form
+  const [competitorLimit, setCompetitorLimit] = useState(String(maxCompetitorSites))
+  const [referenceLimit, setReferenceLimit] = useState(String(maxReferenceSites))
+  const [savingLimits, setSavingLimits] = useState(false)
+  const [limitsMsg, setLimitsMsg] = useState('')
 
   // Add admin form
   const [showAddAdmin, setShowAddAdmin] = useState(false)
@@ -84,6 +98,30 @@ export default function WorkspaceManage({ workspaceId, workspaceName, members: i
       setError(err instanceof Error ? err.message : 'Failed to add admin')
     } finally {
       setAddingAdmin(false)
+    }
+  }
+
+  async function saveLimits() {
+    setSavingLimits(true)
+    setLimitsMsg('')
+    try {
+      const res = await fetch(`/api/admin/workspaces/${workspaceId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          max_competitor_sites: Number(competitorLimit),
+          max_reference_sites: Number(referenceLimit),
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error ?? 'Failed to save limits')
+      setLimitsMsg('✓ Limits saved')
+      router.refresh()
+      setTimeout(() => setLimitsMsg(''), 2500)
+    } catch (err) {
+      setLimitsMsg(err instanceof Error ? err.message : 'Failed to save limits')
+    } finally {
+      setSavingLimits(false)
     }
   }
 
@@ -247,6 +285,51 @@ export default function WorkspaceManage({ workspaceId, workspaceName, members: i
             <p className="text-xs text-slate-300 mt-2">
               Workspace members (authors, reviewers) are managed by the workspace admin via Settings → Team.
             </p>
+          </div>
+
+          {/* Site limits (billing lever) */}
+          <div>
+            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Site limits</p>
+            <p className="text-xs text-slate-400 mb-3">
+              How many competitor / reference sites this workspace may add (Settings → Sites).
+              Competitor slots drive Scout crawl + SERP costs; reference slots are cheap Clem crawls.
+            </p>
+            <div className="flex items-end gap-3 flex-wrap">
+              <div>
+                <label className="block text-xs text-slate-500 mb-1">Competitor sites</label>
+                <input
+                  type="number"
+                  min={0}
+                  max={1000}
+                  value={competitorLimit}
+                  onChange={(e) => setCompetitorLimit(e.target.value)}
+                  className="w-28 bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-900 focus:outline-none focus:border-indigo-500 transition-colors"
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-slate-500 mb-1">Reference sites</label>
+                <input
+                  type="number"
+                  min={0}
+                  max={1000}
+                  value={referenceLimit}
+                  onChange={(e) => setReferenceLimit(e.target.value)}
+                  className="w-28 bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-900 focus:outline-none focus:border-indigo-500 transition-colors"
+                />
+              </div>
+              <button
+                onClick={saveLimits}
+                disabled={savingLimits}
+                className="px-4 py-2 text-xs bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 text-white rounded-lg transition-colors"
+              >
+                {savingLimits ? 'Saving…' : 'Save limits'}
+              </button>
+              {limitsMsg && (
+                <p className={`text-xs pb-2 ${limitsMsg.startsWith('✓') ? 'text-emerald-700' : 'text-red-600'}`}>
+                  {limitsMsg}
+                </p>
+              )}
+            </div>
           </div>
 
           {/* Danger zone */}
