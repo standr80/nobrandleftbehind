@@ -26,6 +26,7 @@ export default async function KeywordsPage() {
         Scout-discovered opportunities. Approve to add to Clem&apos;s queue, or dismiss to remove.
       </p>
       <KeywordOpportunityList
+        key={workspace.tenantId}
         initialOpportunities={opportunities ?? []}
       />
     </div>

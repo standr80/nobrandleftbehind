@@ -40,6 +40,7 @@ export default async function SettingsPage() {
         <p className="text-slate-400 text-sm">{tenant.domain}</p>
       </div>
       <SettingsForm
+        key={tenant.id}
         tenant={{
           ...tenant,
           blog_theme: tenant.blog_theme as unknown as BlogTheme | null,

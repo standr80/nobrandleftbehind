@@ -178,7 +178,7 @@ export default async function DashboardPage() {
 
       {/* Pending suggestions list — always visible so Add your own is accessible */}
       <div className="mb-8">
-        <SuggestionsList suggestions={stats.suggestions} tenantId={tenant.id} />
+        <SuggestionsList key={tenant.id} suggestions={stats.suggestions} tenantId={tenant.id} />
       </div>
 
       {/* Publish log */}

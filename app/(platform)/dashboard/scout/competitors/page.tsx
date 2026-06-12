@@ -42,6 +42,7 @@ export default async function CompetitorsPage() {
       </p>
 
       <CompetitorManager
+        key={workspace.tenantId}
         tenantId={workspace.tenantId}
         competitorUrls={competitorUrls}
         latestSnapshots={Object.values(latestByUrl)}
