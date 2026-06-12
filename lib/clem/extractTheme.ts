@@ -162,6 +162,13 @@ ${htmlSample}`
     console.warn('[clem/extract-theme] Failed to parse Claude response, using defaults')
   }
 
+  // Validate the logo URL actually serves an image; if it points at a wrong
+  // host (e.g. an internal *.vercel.app deployment URL captured during the
+  // crawl), retry the same path on the tenant's real domain (www and bare).
+  const resolvedLogoUrl =
+    (await resolveLogoUrl(tenant.logo_url, tenant.domain)) ??
+    (await resolveLogoUrl(parsed.logoUrl ?? null, tenant.domain))
+
   const backgroundColor = parsed.backgroundColor ?? '#ffffff'
   const textColor = parsed.textColor ?? '#1a1a1a'
   // Header background defaults to the page background when not detected.
@@ -179,8 +186,9 @@ ${htmlSample}`
     ),
     headingFont: parsed.headingFont ?? 'system-ui, sans-serif',
     bodyFont: parsed.bodyFont ?? 'Georgia, serif',
-    // Prefer the logo already stored in tenant settings over whatever Claude found
-    logoUrl: tenant.logo_url ?? parsed.logoUrl ?? null,
+    // Prefer the logo already stored in tenant settings over whatever Claude
+    // found, but only keep URLs that verified as reachable images.
+    logoUrl: resolvedLogoUrl,
     logoAlt: parsed.logoAlt ?? tenant.name ?? null,
     navLinks: Array.isArray(parsed.navLinks) ? parsed.navLinks : [],
     extractedAt: new Date().toISOString(),
@@ -194,4 +202,48 @@ ${htmlSample}`
 
   console.log(`[clem/extract-theme] Theme saved for tenant ${tenantId}`)
   return theme
+}
+
+/**
+ * Verify a logo URL serves an image the public internet can reach. If the URL
+ * lives on a different host than the tenant's domain (commonly an internal
+ * *.vercel.app deployment URL picked up during crawling), try the same path on
+ * the tenant's real domain (www and bare) before giving up. Returns the first
+ * candidate that responds with an image, or null so callers fall back to the
+ * text brand rather than rendering a broken <img>.
+ */
+async function resolveLogoUrl(rawUrl: string | null, domain: string): Promise<string | null> {
+  if (!rawUrl) return null
+
+  let parsed: URL
+  try {
+    parsed = new URL(rawUrl.startsWith('http') ? rawUrl : `https://${rawUrl}`)
+  } catch {
+    return null
+  }
+
+  const bare = domain.replace(/^https?:\/\//, '').replace(/^www\./, '').replace(/\/$/, '')
+  const candidates = [parsed.href]
+  if (parsed.hostname !== bare && parsed.hostname !== `www.${bare}`) {
+    candidates.push(`https://www.${bare}${parsed.pathname}`, `https://${bare}${parsed.pathname}`)
+  }
+
+  for (const candidate of candidates) {
+    try {
+      let res = await fetch(candidate, { method: 'HEAD', redirect: 'follow' })
+      // Some hosts reject HEAD — retry with GET before ruling the URL out.
+      if (res.status === 405 || res.status === 501) {
+        res = await fetch(candidate, { method: 'GET', redirect: 'follow' })
+      }
+      const type = res.headers.get('content-type') ?? ''
+      if (res.ok && (type.startsWith('image/') || type === 'application/octet-stream')) {
+        return candidate
+      }
+    } catch {
+      // unreachable — try the next candidate
+    }
+  }
+
+  console.warn(`[clem/extract-theme] Logo URL failed verification (and host-swap fallbacks): ${rawUrl}`)
+  return null
 }

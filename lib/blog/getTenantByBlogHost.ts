@@ -27,8 +27,9 @@ export async function getTenantByBlogHost(host: string): Promise<BlogTenant | nu
   const theme: BlogTheme = {
     ...DEFAULT_BLOG_THEME,
     ...(rawTheme ?? {}),
-    // Always prefer the logo from tenant settings as the canonical source
-    logoUrl: rawTheme?.logoUrl ?? (data as unknown as { logo_url?: string | null }).logo_url ?? null,
+    // Always prefer the logo from tenant settings as the canonical source —
+    // a manually entered Logo URL must beat whatever theme extraction found.
+    logoUrl: (data as unknown as { logo_url?: string | null }).logo_url ?? rawTheme?.logoUrl ?? null,
     logoAlt: rawTheme?.logoAlt ?? data.name,
   }
 
