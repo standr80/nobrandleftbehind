@@ -3,11 +3,8 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import Link from 'next/link'
 import TriggerSuggestButton from '@/components/dashboard/TriggerSuggestButton'
 import SuggestionsList from '@/components/dashboard/SuggestionsList'
-import WorkspaceSwitcher from '@/components/dashboard/WorkspaceSwitcher'
-import { getActiveWorkspace, getAllWorkspaces } from '@/lib/workspace/active'
+import { getActiveWorkspace } from '@/lib/workspace/active'
 import { getReferenceUrls } from '@/lib/sites'
-
-const PLATFORM_ADMIN_ID = process.env.PLATFORM_ADMIN_CLERK_USER_ID
 
 async function getDashboardStats(tenantId: string) {
   const db = createAdminClient()
@@ -81,19 +78,7 @@ export default async function DashboardPage() {
   const { userId } = await auth()
   if (!userId) return null
 
-  const isSuperAdmin = userId === PLATFORM_ADMIN_ID
-  const db = createAdminClient()
-
-  const [workspace, allWorkspaces, quotaRes] = await Promise.all([
-    getActiveWorkspace(userId),
-    getAllWorkspaces(userId),
-    isSuperAdmin
-      ? Promise.resolve({ data: null })
-      : db.from('workspace_quotas').select('max_workspaces').eq('clerk_user_id', userId).maybeSingle(),
-  ])
-
-  const quota = isSuperAdmin ? Infinity : (quotaRes.data?.max_workspaces ?? 0)
-  const canCreateWorkspace = isSuperAdmin || (quota > 0 && allWorkspaces.length < quota)
+  const workspace = await getActiveWorkspace(userId)
 
   // No workspace linked yet — show setup prompt
   if (!workspace) {
@@ -116,17 +101,6 @@ export default async function DashboardPage() {
 
   return (
     <div className="max-w-5xl">
-      {/* Workspace switcher */}
-      {allWorkspaces.length > 0 && (
-        <div className="mb-6">
-          <WorkspaceSwitcher
-            workspaces={allWorkspaces}
-            activeId={workspace.tenantId}
-            canCreateWorkspace={canCreateWorkspace}
-          />
-        </div>
-      )}
-
       {/* Header */}
       <div className="flex items-start justify-between mb-8">
         <div>
