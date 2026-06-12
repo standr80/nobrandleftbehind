@@ -52,6 +52,10 @@ export default async function AuthorPage() {
     <div className="max-w-5xl">
       <div className="flex items-center justify-between mb-8">
         <div>
+          <div className="flex items-center gap-2 mb-1">
+            <span className="text-xs font-semibold text-indigo-500 uppercase tracking-widest">Clem</span>
+            <span className="text-xs text-slate-400">{workspace.tenant.name} · {workspace.tenant.domain}</span>
+          </div>
           <h1 className="text-2xl font-bold">Author</h1>
           <p className="text-sm text-slate-400 mt-1">
             {totalActive} post{totalActive !== 1 ? 's' : ''} in progress

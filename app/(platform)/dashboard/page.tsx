@@ -104,7 +104,10 @@ export default async function DashboardPage() {
       {/* Header */}
       <div className="flex items-start justify-between mb-8">
         <div>
-          <p className="text-sm text-slate-400 mb-1">{tenant.domain}</p>
+          <div className="flex items-center gap-2 mb-1">
+            <span className="text-xs font-semibold text-indigo-500 uppercase tracking-widest">Clem</span>
+            <span className="text-xs text-slate-400">Blog Content · {tenant.domain}</span>
+          </div>
           <h1 className="text-2xl font-bold">{tenant.name}</h1>
         </div>
         <span className="text-xs bg-indigo-500/15 text-indigo-600 border border-indigo-200 px-3 py-1 rounded-full capitalize">

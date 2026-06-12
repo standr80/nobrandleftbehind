@@ -36,8 +36,8 @@ export default async function SettingsPage() {
   return (
     <div className="max-w-2xl">
       <div className="mb-8">
-        <h1 className="text-2xl font-bold mb-2">Workspace settings</h1>
-        <p className="text-slate-400 text-sm">{tenant.domain}</p>
+        <h1 className="text-2xl font-bold mb-2">Settings</h1>
+        <p className="text-slate-400 text-sm">{tenant.name} · {tenant.domain}</p>
       </div>
       <SettingsForm
         key={tenant.id}

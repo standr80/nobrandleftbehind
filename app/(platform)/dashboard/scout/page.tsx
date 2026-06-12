@@ -62,9 +62,9 @@ export default async function ScoutOverviewPage() {
     <div>
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Scout</h1>
+          <h1 className="text-2xl font-bold text-slate-900">Overview</h1>
           <p className="text-sm text-slate-500 mt-0.5">
-            Market intelligence for {workspace.tenant.name}
+            Rankings, competitors, and keyword opportunities at a glance
           </p>
         </div>
         <ScoutRunButton />
