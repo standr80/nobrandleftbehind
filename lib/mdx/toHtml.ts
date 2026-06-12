@@ -8,6 +8,18 @@ import { repairMojibake } from './repairMojibake'
 
 export { repairMojibake } from './repairMojibake'
 
+/**
+ * Strip a code fence wrapping the ENTIRE document (```mdx … ```).
+ * LLMs sometimes wrap their whole reply in a fence despite instructions;
+ * without this the post renders as one giant code block.
+ * Fences inside the body (actual code samples) are untouched.
+ */
+export function stripWrappingFence(mdx: string): string {
+  const trimmed = mdx.trim()
+  const match = trimmed.match(/^```[\w-]*[ \t]*\r?\n([\s\S]*?)\r?\n?```\s*$/)
+  return match ? match[1].trim() : trimmed
+}
+
 /** Strip YAML frontmatter block (--- ... ---) from body_mdx before converting */
 function stripFrontmatter(mdx: string): string {
   return mdx.replace(/^---\n[\s\S]*?\n---\n?/, '').trim()
@@ -56,7 +68,7 @@ function inlineTailwindAlignment(html: string): string {
 
 /** Convert body_mdx (with optional YAML frontmatter) to an HTML string */
 export async function toHtml(mdx: string): Promise<string> {
-  const body = repairMojibake(stripFrontmatter(mdx))
+  const body = repairMojibake(stripFrontmatter(stripWrappingFence(mdx)))
   const file = await unified()
     .use(remarkParse)
     .use(remarkGfm)

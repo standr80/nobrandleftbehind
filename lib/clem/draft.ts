@@ -1,5 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { createAdminClient } from '../supabase/admin'
+import { stripWrappingFence } from '../mdx/toHtml'
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! })
 const CLAUDE_MODEL = 'claude-sonnet-4-6'
@@ -107,9 +108,15 @@ status: "draft"
     ],
   })
 
-  const mdxContent = response.content[0].type === 'text' ? response.content[0].text : ''
+  const rawContent = response.content[0].type === 'text' ? response.content[0].text : ''
 
-  if (!mdxContent) throw new Error('Claude returned empty content for draft')
+  if (!rawContent) throw new Error('Claude returned empty content for draft')
+
+  // Sanitise: unwrap a whole-document code fence and drop any commentary
+  // the model added before the frontmatter, so body_mdx always starts at ---.
+  let mdxContent = stripWrappingFence(rawContent)
+  const fmStart = mdxContent.indexOf('---')
+  if (fmStart > 0) mdxContent = mdxContent.slice(fmStart)
 
   const fm = parseFrontmatter(mdxContent)
   const slug = fm.slug || generateSlug(suggestion.proposed_title)
