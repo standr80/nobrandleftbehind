@@ -5,13 +5,14 @@ import TriggerSuggestButton from '@/components/dashboard/TriggerSuggestButton'
 import SuggestionsList from '@/components/dashboard/SuggestionsList'
 import WorkspaceSwitcher from '@/components/dashboard/WorkspaceSwitcher'
 import { getActiveWorkspace, getAllWorkspaces } from '@/lib/workspace/active'
+import { getReferenceUrls } from '@/lib/sites'
 
 const PLATFORM_ADMIN_ID = process.env.PLATFORM_ADMIN_CLERK_USER_ID
 
 async function getDashboardStats(tenantId: string) {
   const db = createAdminClient()
 
-  const [suggestionsRes, postsRes] = await Promise.all([
+  const [suggestionsRes, postsRes, referenceUrls] = await Promise.all([
     db
       .from('suggestions')
       .select('id, proposed_title, rationale, target_keywords, status, source, source_type')
@@ -24,6 +25,7 @@ async function getDashboardStats(tenantId: string) {
       .eq('tenant_id', tenantId)
       .order('created_at', { ascending: false })
       .limit(5),
+    getReferenceUrls(tenantId),
   ])
 
   const scheduledRes = await db
@@ -62,6 +64,7 @@ async function getDashboardStats(tenantId: string) {
     publishedThisMonth: publishedRes.count ?? 0,
     recentPosts: postsRes.data ?? [],
     publishLog: publishLogRes.data ?? [],
+    referenceSiteCount: referenceUrls.length,
   }
 }
 
@@ -258,7 +261,9 @@ export default async function DashboardPage() {
           <div>
             <p className="text-sm font-medium">Generate new topics</p>
             <p className="text-xs text-slate-400 mt-0.5">
-              Suggest 5 new ideas based on your last site crawl
+              {stats.referenceSiteCount > 0
+                ? `Suggest 5 new ideas based on your last site crawl and your ${stats.referenceSiteCount} reference site${stats.referenceSiteCount !== 1 ? 's' : ''}`
+                : 'Suggest 5 new ideas based on your last site crawl'}
             </p>
           </div>
           <TriggerSuggestButton tenantId={tenant.id} currentSuggestionCount={stats.pendingSuggestions} />
