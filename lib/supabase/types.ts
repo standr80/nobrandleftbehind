@@ -736,6 +736,7 @@ export type Database = {
           created_at: string | null
           domain: string
           forbidden_words: string[] | null
+          git_access_token: string | null
           git_blog_path: string | null
           git_branch: string | null
           git_installation_id: string | null
@@ -768,6 +769,7 @@ export type Database = {
           created_at?: string | null
           domain: string
           forbidden_words?: string[] | null
+          git_access_token?: string | null
           git_blog_path?: string | null
           git_branch?: string | null
           git_installation_id?: string | null
@@ -800,6 +802,7 @@ export type Database = {
           created_at?: string | null
           domain?: string
           forbidden_words?: string[] | null
+          git_access_token?: string | null
           git_blog_path?: string | null
           git_branch?: string | null
           git_installation_id?: string | null

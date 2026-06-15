@@ -2,6 +2,7 @@ import { auth } from '@clerk/nextjs/server'
 import { NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { calculateNextSlot } from '@/lib/clem/schedule'
+import { runPublish } from '@/lib/clem/publish'
 
 interface Params {
   params: Promise<{ postId: string }>
@@ -119,16 +120,38 @@ export async function POST(request: Request, { params }: Params) {
     }
 
     case 'publish_now': {
-      await db
-        .from('blog_posts')
-        .update({
-          status: 'published',
-          published_at: now,
-          approved_at: now,
-          approved_by: member.id,
-          reviewer_notes: reviewerNotes ?? null,
-        })
-        .eq('id', postId)
+      // For git-based tenants, open a GitHub PR instead of direct publish.
+      // The post will move to 'pr_open'; it becomes 'published' when the PR merges.
+      const { data: tenant } = await db
+        .from('tenants')
+        .select('cms_type')
+        .eq('id', post.tenant_id)
+        .single()
+
+      if (tenant?.cms_type === 'git') {
+        // First stamp approval so the post is in a valid state
+        await db
+          .from('blog_posts')
+          .update({
+            approved_at: now,
+            approved_by: member.id,
+            reviewer_notes: reviewerNotes ?? null,
+          })
+          .eq('id', postId)
+
+        await runPublish(post.tenant_id, postId)
+      } else {
+        await db
+          .from('blog_posts')
+          .update({
+            status: 'published',
+            published_at: now,
+            approved_at: now,
+            approved_by: member.id,
+            reviewer_notes: reviewerNotes ?? null,
+          })
+          .eq('id', postId)
+      }
       break
     }
 
