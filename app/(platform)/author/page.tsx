@@ -8,11 +8,12 @@ const STATUS_STYLES: Record<string, string> = {
   in_review: 'bg-blue-50 text-blue-700',
   approved: 'bg-green-500/10 text-green-300',
   scheduled: 'bg-purple-50 text-purple-700',
+  pr_open: 'bg-indigo-50 text-indigo-700',
   published: 'bg-emerald-50 text-emerald-700',
   rejected: 'bg-red-50 text-red-600',
 }
 
-const STATUS_ORDER = ['in_review', 'draft', 'approved', 'scheduled', 'published', 'rejected']
+const STATUS_ORDER = ['in_review', 'draft', 'approved', 'scheduled', 'pr_open', 'published', 'rejected']
 
 export default async function AuthorPage() {
   const { userId } = await auth()
