@@ -739,6 +739,7 @@ export type Database = {
           git_access_token: string | null
           git_blog_path: string | null
           git_branch: string | null
+          git_image_library: string[] | null
           git_installation_id: string | null
           git_repo: string | null
           id: string
@@ -772,6 +773,7 @@ export type Database = {
           git_access_token?: string | null
           git_blog_path?: string | null
           git_branch?: string | null
+          git_image_library?: string[] | null
           git_installation_id?: string | null
           git_repo?: string | null
           id?: string
@@ -805,6 +807,7 @@ export type Database = {
           git_access_token?: string | null
           git_blog_path?: string | null
           git_branch?: string | null
+          git_image_library?: string[] | null
           git_installation_id?: string | null
           git_repo?: string | null
           id?: string

@@ -13,6 +13,38 @@ import { getOctokitForToken, getOctokitForTenant } from '@/lib/github/client'
  *   draft          ← false
  */
 /**
+ * Picks the best hero image from the tenant's git_image_library by scoring
+ * each image path against words in the post title. Falls back to the first
+ * image in the library, or null if the library is empty.
+ */
+function pickHeroImage(title: string, library: string[]): string | null {
+  if (!library.length) return null
+
+  const words = title
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, '')
+    .split(/\s+/)
+    .filter((w) => w.length > 3) // skip short words
+
+  let bestImage = library[0]
+  let bestScore = 0
+
+  for (const imagePath of library) {
+    const filename = imagePath.split('/').pop() ?? ''
+    const score = words.reduce(
+      (acc, word) => acc + (filename.includes(word) ? 1 : 0),
+      0
+    )
+    if (score > bestScore) {
+      bestScore = score
+      bestImage = imagePath
+    }
+  }
+
+  return bestImage
+}
+
+/**
  * Strips YAML frontmatter (--- ... ---) from the top of a markdown string.
  * body_mdx may contain NBLB's internal frontmatter which must not be
  * included in the file sent to the Astro site.
@@ -25,26 +57,29 @@ function stripFrontmatter(content: string): string {
   return trimmed.slice(end + 4).trimStart()
 }
 
-function buildMarkdownFile(post: {
-  title: string
-  meta_description: string | null
-  body_mdx: string | null
-  slug: string
-  hero_image_url: string | null
-  scheduled_for: string | null
-  published_at: string | null
-}): string {
+function buildMarkdownFile(
+  post: {
+    title: string
+    meta_description: string | null
+    body_mdx: string | null
+    slug: string
+    hero_image_url: string | null
+    scheduled_for: string | null
+    published_at: string | null
+  },
+  imageLibrary: string[] = []
+): string {
   const pubDate = post.scheduled_for
     ? post.scheduled_for.slice(0, 10)
     : post.published_at
     ? post.published_at.slice(0, 10)
     : new Date().toISOString().slice(0, 10)
 
-  // Only embed heroImage if it's a repo-relative /images/… path
+  // Use stored hero if it's already a repo-relative path, otherwise pick from library
   const heroImage =
     post.hero_image_url && post.hero_image_url.startsWith('/images/')
       ? post.hero_image_url
-      : null
+      : pickHeroImage(post.title, imageLibrary)
 
   const body = stripFrontmatter(post.body_mdx ?? '')
 
@@ -91,7 +126,7 @@ export async function runPublish(tenantId: string, postId: string): Promise<void
       db
         .from('tenants')
         .select(
-          'cms_type, git_repo, git_branch, git_blog_path, git_installation_id, git_access_token, auto_merge, name'
+          'cms_type, git_repo, git_branch, git_blog_path, git_installation_id, git_access_token, git_image_library, auto_merge, name'
         )
         .eq('id', tenantId)
         .single(),
@@ -105,7 +140,7 @@ export async function runPublish(tenantId: string, postId: string): Promise<void
     throw new Error(`[publish] Tenant cms_type is '${tenant.cms_type}', expected 'git'`)
   }
 
-  const { git_repo, git_branch, git_blog_path, git_installation_id, git_access_token } = tenant
+  const { git_repo, git_branch, git_blog_path, git_installation_id, git_access_token, git_image_library } = tenant
 
   if (!git_repo || !git_branch || !git_blog_path) {
     throw new Error(
@@ -134,7 +169,7 @@ export async function runPublish(tenantId: string, postId: string): Promise<void
     : getOctokitForTenant(parseInt(git_installation_id!, 10))
 
   // ── 3. Build file content ──────────────────────────────────────────────────
-  const fileContent = buildMarkdownFile(post)
+  const fileContent = buildMarkdownFile(post, git_image_library ?? [])
   const filePath = `${git_blog_path.replace(/\/$/, '')}/${post.slug}.md`
 
   // ── 4. Resolve base branch SHA ─────────────────────────────────────────────
