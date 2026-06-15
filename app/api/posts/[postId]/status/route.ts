@@ -139,7 +139,15 @@ export async function POST(request: Request, { params }: Params) {
           })
           .eq('id', postId)
 
-        await runPublish(post.tenant_id, postId)
+        try {
+          await runPublish(post.tenant_id, postId)
+        } catch (publishErr) {
+          console.error('[publish_now] runPublish failed:', publishErr)
+          return NextResponse.json(
+            { error: publishErr instanceof Error ? publishErr.message : 'Publish failed' },
+            { status: 500 }
+          )
+        }
       } else {
         await db
           .from('blog_posts')

@@ -193,7 +193,7 @@ export async function runPublish(tenantId: string, postId: string): Promise<void
   // ── 8. Update blog_posts ───────────────────────────────────────────────────
   const now = new Date().toISOString()
 
-  await db
+  const { error: updateErr } = await db
     .from('blog_posts')
     .update({
       status: 'pr_open',
@@ -202,6 +202,11 @@ export async function runPublish(tenantId: string, postId: string): Promise<void
       updated_at: now,
     })
     .eq('id', postId)
+
+  if (updateErr) {
+    console.error('[publish] Failed to update blog_posts after PR creation:', updateErr)
+    throw new Error(`[publish] DB update failed: ${updateErr.message}`)
+  }
 
   // ── 9. Log ─────────────────────────────────────────────────────────────────
   await db.from('publish_log').insert({
