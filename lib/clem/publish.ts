@@ -12,6 +12,19 @@ import { getOctokitForToken, getOctokitForTenant } from '@/lib/github/client'
  *   heroImage      ← post.hero_image_url (only if it's a /images/… path)
  *   draft          ← false
  */
+/**
+ * Strips YAML frontmatter (--- ... ---) from the top of a markdown string.
+ * body_mdx may contain NBLB's internal frontmatter which must not be
+ * included in the file sent to the Astro site.
+ */
+function stripFrontmatter(content: string): string {
+  const trimmed = content.trimStart()
+  if (!trimmed.startsWith('---')) return content
+  const end = trimmed.indexOf('\n---', 3)
+  if (end === -1) return content
+  return trimmed.slice(end + 4).trimStart()
+}
+
 function buildMarkdownFile(post: {
   title: string
   meta_description: string | null
@@ -33,6 +46,8 @@ function buildMarkdownFile(post: {
       ? post.hero_image_url
       : null
 
+  const body = stripFrontmatter(post.body_mdx ?? '')
+
   const lines: string[] = ['---']
   lines.push(`title: ${JSON.stringify(post.title)}`)
   if (post.meta_description) {
@@ -45,7 +60,7 @@ function buildMarkdownFile(post: {
   lines.push('draft: false')
   lines.push('---')
   lines.push('')
-  lines.push(post.body_mdx ?? '')
+  lines.push(body)
 
   return lines.join('\n')
 }
