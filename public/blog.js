@@ -1,7 +1,8 @@
 /*!
  * NBLB Blog Embed (blog.js) — full /blog page for any website.
- * Renders a post list + deep-linkable post pages from the Content API v1,
- * auto-themed from the tenant's brand tokens. Self-contained, no deps.
+ * Post list with a "Browse by topic" sidebar + numbered pagination, plus
+ * deep-linkable post pages, all from the Content API v1 and auto-themed from
+ * the tenant's brand. Self-contained, no dependencies.
  *
  * Usage (paste once on the page you want to be /blog):
  *   <div id="nblb-blog"></div>
@@ -9,7 +10,7 @@
  *
  * Optional attributes:
  *   data-target="#my-container"   element to render into (default "#nblb-blog")
- *   data-page-size="12"           posts per page (default 12)
+ *   data-page-size="6"            posts per page (default 6)
  *   data-api="https://..."        API origin override (default = script origin)
  *   data-accent="#00aeef"         override theme primaryColor
  */
@@ -21,7 +22,7 @@
     if (!tenant) { console.warn('[NBLB blog] data-tenant required'); return; }
 
     var targetSel = sc.getAttribute('data-target') || '#nblb-blog';
-    var pageSize = parseInt(sc.getAttribute('data-page-size') || '12', 10) || 12;
+    var pageSize = parseInt(sc.getAttribute('data-page-size') || '6', 10) || 6;
     var accentOverride = sc.getAttribute('data-accent') || '';
     var apiBase = sc.getAttribute('data-api') || '';
     if (!apiBase) { try { apiBase = new URL(sc.src).origin; } catch (e) { apiBase = ''; } }
@@ -31,7 +32,6 @@
 
     var api = apiBase + '/api/content/v1/tenants/' + encodeURIComponent(tenant);
 
-    // Shadow DOM isolates our styles from the host page (and vice versa).
     var shadow = mount.attachShadow ? mount.attachShadow({ mode: 'open' }) : mount;
     var root = document.createElement('div');
     root.className = 'nblb';
@@ -41,11 +41,13 @@
 
     var state = {
       theme: null,
+      sidebar: null,       // { top_tags:[{tag,count}], all_tags:[...], has_more_tags }
       posts: [],
-      cursor: null,
+      page: 1,
+      totalPages: 1,
       tag: null,
+      showAllTags: false,
       loading: false,
-      allTags: {},
     };
 
     // ---- helpers --------------------------------------------------------
@@ -65,13 +67,12 @@
         return r.json();
       });
     }
-    function postHref(slug) {
-      return location.pathname + '?post=' + encodeURIComponent(slug);
-    }
+    function postHref(slug) { return location.pathname + '?post=' + encodeURIComponent(slug); }
     function listHref() { return location.pathname; }
     function currentPostParam() {
       try { return new URLSearchParams(location.search).get('post'); } catch (e) { return null; }
     }
+    function scrollTop() { try { mount.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch (e) {} }
 
     // ---- theme / styles -------------------------------------------------
     function applyTheme() {
@@ -85,33 +86,49 @@
         ':host{all:initial}',
         '.nblb{--ac:' + accent + ';--bg:' + bg + ';--tx:' + tx + ';',
         'color:var(--tx);background:var(--bg);font-family:' + bodyFont + ';',
-        'max-width:1080px;margin:0 auto;padding:1.5rem 1rem;box-sizing:border-box;line-height:1.6}',
+        'max-width:1100px;margin:0 auto;padding:1.5rem 1rem;box-sizing:border-box;line-height:1.6}',
         '.nblb *{box-sizing:border-box}',
         '.nblb a{color:inherit;text-decoration:none}',
         '.nblb h1,.nblb h2,.nblb h3{font-family:' + headFont + ';line-height:1.25}',
-        // tag bar
-        '.tags{display:flex;flex-wrap:wrap;gap:.5rem;margin-bottom:1.5rem}',
-        '.tag{font-size:.8125rem;padding:.3em .75em;border:1px solid var(--ac);color:var(--ac);',
-        'background:transparent;border-radius:999px;cursor:pointer}',
-        '.tag.on{background:var(--ac);color:#fff}',
-        // grid
-        '.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:1.5rem}',
+        // two-column layout
+        '.layout{display:grid;grid-template-columns:1fr 260px;gap:2.5rem;align-items:start}',
+        '.main{min-width:0}',
+        // grid of cards
+        '.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:1.5rem}',
         '.card{display:block;border:1px solid rgba(0,0,0,.08);border-radius:14px;overflow:hidden;',
-        'background:#fff;transition:transform .15s,box-shadow .15s}',
+        'background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.06);transition:transform .15s,box-shadow .15s}',
         '.card:hover{transform:translateY(-3px);box-shadow:0 10px 30px rgba(0,0,0,.10)}',
-        '.card img{width:100%;height:180px;object-fit:cover;display:block;background:#f4f4f5}',
+        '.card img{width:100%;aspect-ratio:16/9;object-fit:cover;display:block;background:#f4f4f5}',
         '.card .body{padding:1rem 1.1rem 1.2rem}',
-        '.card h2{font-size:1.05rem;font-weight:700;margin:0 0 .4rem}',
-        '.card p{font-size:.875rem;color:rgba(0,0,0,.62);margin:0 0 .75rem;',
+        '.card h2{font-size:1.02rem;font-weight:700;margin:0 0 .4rem}',
+        '.card p{font-size:.85rem;color:rgba(0,0,0,.62);margin:0 0 .7rem;',
         'display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}',
         '.meta{font-size:.75rem;color:rgba(0,0,0,.5);display:flex;gap:.5rem;flex-wrap:wrap;align-items:center}',
-        '.chip{font-size:.7rem;background:var(--ac);color:#fff;padding:.15em .55em;border-radius:5px}',
-        // load more
-        '.more{display:block;margin:2rem auto 0;padding:.7em 1.5em;border:1px solid var(--ac);',
-        'color:var(--ac);background:transparent;border-radius:999px;font-size:.9rem;cursor:pointer}',
+        '.chip{font-size:.62rem;font-weight:600;letter-spacing:.04em;text-transform:uppercase;',
+        'color:var(--ac);background:color-mix(in srgb,var(--ac) 10%,transparent);padding:.2em .5em;border-radius:4px}',
+        // sidebar
+        '.side{border:1px solid rgba(0,0,0,.08);border-radius:14px;padding:1.25rem;background:#fff;position:sticky;top:1rem}',
+        '.side h3{font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;opacity:.5;margin:0 0 .9rem}',
+        '.side .reset{display:block;font-size:.8rem;color:var(--ac);font-weight:600;margin-bottom:.75rem;cursor:pointer}',
+        '.taglist{display:flex;flex-direction:column;gap:.15rem}',
+        '.tagrow{display:flex;justify-content:space-between;align-items:center;gap:.5rem;padding:.4rem .55rem;',
+        'border-radius:8px;font-size:.85rem;cursor:pointer;transition:background .15s}',
+        '.tagrow:hover{background:rgba(0,0,0,.05)}',
+        '.tagrow.on{background:color-mix(in srgb,var(--ac) 12%,transparent);font-weight:600}',
+        '.tagrow .ct{font-size:.7rem;font-weight:600;color:var(--ac);background:color-mix(in srgb,var(--ac) 14%,transparent);',
+        'padding:.12em .5em;border-radius:999px}',
+        '.side .more{display:block;margin-top:.9rem;padding-top:.75rem;border-top:1px solid rgba(0,0,0,.07);',
+        'font-size:.8rem;color:var(--ac);font-weight:600;cursor:pointer}',
+        // pagination
+        '.pager{display:flex;justify-content:center;align-items:center;gap:.4rem;flex-wrap:wrap;margin-top:2.5rem}',
+        '.pager a,.pager span{padding:.45rem .8rem;border-radius:8px;border:1px solid var(--ac);font-size:.85rem;cursor:pointer;color:var(--ac)}',
+        '.pager .cur{background:var(--ac);color:#fff;font-weight:700}',
+        '.pager .gap{border:none;cursor:default;padding:.45rem .3rem}',
+        '.pager .nav{font-weight:600}',
         // single post
         '.back{display:inline-block;margin-bottom:1.25rem;font-size:.875rem;color:var(--ac);cursor:pointer}',
         '.post-hero{width:100%;max-height:420px;object-fit:cover;border-radius:14px;margin-bottom:1.5rem;background:#f4f4f5}',
+        '.post{max-width:760px;margin:0 auto}',
         '.post h1{font-size:2rem;font-weight:800;margin:0 0 .75rem}',
         '.post .meta{margin-bottom:1.5rem}',
         '.content{font-size:1.05rem}',
@@ -126,31 +143,19 @@
         '.content code{background:#f4f4f5;padding:.1em .35em;border-radius:4px;font-size:.9em}',
         '.content table{border-collapse:collapse;width:100%;margin:1.2em 0;font-size:.95em}',
         '.content th,.content td{border:1px solid rgba(0,0,0,.12);padding:.5em .7em;text-align:left}',
-        '.footer{margin-top:3rem;padding-top:1.5rem;border-top:1px solid rgba(0,0,0,.1);',
-        'font-size:.8rem;color:rgba(0,0,0,.5)}',
+        '.footer{margin-top:3rem;padding-top:1.5rem;border-top:1px solid rgba(0,0,0,.1);font-size:.8rem;color:rgba(0,0,0,.5)}',
         '.state{padding:3rem 1rem;text-align:center;color:rgba(0,0,0,.55)}',
         '.spin{width:2rem;height:2rem;border:3px solid rgba(0,0,0,.12);border-top-color:var(--ac);',
         'border-radius:50%;animation:nblbspin .7s linear infinite;margin:3rem auto}',
         '@keyframes nblbspin{to{transform:rotate(360deg)}}',
-        '@media(max-width:600px){.post h1{font-size:1.5rem}.content{font-size:1rem}}',
+        '@media(max-width:768px){.layout{grid-template-columns:1fr;gap:1.5rem}.grid{grid-template-columns:1fr}',
+        '.side{position:static}.post h1{font-size:1.5rem}.content{font-size:1rem}}',
       ].join('');
     }
 
     // ---- rendering ------------------------------------------------------
     function loading() { root.innerHTML = '<div class="spin"></div>'; }
     function stateMsg(m) { root.innerHTML = '<div class="state">' + esc(m) + '</div>'; }
-
-    function tagBar() {
-      var names = Object.keys(state.allTags);
-      if (!names.length) return '';
-      var chips = ['<button class="tag' + (state.tag ? '' : ' on') + '" data-tag="">All</button>'];
-      names.sort();
-      for (var i = 0; i < names.length; i++) {
-        chips.push('<button class="tag' + (state.tag === names[i] ? ' on' : '') +
-          '" data-tag="' + esc(names[i]) + '">' + esc(names[i]) + '</button>');
-      }
-      return '<div class="tags">' + chips.join('') + '</div>';
-    }
 
     function cardHTML(p) {
       var img = p.hero_image
@@ -162,50 +167,90 @@
       return '<a class="card" href="' + esc(postHref(p.slug)) + '" data-slug="' + esc(p.slug) + '">' +
         img + '<div class="body"><h2>' + esc(p.title) + '</h2>' +
         (p.excerpt ? '<p>' + esc(p.excerpt) + '</p>' : '') +
-        '<div class="meta"><span>' + esc(fmtDate(p.published_at)) + '</span>' + chips + '</div>' +
+        '<div class="meta">' + chips + '<span>' + esc(fmtDate(p.published_at)) + '</span></div>' +
         '</div></a>';
     }
 
-    function renderList() {
-      var html = tagBar();
-      if (!state.posts.length) {
-        html += '<div class="state">No posts yet.</div>';
-      } else {
-        html += '<div class="grid">' + state.posts.map(cardHTML).join('') + '</div>';
-        if (state.cursor) html += '<button class="more">Load more posts</button>';
+    function sidebarHTML() {
+      var sb = state.sidebar;
+      if (!sb || !sb.all_tags || !sb.all_tags.length) return '';
+      var list = state.showAllTags ? sb.all_tags : sb.top_tags;
+      var rows = list.map(function (t) {
+        var on = state.tag === t.tag ? ' on' : '';
+        return '<div class="tagrow' + on + '" data-tag="' + esc(t.tag) + '">' +
+          '<span>' + esc(t.tag) + '</span><span class="ct">' + t.count + '</span></div>';
+      }).join('');
+      var reset = state.tag ? '<a class="reset" data-reset="1">&larr; All posts</a>' : '';
+      var more = '';
+      if (sb.has_more_tags) {
+        more = '<a class="more" data-toggle="1">' +
+          (state.showAllTags ? 'Show fewer' : 'All topics &rarr;') + '</a>';
       }
-      html += footerHTML();
-      root.innerHTML = html;
+      return '<aside class="side"><h3>Browse by topic</h3>' + reset +
+        '<div class="taglist">' + rows + '</div>' + more + '</aside>';
+    }
 
-      // tag chips
-      Array.prototype.forEach.call(root.querySelectorAll('.tag'), function (b) {
-        b.addEventListener('click', function () {
-          var t = b.getAttribute('data-tag') || null;
-          if (t === state.tag) return;
-          state.tag = t;
-          state.posts = []; state.cursor = null;
-          loading();
-          loadPage(true);
-        });
+    function pagerHTML() {
+      var tp = state.totalPages;
+      if (tp <= 1) return '';
+      var cur = state.page;
+      var parts = [];
+      if (cur > 1) parts.push('<a class="nav" data-page="' + (cur - 1) + '">&larr; Prev</a>');
+      // windowed page numbers
+      var pages = [];
+      for (var i = 1; i <= tp; i++) {
+        if (i === 1 || i === tp || (i >= cur - 1 && i <= cur + 1)) pages.push(i);
+      }
+      var last = 0;
+      pages.forEach(function (i) {
+        if (last && i - last > 1) parts.push('<span class="gap">…</span>');
+        parts.push(i === cur
+          ? '<span class="cur">' + i + '</span>'
+          : '<a data-page="' + i + '">' + i + '</a>');
+        last = i;
       });
-      // card links -> SPA nav
-      Array.prototype.forEach.call(root.querySelectorAll('.card'), function (a) {
-        a.addEventListener('click', function (e) {
-          if (e.metaKey || e.ctrlKey || e.shiftKey || e.button) return; // let new-tab work
-          e.preventDefault();
-          go(a.getAttribute('data-slug'));
-        });
-      });
-      // load more
-      var moreBtn = root.querySelector('.more');
-      if (moreBtn) moreBtn.addEventListener('click', function () {
-        moreBtn.textContent = 'Loading...'; loadPage(false);
-      });
+      if (cur < tp) parts.push('<a class="nav" data-page="' + (cur + 1) + '">Next &rarr;</a>');
+      return '<div class="pager">' + parts.join('') + '</div>';
     }
 
     function footerHTML() {
       var f = state.theme && state.theme.footer;
       return f ? '<div class="footer">' + esc(f) + '</div>' : '';
+    }
+
+    function renderList() {
+      var main;
+      if (!state.posts.length) {
+        main = '<div class="state">' + (state.tag ? 'No posts tagged “' + esc(state.tag) + '”.' : 'No posts yet.') + '</div>';
+      } else {
+        main = '<div class="grid">' + state.posts.map(cardHTML).join('') + '</div>' + pagerHTML();
+      }
+      root.innerHTML = '<div class="layout"><div class="main">' + main + '</div>' +
+        sidebarHTML() + '</div>' + footerHTML();
+
+      // card links -> SPA nav
+      Array.prototype.forEach.call(root.querySelectorAll('.card'), function (a) {
+        a.addEventListener('click', function (e) {
+          if (e.metaKey || e.ctrlKey || e.shiftKey || e.button) return;
+          e.preventDefault();
+          go(a.getAttribute('data-slug'));
+        });
+      });
+      // tag rows
+      Array.prototype.forEach.call(root.querySelectorAll('.tagrow'), function (r) {
+        r.addEventListener('click', function () { selectTag(r.getAttribute('data-tag')); });
+      });
+      // reset / toggle
+      var resetEl = root.querySelector('.reset');
+      if (resetEl) resetEl.addEventListener('click', function () { selectTag(null); });
+      var toggleEl = root.querySelector('.more');
+      if (toggleEl) toggleEl.addEventListener('click', function () {
+        state.showAllTags = !state.showAllTags; renderList();
+      });
+      // pager
+      Array.prototype.forEach.call(root.querySelectorAll('.pager [data-page]'), function (a) {
+        a.addEventListener('click', function () { gotoPage(parseInt(a.getAttribute('data-page'), 10)); });
+      });
     }
 
     function renderPost(p) {
@@ -215,66 +260,67 @@
         ? '<img class="post-hero" src="' + esc(p.hero_image) + '" alt="' + esc(p.hero_image_alt || p.title) + '">'
         : '';
       root.innerHTML =
-        '<a class="back">&larr; All posts</a>' +
-        '<article class="post">' + hero +
+        '<article class="post"><a class="back">&larr; All posts</a>' + hero +
         '<h1>' + esc(p.title) + '</h1>' +
         '<div class="meta"><span>' + esc(fmtDate(p.published_at)) + '</span>' +
         (p.author ? '<span>By ' + esc(p.author) + '</span>' : '') + chips + '</div>' +
         '<div class="content">' + (p.body_html || '<p>No content.</p>') + '</div>' +
         '</article>' + footerHTML();
-      root.querySelector('.back').addEventListener('click', function (e) {
-        e.preventDefault(); goList();
-      });
-      try { window.scrollTo(0, 0); } catch (e) {}
+      root.querySelector('.back').addEventListener('click', function (e) { e.preventDefault(); goList(); });
+      scrollTop();
     }
 
     // ---- data + routing -------------------------------------------------
-    function indexTags(posts) {
-      posts.forEach(function (p) {
-        (p.tags || []).forEach(function (t) { state.allTags[t] = true; });
-      });
+    function loadSidebar() {
+      if (state.sidebar) return Promise.resolve();
+      return getJSON(api + '/tags').then(function (d) { state.sidebar = d; }).catch(function () { state.sidebar = null; });
     }
 
-    function loadPage(replace) {
-      if (state.loading) return;
+    function loadList() {
+      if (state.loading) return Promise.resolve();
       state.loading = true;
-      var url = api + '/posts?limit=' + pageSize;
+      var url = api + '/posts?page=' + state.page + '&per_page=' + pageSize;
       if (state.tag) url += '&tag=' + encodeURIComponent(state.tag);
-      if (state.cursor && !replace) url += '&cursor=' + encodeURIComponent(state.cursor);
-      getJSON(url).then(function (d) {
-        state.posts = replace ? (d.posts || []) : state.posts.concat(d.posts || []);
-        state.cursor = d.next_cursor || null;
-        indexTags(d.posts || []);
+      return getJSON(url).then(function (d) {
+        state.posts = d.posts || [];
+        state.totalPages = d.total_pages || 1;
         state.loading = false;
-        renderList();
-      }).catch(function () {
-        state.loading = false;
-        stateMsg('Unable to load posts right now.');
-      });
+      }).catch(function () { state.loading = false; state.posts = []; state.totalPages = 1; });
+    }
+
+    function showListView() {
+      loading();
+      Promise.all([loadList(), loadSidebar()]).then(renderList);
+    }
+
+    function selectTag(tag) {
+      state.tag = tag; state.page = 1;
+      showListView();
+    }
+    function gotoPage(n) {
+      if (!n || n === state.page) return;
+      state.page = n;
+      loadList().then(function () { renderList(); scrollTop(); });
     }
 
     function showPost(slug) {
       loading();
-      getJSON(api + '/posts/' + encodeURIComponent(slug)).then(function (p) {
-        renderPost(p);
-      }).catch(function () {
-        stateMsg('That post could not be found.');
-      });
+      getJSON(api + '/posts/' + encodeURIComponent(slug))
+        .then(renderPost)
+        .catch(function () { stateMsg('That post could not be found.'); });
     }
 
-    // SPA navigation that keeps shareable URLs (?post=slug)
     function go(slug) {
       try { history.pushState({ post: slug }, '', postHref(slug)); } catch (e) {}
       showPost(slug);
     }
     function goList() {
       try { history.pushState({}, '', listHref()); } catch (e) {}
-      if (state.posts.length) renderList(); else { loading(); loadPage(true); }
+      showListView();
     }
     function route() {
       var slug = currentPostParam();
-      if (slug) showPost(slug);
-      else { if (state.posts.length) renderList(); else { loading(); loadPage(true); } }
+      if (slug) showPost(slug); else showListView();
     }
     window.addEventListener('popstate', route);
 
@@ -286,7 +332,6 @@
       .then(function () { applyTheme(); route(); });
   }
 
-  // Find this script tag (currentScript fails for async/defer in some cases).
   var cur = document.currentScript;
   if (cur && cur.getAttribute('data-tenant') && !cur.getAttribute('data-nblb-init')) {
     cur.setAttribute('data-nblb-init', '1');

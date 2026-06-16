@@ -29,11 +29,17 @@ the Content API (e.g. `designsonprint`).
 
 ## How it behaves
 
-- **List view** — responsive card grid (hero image, title, excerpt, date, tags).
+- **List view** — two-column layout: a responsive card grid (hero image, title,
+  excerpt, date, tags) with a sticky **"Browse by topic"** sidebar on the right.
+- **Sidebar** — shows the tenant's **top 8 tags by post count** (with counts),
+  not every tag, so a long tag list never spills across the top. "All topics"
+  expands the full list; selecting a tag filters the grid and an "All posts" link
+  clears it. Sidebar drops below the grid on mobile.
+- **Pagination** — numbered pager (Prev / 1 … N / Next). Page size is set by
+  `data-page-size` (default 6).
 - **Post view** — click a card; the post opens in place and the URL becomes
   `?post=slug` so it is shareable and Back/Forward work. Real `<a href>` links
   mean right-click → open in new tab also works.
-- **Tags** — filter chips built from the loaded posts; "All" clears the filter.
 - **Theme** — colours and fonts come from the tenant's `/theme` endpoint, so the
   blog matches the brand out of the box. The footer line (if set) renders at the
   bottom.

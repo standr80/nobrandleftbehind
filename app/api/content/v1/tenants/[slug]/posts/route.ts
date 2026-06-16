@@ -48,11 +48,6 @@ export async function GET(
   const since = sp.get('since')
   const tag = sp.get('tag')
   const includeTheme = sp.get('include') === 'theme'
-  const cursor = decodeCursor(sp.get('cursor'))
-  const limit = Math.min(
-    Math.max(parseInt(sp.get('limit') ?? `${DEFAULT_LIMIT}`, 10) || DEFAULT_LIMIT, 1),
-    MAX_LIMIT,
-  )
 
   const db = createAdminClient()
 
@@ -64,56 +59,84 @@ export async function GET(
     )
   }
 
-  let q = db.from('blog_posts').select(SUMMARY_COLUMNS).eq('tenant_id', tenant.id)
+  const siteUrl = `https://${tenant.domain.replace(/^https?:\/\//, '').replace(/\/$/, '')}`
+  let body: Record<string, unknown>
 
   if (since) {
-    // Incremental sync: everything that changed after `since`, oldest first,
-    // INCLUDING tombstones (unpublished / soft-deleted).
-    q = q.gt('updated_at', since).order('updated_at', { ascending: true }).order('id', { ascending: true })
+    // ── Incremental sync (cursor/keyset, includes tombstones) ────────────────
+    const cursor = decodeCursor(sp.get('cursor'))
+    const limit = Math.min(
+      Math.max(parseInt(sp.get('limit') ?? `${DEFAULT_LIMIT}`, 10) || DEFAULT_LIMIT, 1),
+      MAX_LIMIT,
+    )
+
+    let q = db
+      .from('blog_posts')
+      .select(SUMMARY_COLUMNS)
+      .eq('tenant_id', tenant.id)
+      .gt('updated_at', since)
+      .order('updated_at', { ascending: true })
+      .order('id', { ascending: true })
     if (cursor) {
       q = q.or(`updated_at.gt.${cursor.ts},and(updated_at.eq.${cursor.ts},id.gt.${cursor.id})`)
     }
+    if (tag) q = q.contains('tags', [tag])
+
+    const { data, error } = await q.limit(limit + 1)
+    if (error) {
+      return NextResponse.json({ error: 'Database error' }, { status: 500, headers: CORS_HEADERS })
+    }
+    const rows = (data ?? []) as RawPost[]
+    const hasMore = rows.length > limit
+    const pageRows = hasMore ? rows.slice(0, limit) : rows
+    let next_cursor: string | null = null
+    if (hasMore) {
+      const last = pageRows[pageRows.length - 1]
+      if (last.updated_at) next_cursor = encodeCursor(last.updated_at, last.id)
+    }
+    body = {
+      tenant: slug,
+      name: tenant.name,
+      site_url: siteUrl,
+      generated_at: new Date().toISOString(),
+      next_cursor,
+      posts: pageRows.map((p) => (isLive(p) ? toSummary(p, tenant.domain) : toTombstone(p))),
+    }
   } else {
-    // Default: live published posts, newest first.
-    q = q
+    // ── Public listing (page-based, with total count for numbered paging) ────
+    const perPage = Math.min(
+      Math.max(parseInt(sp.get('per_page') ?? sp.get('limit') ?? `${DEFAULT_LIMIT}`, 10) || DEFAULT_LIMIT, 1),
+      MAX_LIMIT,
+    )
+    const pageNum = Math.max(parseInt(sp.get('page') ?? '1', 10) || 1, 1)
+    const from = (pageNum - 1) * perPage
+
+    let q = db
+      .from('blog_posts')
+      .select(SUMMARY_COLUMNS, { count: 'exact' })
+      .eq('tenant_id', tenant.id)
       .eq('status', 'published')
       .is('deleted_at', null)
       .order('published_at', { ascending: false })
       .order('id', { ascending: false })
-    if (cursor) {
-      q = q.or(`published_at.lt.${cursor.ts},and(published_at.eq.${cursor.ts},id.lt.${cursor.id})`)
+    if (tag) q = q.contains('tags', [tag])
+
+    const { data, error, count } = await q.range(from, from + perPage - 1)
+    if (error) {
+      return NextResponse.json({ error: 'Database error' }, { status: 500, headers: CORS_HEADERS })
     }
-  }
-
-  if (tag) q = q.contains('tags', [tag])
-
-  const { data, error } = await q.limit(limit + 1)
-  if (error) {
-    return NextResponse.json({ error: 'Database error' }, { status: 500, headers: CORS_HEADERS })
-  }
-
-  const rows = (data ?? []) as RawPost[]
-  const hasMore = rows.length > limit
-  const page = hasMore ? rows.slice(0, limit) : rows
-
-  const posts = page.map((p) =>
-    since && !isLive(p) ? toTombstone(p) : toSummary(p, tenant.domain),
-  )
-
-  let next_cursor: string | null = null
-  if (hasMore) {
-    const last = page[page.length - 1]
-    const ts = since ? last.updated_at : last.published_at
-    if (ts) next_cursor = encodeCursor(ts, last.id)
-  }
-
-  const body: Record<string, unknown> = {
-    tenant: slug,
-    name: tenant.name,
-    site_url: `https://${tenant.domain.replace(/^https?:\/\//, '').replace(/\/$/, '')}`,
-    generated_at: new Date().toISOString(),
-    next_cursor,
-    posts,
+    const total = count ?? 0
+    body = {
+      tenant: slug,
+      name: tenant.name,
+      site_url: siteUrl,
+      generated_at: new Date().toISOString(),
+      page: pageNum,
+      per_page: perPage,
+      total,
+      total_pages: Math.max(1, Math.ceil(total / perPage)),
+      posts: ((data ?? []) as RawPost[]).map((p) => toSummary(p, tenant.domain)),
+    }
   }
 
   if (includeTheme) {
