@@ -77,9 +77,10 @@ interface Props {
   post: BlogPost
   tenantId: string
   imageGenEnabled?: boolean
+  authors?: { id: string; name: string; job_title: string | null }[]
 }
 
-export default function PostReviewClient({ post, tenantId: _tenantId, imageGenEnabled = false }: Props) {
+export default function PostReviewClient({ post, tenantId: _tenantId, imageGenEnabled = false, authors = [] }: Props) {
   const router = useRouter()
   const fm = parseFrontmatter(post.body_mdx ?? '')
   const initialBody = repairMojibake(parseMdxBody(post.body_mdx ?? ''))
@@ -89,6 +90,7 @@ export default function PostReviewClient({ post, tenantId: _tenantId, imageGenEn
   const [excerpt, setExcerpt] = useState(post.excerpt ?? fm.excerpt ?? '')
   const [metaDescription, setMetaDescription] = useState(post.meta_description ?? fm.metaDescription ?? '')
   const [tags, setTags] = useState((post.tags ?? []).join(', '))
+  const [authorId, setAuthorId] = useState<string>(post.author_id ?? '')
 
   const [schedule, setSchedule] = useState<{ mode: 'auto' | 'manual'; datetime: string }>({
     mode: 'auto',
@@ -238,6 +240,7 @@ export default function PostReviewClient({ post, tenantId: _tenantId, imageGenEn
         excerpt,
         meta_description: metaDescription,
         tags: normalisedTags,
+        author_id: authorId || null,
         ...heroFields,
       }),
     })
@@ -676,6 +679,25 @@ export default function PostReviewClient({ post, tenantId: _tenantId, imageGenEn
 
         {activeTab === 'meta' && (
           <div className="max-w-2xl space-y-4">
+            <div>
+              <label className="text-xs text-slate-500 mb-1 block">Author</label>
+              <select
+                value={authorId}
+                onChange={(e) => setAuthorId(e.target.value)}
+                className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-900 focus:outline-none focus:border-indigo-500"
+              >
+                <option value="">— No author (uses default / brand) —</option>
+                {authors.map((a) => (
+                  <option key={a.id} value={a.id}>
+                    {a.name}{a.job_title ? ` · ${a.job_title}` : ''}
+                  </option>
+                ))}
+              </select>
+              <p className="text-xs text-slate-400 mt-1">
+                Attribute this article to a named author for E-E-A-T.{' '}
+                <a href="/settings/authors" className="text-indigo-600 hover:underline">Manage authors</a>
+              </p>
+            </div>
             <div>
               <label className="text-xs text-slate-500 mb-1 block">Excerpt</label>
               <textarea
