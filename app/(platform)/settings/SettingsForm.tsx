@@ -139,13 +139,9 @@ export default function SettingsForm({
   const [error, setError] = useState('')
 
   // ── Embed builder state ──────────────────────────────────────
-  const [embedMode, setEmbedMode] = useState('feed')
-  const [embedTheme, setEmbedTheme] = useState('light')
+  const [embedPageSize, setEmbedPageSize] = useState('6')
+  const [embedUseAccent, setEmbedUseAccent] = useState(false)
   const [embedAccent, setEmbedAccent] = useState('#2563eb')
-  const [embedLimit, setEmbedLimit] = useState('6')
-  const [embedShowImages, setEmbedShowImages] = useState(true)
-  const [embedShowAuthor, setEmbedShowAuthor] = useState(true)
-  const [embedOpen, setEmbedOpen] = useState('modal')
   const [embedCopied, setEmbedCopied] = useState(false)
 
   // ── Basics form fields ───────────────────────────────────────
@@ -301,9 +297,10 @@ export default function SettingsForm({
   const tenantSlug = domainToSlug(tenant.domain)
 
   const embedSnippet = useCallback(() => {
-    const origin = typeof window !== 'undefined' ? window.location.origin : ''
-    return `<script\n  src="${origin}/embed.js"\n  data-tenant="${tenantSlug}"\n  data-theme="${embedTheme}"\n  data-accent="${embedAccent}"\n  data-mode="${embedMode}"\n  data-limit="${embedLimit}"\n  data-open="${embedOpen}"\n  data-show-images="${embedShowImages}"\n  data-show-author="${embedShowAuthor}">\n</script>`
-  }, [tenantSlug, embedTheme, embedAccent, embedMode, embedLimit, embedOpen, embedShowImages, embedShowAuthor])
+    const origin = typeof window !== 'undefined' ? window.location.origin : 'https://www.nobrandleftbehind.com'
+    const accentAttr = embedUseAccent ? `\n  data-accent="${embedAccent}"` : ''
+    return `<div id="nblb-blog"></div>\n<script\n  src="${origin}/blog.js"\n  data-tenant="${tenantSlug}"\n  data-page-size="${embedPageSize}"${accentAttr}>\n</script>`
+  }, [tenantSlug, embedPageSize, embedUseAccent, embedAccent])
 
   function copyEmbed() {
     navigator.clipboard.writeText(embedSnippet()).then(() => {
@@ -1270,55 +1267,31 @@ export default function SettingsForm({
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className={labelClass}>Mode</label>
-                <select className={inputClass} value={embedMode} onChange={(e) => setEmbedMode(e.target.value)}>
-                  <option value="feed">Feed (grid of cards)</option>
-                  <option value="latest">Latest post</option>
-                  <option value="single">Single post by slug</option>
-                </select>
-              </div>
-              <div>
-                <label className={labelClass}>Theme</label>
-                <select className={inputClass} value={embedTheme} onChange={(e) => setEmbedTheme(e.target.value)}>
-                  <option value="light">Light</option>
-                  <option value="dark">Dark</option>
-                  <option value="auto">Auto (system)</option>
-                </select>
+                <label className={labelClass}>Posts per page</label>
+                <input type="number" min={1} max={50} className={inputClass} value={embedPageSize} onChange={(e) => setEmbedPageSize(e.target.value)} />
               </div>
               <div>
                 <label className={labelClass}>Accent colour</label>
-                <div className="flex gap-2 items-center">
-                  <input type="color" value={embedAccent} onChange={(e) => setEmbedAccent(e.target.value)} className="w-10 h-10 rounded-lg border border-slate-200 cursor-pointer p-0.5 bg-white" />
-                  <input className={`${inputClass} flex-1`} value={embedAccent} onChange={(e) => setEmbedAccent(e.target.value)} placeholder="#2563eb" />
-                </div>
-              </div>
-              <div>
-                <label className={labelClass}>Post limit</label>
-                <input type="number" min={1} max={50} className={inputClass} value={embedLimit} onChange={(e) => setEmbedLimit(e.target.value)} />
-              </div>
-              <div>
-                <label className={labelClass}>Open posts</label>
-                <select className={inputClass} value={embedOpen} onChange={(e) => setEmbedOpen(e.target.value)}>
-                  <option value="same-tab">Same tab</option>
-                  <option value="new-tab">New tab</option>
-                  <option value="modal">Modal overlay</option>
-                </select>
-              </div>
-              <div className="space-y-3 pt-1">
-                <label className="flex items-center gap-3 cursor-pointer select-none">
-                  <button type="button" onClick={() => setEmbedShowImages(!embedShowImages)} className={`w-10 h-5 rounded-full transition-colors relative ${embedShowImages ? 'bg-indigo-600' : 'bg-slate-200'}`}>
-                    <span className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${embedShowImages ? 'translate-x-5' : 'translate-x-0.5'}`} />
-                  </button>
-                  <span className="text-sm text-slate-700">Show images</span>
+                <label className="flex items-center gap-2 text-sm text-slate-600 mb-2 cursor-pointer select-none">
+                  <input type="checkbox" checked={embedUseAccent} onChange={(e) => setEmbedUseAccent(e.target.checked)} />
+                  Override brand colour
                 </label>
-                <label className="flex items-center gap-3 cursor-pointer select-none">
-                  <button type="button" onClick={() => setEmbedShowAuthor(!embedShowAuthor)} className={`w-10 h-5 rounded-full transition-colors relative ${embedShowAuthor ? 'bg-indigo-600' : 'bg-slate-200'}`}>
-                    <span className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${embedShowAuthor ? 'translate-x-5' : 'translate-x-0.5'}`} />
-                  </button>
-                  <span className="text-sm text-slate-700">Show author</span>
-                </label>
+                {embedUseAccent && (
+                  <div className="flex gap-2 items-center">
+                    <input type="color" value={embedAccent} onChange={(e) => setEmbedAccent(e.target.value)} className="w-10 h-10 rounded-lg border border-slate-200 cursor-pointer p-0.5 bg-white" />
+                    <input className={`${inputClass} flex-1`} value={embedAccent} onChange={(e) => setEmbedAccent(e.target.value)} placeholder="#2563eb" />
+                  </div>
+                )}
               </div>
             </div>
+
+            <p className="text-xs text-slate-500 leading-relaxed">
+              Paste the snippet onto the page you want as your blog (e.g. <span className="font-mono">/blog</span>).
+              It renders the full blog — post list with a &ldquo;Browse by topic&rdquo; sidebar, pagination, and
+              individual post pages — styled to your brand. Posts open in place at{' '}
+              <span className="font-mono">/blog?post=slug</span>, so no extra server config is needed. Colours and
+              fonts come from your brand automatically unless you override the accent above.
+            </p>
 
             <div>
               <div className="flex items-center justify-between mb-2">
@@ -1334,10 +1307,10 @@ export default function SettingsForm({
 
             <div>
               <label className={labelClass}>Live preview</label>
-              <div className="border border-slate-200 rounded-xl overflow-hidden bg-slate-50" style={{ height: 420 }}>
+              <div className="border border-slate-200 rounded-xl overflow-hidden bg-white" style={{ height: 480 }}>
                 <iframe
-                  key={`${tenantSlug}-${embedTheme}-${embedAccent}-${embedMode}-${embedLimit}-${embedOpen}-${embedShowImages}-${embedShowAuthor}`}
-                  src={`/preview/embed/${tenantSlug}?theme=${embedTheme}&accent=${encodeURIComponent(embedAccent)}&mode=${embedMode}&limit=${embedLimit}&open=${embedOpen}&show-images=${embedShowImages}&show-author=${embedShowAuthor}`}
+                  key={`${tenantSlug}-${embedPageSize}-${embedUseAccent}-${embedAccent}`}
+                  src={`/preview/embed/${tenantSlug}?page-size=${embedPageSize}${embedUseAccent ? `&accent=${encodeURIComponent(embedAccent)}` : ''}`}
                   className="w-full h-full border-0"
                   title="Embed preview"
                   sandbox="allow-scripts allow-same-origin"
