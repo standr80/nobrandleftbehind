@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 const CADENCE_OPTIONS = ['1pw', '2pw', '3pw', '5pw', 'daily']
 const DAYS_OPTIONS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
 const CMS_OPTIONS = [
+  { value: 'embed', label: 'NBLB Hosted (embed)', description: 'Posts go live instantly via the Content API + blog.js embed — no repo or PR' },
   { value: 'git', label: 'Git (GitHub PR)', description: 'Clem opens a PR on your repo' },
   { value: 'ghost', label: 'Ghost', description: 'Publish via Ghost Admin API' },
   { value: 'wordpress', label: 'WordPress', description: 'Publish via WordPress REST API' },
