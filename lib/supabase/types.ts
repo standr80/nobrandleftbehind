@@ -14,11 +14,59 @@ export type Database = {
   }
   public: {
     Tables: {
+      authors: {
+        Row: {
+          bio: string | null
+          created_at: string | null
+          id: string
+          is_default: boolean | null
+          job_title: string | null
+          links: Json | null
+          name: string
+          slug: string
+          tenant_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          bio?: string | null
+          created_at?: string | null
+          id?: string
+          is_default?: boolean | null
+          job_title?: string | null
+          links?: Json | null
+          name: string
+          slug: string
+          tenant_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          bio?: string | null
+          created_at?: string | null
+          id?: string
+          is_default?: boolean | null
+          job_title?: string | null
+          links?: Json | null
+          name?: string
+          slug?: string
+          tenant_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "authors_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
       blog_posts: {
         Row: {
           approved_at: string | null
           approved_by: string | null
           assigned_reviewer_id: string | null
+          author_id: string | null
           auto_scheduled: boolean | null
           body_mdx: string | null
           created_at: string | null
@@ -52,6 +100,7 @@ export type Database = {
           approved_at?: string | null
           approved_by?: string | null
           assigned_reviewer_id?: string | null
+          author_id?: string | null
           auto_scheduled?: boolean | null
           body_mdx?: string | null
           created_at?: string | null
@@ -85,6 +134,7 @@ export type Database = {
           approved_at?: string | null
           approved_by?: string | null
           assigned_reviewer_id?: string | null
+          author_id?: string | null
           auto_scheduled?: boolean | null
           body_mdx?: string | null
           created_at?: string | null

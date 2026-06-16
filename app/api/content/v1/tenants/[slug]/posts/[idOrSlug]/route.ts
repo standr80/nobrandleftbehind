@@ -59,7 +59,7 @@ export async function GET(
     )
   }
 
-  const post = data as RawPost
+  const post = data as unknown as RawPost
 
   // Existed but no longer published -> 410 Gone with a tombstone body so a
   // consumer can remove its imported copy.

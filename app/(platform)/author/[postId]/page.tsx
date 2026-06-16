@@ -24,11 +24,13 @@ export default async function PostReviewPage({ params }: Props) {
 
   if (!post) notFound()
 
-  const [{ data: member }, { data: tenant }] = await Promise.all([
+  const [{ data: member }, { data: tenant }, { data: authors }] = await Promise.all([
     db.from('tenant_members').select('id')
       .eq('tenant_id', post.tenant_id).eq('clerk_user_id', userId).maybeSingle(),
     db.from('tenants').select('image_gen_enabled')
       .eq('id', post.tenant_id).single(),
+    db.from('authors').select('id, name, job_title')
+      .eq('tenant_id', post.tenant_id).order('name', { ascending: true }),
   ])
 
   if (!member) notFound()
@@ -45,7 +47,7 @@ export default async function PostReviewPage({ params }: Props) {
           ← All posts
         </Link>
       </div>
-      <PostReviewClient post={post} tenantId={post.tenant_id} imageGenEnabled={imageGenEnabled} />
+      <PostReviewClient post={post} tenantId={post.tenant_id} imageGenEnabled={imageGenEnabled} authors={authors ?? []} />
     </div>
   )
 }

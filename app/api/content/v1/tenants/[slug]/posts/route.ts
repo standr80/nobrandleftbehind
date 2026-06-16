@@ -86,7 +86,7 @@ export async function GET(
     if (error) {
       return NextResponse.json({ error: 'Database error' }, { status: 500, headers: CORS_HEADERS })
     }
-    const rows = (data ?? []) as RawPost[]
+    const rows = (data ?? []) as unknown as RawPost[]
     const hasMore = rows.length > limit
     const pageRows = hasMore ? rows.slice(0, limit) : rows
     let next_cursor: string | null = null
@@ -135,7 +135,7 @@ export async function GET(
       per_page: perPage,
       total,
       total_pages: Math.max(1, Math.ceil(total / perPage)),
-      posts: ((data ?? []) as RawPost[]).map((p) => toSummary(p, tenant.domain)),
+      posts: ((data ?? []) as unknown as RawPost[]).map((p) => toSummary(p, tenant.domain)),
     }
   }
 

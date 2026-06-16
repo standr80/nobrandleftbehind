@@ -143,6 +143,12 @@
         '.content code{background:#f4f4f5;padding:.1em .35em;border-radius:4px;font-size:.9em}',
         '.content table{border-collapse:collapse;width:100%;margin:1.2em 0;font-size:.95em}',
         '.content th,.content td{border:1px solid rgba(0,0,0,.12);padding:.5em .7em;text-align:left}',
+        '.authorbox{margin-top:2.5rem;padding:1.25rem 1.5rem;border:1px solid rgba(0,0,0,.1);border-left:3px solid var(--ac);border-radius:10px;background:rgba(0,0,0,.02)}',
+        '.authorbox .an{margin:0 0 .35rem;font-weight:700;font-size:.95rem}',
+        '.authorbox .an span{font-weight:500;opacity:.6}',
+        '.authorbox .ab{margin:0 0 .5rem;font-size:.9rem;line-height:1.6;opacity:.8}',
+        '.authorbox .al{margin:0;display:flex;gap:1rem;flex-wrap:wrap}',
+        '.authorbox .al a{font-size:.85rem;color:var(--ac);text-decoration:underline}',
         '.footer{margin-top:3rem;padding-top:1.5rem;border-top:1px solid rgba(0,0,0,.1);font-size:.8rem;color:rgba(0,0,0,.5)}',
         '.state{padding:3rem 1rem;text-align:center;color:rgba(0,0,0,.55)}',
         '.spin{width:2rem;height:2rem;border:3px solid rgba(0,0,0,.12);border-top-color:var(--ac);',
@@ -259,15 +265,61 @@
       var hero = p.hero_image
         ? '<img class="post-hero" src="' + esc(p.hero_image) + '" alt="' + esc(p.hero_image_alt || p.title) + '">'
         : '';
+      var byline = p.author
+        ? '<span>By ' + esc(p.author) + (p.author_title ? ', ' + esc(p.author_title) : '') + '</span>'
+        : '';
       root.innerHTML =
         '<article class="post"><a class="back">&larr; All posts</a>' + hero +
         '<h1>' + esc(p.title) + '</h1>' +
-        '<div class="meta"><span>' + esc(fmtDate(p.published_at)) + '</span>' +
-        (p.author ? '<span>By ' + esc(p.author) + '</span>' : '') + chips + '</div>' +
+        '<div class="meta"><span>' + esc(fmtDate(p.published_at)) + '</span>' + byline + chips + '</div>' +
         '<div class="content">' + (p.body_html || '<p>No content.</p>') + '</div>' +
+        authorBoxHTML(p) +
         '</article>' + footerHTML();
       root.querySelector('.back').addEventListener('click', function (e) { e.preventDefault(); goList(); });
+      injectJsonLd(p);
       scrollTop();
+    }
+
+    function authorBoxHTML(p) {
+      if (!p.author_bio && !(p.author_links && p.author_links.length)) return '';
+      var links = (p.author_links || []).map(function (l) {
+        return '<a href="' + esc(l.url) + '" target="_blank" rel="noopener noreferrer me">' +
+          esc(l.label || l.url) + '</a>';
+      }).join('');
+      return '<div class="authorbox">' +
+        '<p class="an">' + esc(p.author || '') + (p.author_title ? ' <span>· ' + esc(p.author_title) + '</span>' : '') + '</p>' +
+        (p.author_bio ? '<p class="ab">' + esc(p.author_bio) + '</p>' : '') +
+        (links ? '<p class="al">' + links + '</p>' : '') +
+        '</div>';
+    }
+
+    // Best-effort BlogPosting + Person JSON-LD injected into the host <head>.
+    // (Client-side, so weaker than server-rendered schema — the hosted blog
+    // emits the authoritative version.)
+    function injectJsonLd(p) {
+      try {
+        var prev = document.getElementById('nblb-jsonld');
+        if (prev) prev.remove();
+        var person = { '@type': 'Person', name: p.author || 'Author' };
+        if (p.author_title) person.jobTitle = p.author_title;
+        var sameAs = (p.author_links || []).map(function (l) { return l.url; }).filter(Boolean);
+        if (sameAs.length) person.sameAs = sameAs;
+        var ld = {
+          '@context': 'https://schema.org',
+          '@type': 'BlogPosting',
+          headline: p.title,
+          datePublished: p.published_at || undefined,
+          image: p.hero_image || undefined,
+          author: person,
+          publisher: { '@type': 'Organization', name: (state.theme && state.theme.name) || tenant },
+          mainEntityOfPage: location.href,
+        };
+        var s = document.createElement('script');
+        s.type = 'application/ld+json';
+        s.id = 'nblb-jsonld';
+        s.textContent = JSON.stringify(ld);
+        document.head.appendChild(s);
+      } catch (e) {}
     }
 
     // ---- data + routing -------------------------------------------------

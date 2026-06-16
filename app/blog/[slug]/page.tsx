@@ -64,13 +64,26 @@ export default async function BlogPostPage({ params }: Props) {
 
   const { data: post } = await db
     .from('blog_posts')
-    .select('title, slug, excerpt, published_at, updated_at, tags, hero_image_url, hero_image_alt, body_mdx')
+    .select('title, slug, excerpt, published_at, updated_at, tags, hero_image_url, hero_image_alt, body_mdx, author:authors(name, job_title, bio, links, slug)')
     .eq('tenant_id', tenant.id)
     .eq('slug', slug)
     .eq('status', 'published')
     .maybeSingle()
 
   if (!post) notFound()
+
+  // Author (E-E-A-T): Supabase returns the embedded to-one relation as an
+  // object or a 1-element array depending on inference — normalise both.
+  const rawAuthor = (post as { author?: unknown }).author
+  const author = (Array.isArray(rawAuthor) ? rawAuthor[0] : rawAuthor) as
+    | { name?: string | null; job_title?: string | null; bio?: string | null; links?: unknown; slug?: string | null }
+    | null
+    | undefined
+  const authorSameAs: string[] = Array.isArray(author?.links)
+    ? (author!.links as unknown[])
+        .map((l) => (l && typeof l === 'object' ? String((l as { url?: string }).url ?? '') : ''))
+        .filter(Boolean)
+    : []
 
   // Fetch related posts (same tags, exclude this post, max 3)
   const relatedPromise = (post.tags ?? []).length > 0
@@ -129,11 +142,19 @@ export default async function BlogPostPage({ params }: Props) {
     datePublished: post.published_at ?? undefined,
     dateModified: post.updated_at ?? post.published_at ?? undefined,
     url: canonicalUrl,
-    author: {
-      '@type': 'Organization',
-      name: tenant.name,
-      url: `https://${tenant.domain}`,
-    },
+    author: author?.name
+      ? {
+          '@type': 'Person',
+          name: author.name,
+          ...(author.job_title ? { jobTitle: author.job_title } : {}),
+          ...(authorSameAs.length ? { sameAs: authorSameAs } : {}),
+          ...(author.slug ? { url: `${blogUrl}/authors/${author.slug}` } : {}),
+        }
+      : {
+          '@type': 'Organization',
+          name: tenant.name,
+          url: `https://${tenant.domain}`,
+        },
     publisher: {
       '@type': 'Organization',
       name: tenant.name,
@@ -194,12 +215,20 @@ export default async function BlogPostPage({ params }: Props) {
           {post.title}
         </h1>
 
-        {/* Date */}
-        {post.published_at && (
-          <time style={{ fontSize: '0.875rem', opacity: 0.5, display: 'block', marginBottom: '2.5rem' }}>
-            {new Date(post.published_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}
-          </time>
-        )}
+        {/* Byline + date */}
+        <div style={{ fontSize: '0.875rem', opacity: 0.55, marginBottom: '2.5rem', display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
+          {author?.name && (
+            <span style={{ fontWeight: 600, opacity: 0.9, color: theme.textColor }}>
+              By {author.name}{author.job_title ? `, ${author.job_title}` : ''}
+            </span>
+          )}
+          {author?.name && post.published_at && <span aria-hidden>·</span>}
+          {post.published_at && (
+            <time>
+              {new Date(post.published_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}
+            </time>
+          )}
+        </div>
 
         {/* Body */}
         <div
@@ -207,6 +236,35 @@ export default async function BlogPostPage({ params }: Props) {
           style={{ fontFamily: theme.bodyFont }}
           dangerouslySetInnerHTML={{ __html: bodyHtml }}
         />
+
+        {/* Author bio (E-E-A-T) */}
+        {author?.name && (author.bio || authorSameAs.length > 0) && (
+          <div style={{
+            marginTop: '2.5rem', padding: '1.25rem 1.5rem',
+            border: '1px solid rgba(0,0,0,0.1)', borderLeft: `3px solid ${theme.primaryColor}`,
+            borderRadius: '0.625rem', backgroundColor: 'rgba(0,0,0,0.02)',
+          }}>
+            <p style={{ margin: '0 0 0.35rem', fontWeight: 700, fontSize: '0.95rem', color: theme.textColor }}>
+              {author.name}
+              {author.job_title ? <span style={{ fontWeight: 500, opacity: 0.6 }}> · {author.job_title}</span> : null}
+            </p>
+            {author.bio && (
+              <p style={{ margin: '0 0 0.5rem', fontSize: '0.9rem', lineHeight: 1.6, opacity: 0.8 }}>{author.bio}</p>
+            )}
+            {authorSameAs.length > 0 && (
+              <p style={{ margin: 0, display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+                {(Array.isArray(author.links) ? (author.links as Array<{ label?: string; url?: string }>) : [])
+                  .filter((l) => l && l.url)
+                  .map((l, i) => (
+                    <a key={i} href={l.url} target="_blank" rel="noopener noreferrer me"
+                      style={{ fontSize: '0.85rem', color: theme.primaryColor, textDecoration: 'underline' }}>
+                      {l.label || l.url}
+                    </a>
+                  ))}
+              </p>
+            )}
+          </div>
+        )}
 
         {/* Back link */}
         <div style={{ marginTop: '3rem', paddingTop: '2rem', borderTop: '1px solid rgba(0,0,0,0.08)' }}>

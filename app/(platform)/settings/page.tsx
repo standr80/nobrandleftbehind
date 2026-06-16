@@ -1,5 +1,6 @@
 import { auth } from '@clerk/nextjs/server'
 import { redirect } from 'next/navigation'
+import Link from 'next/link'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getActiveWorkspace } from '@/lib/workspace/active'
 import SettingsForm from './SettingsForm'
@@ -39,6 +40,17 @@ export default async function SettingsPage() {
         <h1 className="text-2xl font-bold mb-2">Settings</h1>
         <p className="text-slate-400 text-sm">{tenant.name} · {tenant.domain}</p>
       </div>
+
+      <Link
+        href="/settings/authors"
+        className="flex items-center justify-between border border-slate-200 rounded-xl px-4 py-3 mb-8 hover:border-indigo-300 transition-colors"
+      >
+        <div>
+          <p className="font-semibold text-slate-900 text-sm">Authors</p>
+          <p className="text-slate-400 text-xs">Manage named authors &amp; bios for article attribution (E-E-A-T)</p>
+        </div>
+        <span className="text-slate-400">→</span>
+      </Link>
       <SettingsForm
         key={tenant.id}
         tenant={{

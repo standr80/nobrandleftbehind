@@ -73,7 +73,7 @@ export async function resolveTenant(db: Db, slug: string): Promise<ResolvedTenan
 
 /** Columns selected for list/summary responses. */
 export const SUMMARY_COLUMNS =
-  'id, title, slug, excerpt, meta_description, tags, hero_image_url, hero_image_alt, hero_image_credit, created_by, published_at, updated_at, deleted_at, status'
+  'id, title, slug, excerpt, meta_description, tags, hero_image_url, hero_image_alt, hero_image_credit, created_by, published_at, updated_at, deleted_at, status, author:authors(name, job_title, bio, links, slug)'
 
 /** Same as summary plus the body for single-post responses. */
 export const POST_COLUMNS = `${SUMMARY_COLUMNS}, body_mdx`
@@ -94,6 +94,33 @@ export interface RawPost {
   deleted_at: string | null
   status: string | null
   body_mdx?: string | null
+  author?: AuthorRow | AuthorRow[] | null
+}
+
+export interface AuthorRow {
+  name: string | null
+  job_title: string | null
+  bio: string | null
+  links: unknown
+  slug: string | null
+}
+
+/** Supabase may return an embedded to-one relation as an object or a 1-element array. */
+function pickAuthor(a: RawPost['author']): AuthorRow | null {
+  if (!a) return null
+  return Array.isArray(a) ? a[0] ?? null : a
+}
+
+interface AuthorLink {
+  label: string
+  url: string
+}
+
+function authorLinks(a: AuthorRow | null): AuthorLink[] {
+  if (!a || !Array.isArray(a.links)) return []
+  return (a.links as unknown[])
+    .filter((l): l is AuthorLink => !!l && typeof l === 'object' && typeof (l as AuthorLink).url === 'string')
+    .map((l) => ({ label: String(l.label ?? '').trim(), url: String(l.url).trim() }))
 }
 
 function postUrl(domain: string, slug: string): string {
@@ -116,6 +143,7 @@ export function toTombstone(p: RawPost) {
 }
 
 export function toSummary(p: RawPost, domain: string) {
+  const a = pickAuthor(p.author)
   return {
     id: p.id,
     title: p.title ?? '',
@@ -126,7 +154,11 @@ export function toSummary(p: RawPost, domain: string) {
     hero_image: p.hero_image_url ?? '',
     hero_image_alt: p.hero_image_alt ?? '',
     hero_image_credit: p.hero_image_credit ?? '',
-    author: p.created_by ?? 'Clem',
+    // `author` stays a plain name string for backward compatibility; the
+    // richer fields below carry the E-E-A-T signal (bio, credentials, sameAs).
+    author: (a && a.name) || p.created_by || 'Clem',
+    author_title: a?.job_title ?? '',
+    author_slug: a?.slug ?? '',
     published_at: p.published_at ?? '',
     updated_at: p.updated_at ?? '',
     url: postUrl(domain, p.slug ?? ''),
@@ -134,8 +166,11 @@ export function toSummary(p: RawPost, domain: string) {
 }
 
 export function toPost(p: RawPost, domain: string, bodyHtml: string) {
+  const a = pickAuthor(p.author)
   return {
     ...toSummary(p, domain),
+    author_bio: a?.bio ?? '',
+    author_links: authorLinks(a),
     body_html: bodyHtml,
     body_format: 'html' as const,
   }
