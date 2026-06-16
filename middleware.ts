@@ -11,6 +11,7 @@ const isPublicRoute = createRouteMatcher([
   '/api/invite(.*)', // invite API routes (begin, accept)
   '/api/webhooks(.*)', // Inngest + GitHub webhooks are verified internally
   '/api/feed(.*)',  // public embed feed — no auth, CORS open
+  '/api/content(.*)', // public Content API v1 — no auth, CORS open
   '/preview/embed(.*)', // iframe preview for embed builder
 ])
 
