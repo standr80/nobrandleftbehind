@@ -23,6 +23,7 @@ export type Database = {
           body_mdx: string | null
           created_at: string | null
           created_by: string | null
+          deleted_at: string | null
           drafted_at: string | null
           excerpt: string | null
           git_merge_sha: string | null
@@ -55,6 +56,7 @@ export type Database = {
           body_mdx?: string | null
           created_at?: string | null
           created_by?: string | null
+          deleted_at?: string | null
           drafted_at?: string | null
           excerpt?: string | null
           git_merge_sha?: string | null
@@ -87,6 +89,7 @@ export type Database = {
           body_mdx?: string | null
           created_at?: string | null
           created_by?: string | null
+          deleted_at?: string | null
           drafted_at?: string | null
           excerpt?: string | null
           git_merge_sha?: string | null
@@ -746,6 +749,8 @@ export type Database = {
           logo_url: string | null
           name: string
           post_cadence_active: boolean | null
+          public_slug: string | null
+          content_api_key: string | null
           publish_cadence: string | null
           publish_days: string[] | null
           publish_time: string | null
@@ -780,6 +785,8 @@ export type Database = {
           logo_url?: string | null
           name: string
           post_cadence_active?: boolean | null
+          public_slug?: string | null
+          content_api_key?: string | null
           publish_cadence?: string | null
           publish_days?: string[] | null
           publish_time?: string | null
@@ -814,6 +821,8 @@ export type Database = {
           logo_url?: string | null
           name?: string
           post_cadence_active?: boolean | null
+          public_slug?: string | null
+          content_api_key?: string | null
           publish_cadence?: string | null
           publish_days?: string[] | null
           publish_time?: string | null
