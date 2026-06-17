@@ -42,6 +42,14 @@ interface Tenant {
   ideogram_api_key: string | null
   image_gen_enabled: boolean | null
   deploy_hook_url: string | null
+  internal_links: InternalLink[] | null
+}
+
+interface InternalLink {
+  url: string
+  label?: string
+  description?: string
+  must_link?: boolean
 }
 
 interface Member {
@@ -63,7 +71,7 @@ interface Props {
   siteLimits: SiteLimitsView
 }
 
-type Section = 'basics' | 'clem' | 'sites' | 'brand' | 'publishing' | 'team' | 'embed'
+type Section = 'basics' | 'clem' | 'sites' | 'brand' | 'publishing' | 'team' | 'embed' | 'links'
 
 function domainToSlug(domain: string): string {
   return domain.replace(/^https?:\/\//, '').replace(/^www\./, '').split('.')[0].toLowerCase()
@@ -108,6 +116,11 @@ export default function SettingsForm({
   // ── Image generation state ─────────────────────────────────────
   const [imageGenEnabled, setImageGenEnabled] = useState(tenant.image_gen_enabled ?? false)
   const [deployHookUrl, setDeployHookUrl] = useState(tenant.deploy_hook_url ?? '')
+  const [internalLinks, setInternalLinks] = useState<InternalLink[]>(
+    Array.isArray(tenant.internal_links) ? tenant.internal_links : [],
+  )
+  const [linksSaving, setLinksSaving] = useState(false)
+  const [linksSaved, setLinksSaved] = useState(false)
   const [ideogramKey, setIdeogramKey] = useState(tenant.ideogram_api_key ? '••••••••••••••••' : '')
   const [ideogramKeyDirty, setIdeogramKeyDirty] = useState(false)
   const [savingImageGen, setSavingImageGen] = useState(false)
@@ -324,6 +337,7 @@ export default function SettingsForm({
     { id: 'brand', label: 'Brand' },
     { id: 'publishing', label: 'Publishing' },
     { id: 'team', label: 'Team' },
+    { id: 'links', label: 'Internal links' },
     { id: 'embed', label: 'Embed' },
   ]
 
@@ -1265,6 +1279,109 @@ export default function SettingsForm({
                 </li>
               ))}
             </ul>
+          </div>
+        )}
+
+        {/* ── Internal links ── */}
+        {section === 'links' && (
+          <div className="space-y-5">
+            <div>
+              <h3 className="text-sm font-medium mb-1">Internal link map</h3>
+              <p className="text-xs text-slate-400">
+                The key pages on your site that Clem may link to from within articles. Clem includes
+                2–4 relevant links per post, always including any marked <span className="font-medium">Must-link</span>,
+                and only ever links to pages in this list (so it never invents a URL).
+              </p>
+            </div>
+
+            <div className="space-y-3">
+              {internalLinks.length === 0 && (
+                <p className="text-sm text-slate-400">No pages yet. Add your key product / service / contact pages below.</p>
+              )}
+              {internalLinks.map((link, i) => (
+                <div key={i} className="border border-slate-200 rounded-xl p-4 space-y-3">
+                  <div className="flex gap-2">
+                    <input
+                      className={inputClass}
+                      value={link.url}
+                      onChange={(e) => setInternalLinks((prev) => prev.map((l, idx) => (idx === i ? { ...l, url: e.target.value } : l)))}
+                      placeholder="https://www.yoursite.com/page/ or /page/"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setInternalLinks((prev) => prev.filter((_, idx) => idx !== i))}
+                      className="text-slate-400 hover:text-red-500 px-2"
+                      aria-label="Remove"
+                    >×</button>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <input
+                      className={inputClass}
+                      value={link.label ?? ''}
+                      onChange={(e) => setInternalLinks((prev) => prev.map((l, idx) => (idx === i ? { ...l, label: e.target.value } : l)))}
+                      placeholder="Short label (e.g. Big Cheques)"
+                    />
+                    <input
+                      className={inputClass}
+                      value={link.description ?? ''}
+                      onChange={(e) => setInternalLinks((prev) => prev.map((l, idx) => (idx === i ? { ...l, description: e.target.value } : l)))}
+                      placeholder="What the page is about / when to link it"
+                    />
+                  </div>
+                  <label className="flex items-center gap-2 text-sm text-slate-600">
+                    <input
+                      type="checkbox"
+                      checked={!!link.must_link}
+                      onChange={(e) => setInternalLinks((prev) => prev.map((l, idx) => (idx === i ? { ...l, must_link: e.target.checked } : l)))}
+                    />
+                    Must-link (always include a link to this page)
+                  </label>
+                </div>
+              ))}
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setInternalLinks((prev) => [...prev, { url: '', label: '', description: '', must_link: false }])}
+              className="text-sm font-medium text-indigo-600 hover:text-indigo-800"
+            >
+              + Add page
+            </button>
+
+            {isAdmin && (
+              <div className="pt-2">
+                <button
+                  type="button"
+                  disabled={linksSaving}
+                  onClick={async () => {
+                    setLinksSaving(true)
+                    setLinksSaved(false)
+                    const cleaned = internalLinks
+                      .filter((l) => l.url.trim())
+                      .map((l) => ({
+                        url: l.url.trim(),
+                        label: (l.label ?? '').trim(),
+                        description: (l.description ?? '').trim(),
+                        must_link: !!l.must_link,
+                      }))
+                    const res = await fetch('/api/tenant', {
+                      method: 'PATCH',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ internal_links: cleaned }),
+                    })
+                    setLinksSaving(false)
+                    if (res.ok) {
+                      setInternalLinks(cleaned)
+                      setLinksSaved(true)
+                      setTimeout(() => setLinksSaved(false), 2000)
+                    }
+                  }}
+                  className="bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg px-4 py-2 disabled:opacity-50"
+                >
+                  {linksSaving ? 'Saving…' : linksSaved ? '✓ Saved' : 'Save link map'}
+                </button>
+              </div>
+            )}
           </div>
         )}
 

@@ -61,6 +61,7 @@ export default async function SettingsPage() {
           ideogram_api_key: (tenant as unknown as { ideogram_api_key: string | null }).ideogram_api_key ?? null,
           image_gen_enabled: (tenant as unknown as { image_gen_enabled: boolean | null }).image_gen_enabled ?? null,
           deploy_hook_url: (tenant as unknown as { deploy_hook_url: string | null }).deploy_hook_url ?? null,
+          internal_links: (tenant as unknown as { internal_links: { url: string; label?: string; description?: string; must_link?: boolean }[] | null }).internal_links ?? null,
         }}
         members={members ?? []}
         isAdmin={role === 'admin'}

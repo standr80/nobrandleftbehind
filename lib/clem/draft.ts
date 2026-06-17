@@ -60,6 +60,26 @@ export async function runDraft(tenantId: string, suggestionId: string): Promise<
 
   const today = new Date().toISOString().split('T')[0]
 
+  // Internal link map: the host site's key pages Clem may link to. Clem links
+  // ONLY to these (never invents a URL) and always includes any must-link page.
+  type LinkItem = { url?: string; label?: string; description?: string; must_link?: boolean }
+  const linkMap: LinkItem[] = Array.isArray(tenant.internal_links)
+    ? (tenant.internal_links as LinkItem[]).filter((l) => l && typeof l.url === 'string' && l.url)
+    : []
+  const mustLink = linkMap.filter((l) => l.must_link)
+  const internalLinkingInstruction = linkMap.length
+    ? `
+
+Internal linking (IMPORTANT — for SEO and to turn readers into enquiries):
+- Include 2–4 contextually relevant internal links in the body, woven naturally into sentences with descriptive anchor text (never "click here").
+- Link ONLY to pages in the list below. Do NOT invent, guess, or link to any URL that is not listed.
+${mustLink.length ? `- ALWAYS include a link to: ${mustLink.map((l) => l.url).join(', ')}.` : ''}
+- Use standard Markdown links: [anchor text](url).
+
+Available pages to link to:
+${linkMap.map((l) => `- ${l.url}${l.label ? ` — ${l.label}` : ''}${l.description ? `: ${l.description}` : ''}${l.must_link ? ' [MUST LINK]' : ''}`).join('\n')}`
+    : ''
+
   const response = await anthropic.messages.create({
     model: CLAUDE_MODEL,
     max_tokens: 8192,
@@ -89,7 +109,7 @@ Requirements:
 - 3–4 sections with clear H2 headings
 - Practical, actionable content throughout
 - Natural keyword integration (never forced)
-- Strong conclusion with a clear takeaway
+- Strong conclusion with a clear takeaway${internalLinkingInstruction}
 
 Return the post as valid MDX with this exact frontmatter format:
 ---

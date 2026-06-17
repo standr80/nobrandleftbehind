@@ -802,6 +802,7 @@ export type Database = {
           public_slug: string | null
           content_api_key: string | null
           deploy_hook_url: string | null
+          internal_links: Json | null
           publish_cadence: string | null
           publish_days: string[] | null
           publish_time: string | null
@@ -839,6 +840,7 @@ export type Database = {
           public_slug?: string | null
           content_api_key?: string | null
           deploy_hook_url?: string | null
+          internal_links?: Json | null
           publish_cadence?: string | null
           publish_days?: string[] | null
           publish_time?: string | null
@@ -876,6 +878,7 @@ export type Database = {
           public_slug?: string | null
           content_api_key?: string | null
           deploy_hook_url?: string | null
+          internal_links?: Json | null
           publish_cadence?: string | null
           publish_days?: string[] | null
           publish_time?: string | null
