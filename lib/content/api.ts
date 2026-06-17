@@ -142,8 +142,19 @@ export function toTombstone(p: RawPost) {
   }
 }
 
-export function toSummary(p: RawPost, domain: string) {
-  const a = pickAuthor(p.author)
+/** The tenant's default author, used when a post has none attributed. */
+export async function getDefaultAuthor(db: Db, tenantId: string): Promise<AuthorRow | null> {
+  const { data } = await db
+    .from('authors')
+    .select('name, job_title, bio, links, slug')
+    .eq('tenant_id', tenantId)
+    .eq('is_default', true)
+    .maybeSingle()
+  return (data as AuthorRow | null) ?? null
+}
+
+export function toSummary(p: RawPost, domain: string, fallbackAuthor: AuthorRow | null = null) {
+  const a = pickAuthor(p.author) || fallbackAuthor
   return {
     id: p.id,
     title: p.title ?? '',
@@ -165,10 +176,10 @@ export function toSummary(p: RawPost, domain: string) {
   }
 }
 
-export function toPost(p: RawPost, domain: string, bodyHtml: string) {
-  const a = pickAuthor(p.author)
+export function toPost(p: RawPost, domain: string, bodyHtml: string, fallbackAuthor: AuthorRow | null = null) {
+  const a = pickAuthor(p.author) || fallbackAuthor
   return {
-    ...toSummary(p, domain),
+    ...toSummary(p, domain, fallbackAuthor),
     author_bio: a?.bio ?? '',
     author_links: authorLinks(a),
     body_html: bodyHtml,

@@ -5,6 +5,7 @@ import {
   CORS_HEADERS,
   PUBLIC_CACHE,
   resolveTenant,
+  getDefaultAuthor,
   POST_COLUMNS,
   toPost,
   toTombstone,
@@ -71,7 +72,8 @@ export async function GET(
   }
 
   const bodyHtml = post.body_mdx ? await toHtml(post.body_mdx) : ''
-  const body = toPost(post, tenant.domain, bodyHtml)
+  const defaultAuthor = await getDefaultAuthor(db, tenant.id)
+  const body = toPost(post, tenant.domain, bodyHtml, defaultAuthor)
   const etag = etagFor(body)
 
   if (notModified(req, etag)) {

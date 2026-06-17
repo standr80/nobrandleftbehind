@@ -5,6 +5,7 @@ import {
   PUBLIC_CACHE,
   PRIVATE_CACHE,
   resolveTenant,
+  getDefaultAuthor,
   SUMMARY_COLUMNS,
   toSummary,
   toTombstone,
@@ -59,6 +60,9 @@ export async function GET(
     )
   }
 
+  // Posts with no attributed author fall back to the tenant's default author.
+  const defaultAuthor = await getDefaultAuthor(db, tenant.id)
+
   const siteUrl = `https://${tenant.domain.replace(/^https?:\/\//, '').replace(/\/$/, '')}`
   let body: Record<string, unknown>
 
@@ -100,7 +104,7 @@ export async function GET(
       site_url: siteUrl,
       generated_at: new Date().toISOString(),
       next_cursor,
-      posts: pageRows.map((p) => (isLive(p) ? toSummary(p, tenant.domain) : toTombstone(p))),
+      posts: pageRows.map((p) => (isLive(p) ? toSummary(p, tenant.domain, defaultAuthor) : toTombstone(p))),
     }
   } else {
     // ── Public listing (page-based, with total count for numbered paging) ────
@@ -135,7 +139,7 @@ export async function GET(
       per_page: perPage,
       total,
       total_pages: Math.max(1, Math.ceil(total / perPage)),
-      posts: ((data ?? []) as unknown as RawPost[]).map((p) => toSummary(p, tenant.domain)),
+      posts: ((data ?? []) as unknown as RawPost[]).map((p) => toSummary(p, tenant.domain, defaultAuthor)),
     }
   }
 
