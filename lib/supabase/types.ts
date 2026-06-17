@@ -801,6 +801,7 @@ export type Database = {
           post_cadence_active: boolean | null
           public_slug: string | null
           content_api_key: string | null
+          deploy_hook_url: string | null
           publish_cadence: string | null
           publish_days: string[] | null
           publish_time: string | null
@@ -837,6 +838,7 @@ export type Database = {
           post_cadence_active?: boolean | null
           public_slug?: string | null
           content_api_key?: string | null
+          deploy_hook_url?: string | null
           publish_cadence?: string | null
           publish_days?: string[] | null
           publish_time?: string | null
@@ -873,6 +875,7 @@ export type Database = {
           post_cadence_active?: boolean | null
           public_slug?: string | null
           content_api_key?: string | null
+          deploy_hook_url?: string | null
           publish_cadence?: string | null
           publish_days?: string[] | null
           publish_time?: string | null

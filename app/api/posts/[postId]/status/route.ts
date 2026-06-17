@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { calculateNextSlot } from '@/lib/clem/schedule'
 import { runPublish } from '@/lib/clem/publish'
+import { triggerDeployHook } from '@/lib/clem/deployHook'
 
 interface Params {
   params: Promise<{ postId: string }>
@@ -177,6 +178,12 @@ export async function POST(request: Request, { params }: Params) {
 
     default:
       return NextResponse.json({ error: 'Unknown action' }, { status: 400 })
+  }
+
+  // Rebuild the tenant's static site (no-op unless a deploy hook is configured)
+  // when a post goes live or is taken down.
+  if (action === 'publish_now' || action === 'unpublish') {
+    await triggerDeployHook(post.tenant_id)
   }
 
   return NextResponse.json({ ok: true })

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { runPublish } from '@/lib/clem/publish'
+import { triggerDeployHook } from '@/lib/clem/deployHook'
 
 /**
  * Vercel Cron — runs every 5 minutes (requires Vercel Pro).
@@ -65,6 +66,9 @@ export async function GET(request: Request) {
       results.published += ids.length
       results.postIds.push(...ids)
       console.log(`[cron/publish] Directly published ${ids.length} post(s)`)
+      // Rebuild each affected static site once.
+      const tenantsToRebuild = [...new Set(directPosts.map((p) => p.tenant_id))]
+      await Promise.all(tenantsToRebuild.map((tid) => triggerDeployHook(tid)))
     }
   }
 

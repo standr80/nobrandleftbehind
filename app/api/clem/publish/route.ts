@@ -2,6 +2,7 @@ import { auth } from '@clerk/nextjs/server'
 import { NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { runPublish } from '@/lib/clem/publish'
+import { triggerDeployHook } from '@/lib/clem/deployHook'
 
 export async function POST(request: Request) {
   const { userId } = await auth()
@@ -47,5 +48,6 @@ export async function POST(request: Request) {
     attempted_at: now,
   })
 
+  await triggerDeployHook(tenantId)
   return NextResponse.json({ ok: true, mode: 'direct' })
 }

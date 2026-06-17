@@ -41,6 +41,7 @@ interface Tenant {
   blog_footer: string | null
   ideogram_api_key: string | null
   image_gen_enabled: boolean | null
+  deploy_hook_url: string | null
 }
 
 interface Member {
@@ -106,6 +107,7 @@ export default function SettingsForm({
 
   // ── Image generation state ─────────────────────────────────────
   const [imageGenEnabled, setImageGenEnabled] = useState(tenant.image_gen_enabled ?? false)
+  const [deployHookUrl, setDeployHookUrl] = useState(tenant.deploy_hook_url ?? '')
   const [ideogramKey, setIdeogramKey] = useState(tenant.ideogram_api_key ? '••••••••••••••••' : '')
   const [ideogramKeyDirty, setIdeogramKeyDirty] = useState(false)
   const [savingImageGen, setSavingImageGen] = useState(false)
@@ -189,6 +191,7 @@ export default function SettingsForm({
           git_repo: gitRepo || null,
           git_branch: gitBranch || 'main',
           git_blog_path: gitBlogPath || 'content/blog',
+          deploy_hook_url: deployHookUrl.trim() || null,
           publish_cadence: cadence,
           publish_days: days,
           publish_time: time,
@@ -1088,6 +1091,17 @@ export default function SettingsForm({
                     <input className={inputClass} value={gitBlogPath} onChange={(e) => setGitBlogPath(e.target.value)} placeholder="content/blog" />
                   </div>
                 </div>
+              </div>
+            )}
+
+            {cmsType === 'embed' && (
+              <div className="pt-2">
+                <label className={labelClass}>Vercel Deploy Hook URL (optional)</label>
+                <input className={inputClass} value={deployHookUrl} onChange={(e) => setDeployHookUrl(e.target.value)} placeholder="https://api.vercel.com/v1/integrations/deploy/..." />
+                <p className="text-xs text-slate-400 mt-1">
+                  Paste the site&apos;s Vercel Deploy Hook so publishing a post automatically rebuilds the static site.
+                  Create one in the site&apos;s Vercel project under Settings → Git → Deploy Hooks.
+                </p>
               </div>
             )}
           </>
