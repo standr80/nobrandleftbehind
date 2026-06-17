@@ -121,6 +121,9 @@ export default function SettingsForm({
   )
   const [linksSaving, setLinksSaving] = useState(false)
   const [linksSaved, setLinksSaved] = useState(false)
+  const [discovered, setDiscovered] = useState<{ url: string; label: string; description: string }[] | null>(null)
+  const [scanning, setScanning] = useState(false)
+  const [scanError, setScanError] = useState('')
   const [ideogramKey, setIdeogramKey] = useState(tenant.ideogram_api_key ? '••••••••••••••••' : '')
   const [ideogramKeyDirty, setIdeogramKeyDirty] = useState(false)
   const [savingImageGen, setSavingImageGen] = useState(false)
@@ -1293,6 +1296,89 @@ export default function SettingsForm({
                 and only ever links to pages in this list (so it never invents a URL).
               </p>
             </div>
+
+            {/* Scan site */}
+            {isAdmin && (
+              <div className="border border-slate-200 rounded-xl p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-medium">Scan your site</p>
+                    <p className="text-xs text-slate-400">Find your pages automatically, then tick the ones to include.</p>
+                  </div>
+                  <button
+                    type="button"
+                    disabled={scanning}
+                    onClick={async () => {
+                      setScanning(true)
+                      setScanError('')
+                      try {
+                        const res = await fetch('/api/clem/map-site', { method: 'POST' })
+                        const json = await res.json()
+                        if (!res.ok) setScanError(json.error || 'Scan failed')
+                        else setDiscovered(json.pages || [])
+                      } catch {
+                        setScanError('Scan failed')
+                      }
+                      setScanning(false)
+                    }}
+                    className="shrink-0 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg px-4 py-2 disabled:opacity-50"
+                  >
+                    {scanning ? 'Scanning…' : 'Scan site'}
+                  </button>
+                </div>
+                {scanError && <p className="text-sm text-red-500 mt-2">{scanError}</p>}
+
+                {discovered && (
+                  <div className="mt-4">
+                    <p className="text-xs text-slate-400 mb-2">{discovered.length} pages found. Tick to include; mark Must-link for pages that should always be linked.</p>
+                    <div className="max-h-96 overflow-y-auto border border-slate-100 rounded-lg divide-y divide-slate-100">
+                      {discovered.map((page) => {
+                        const current = internalLinks.find((l) => l.url === page.url)
+                        const included = !!current
+                        return (
+                          <div key={page.url} className="flex items-start gap-3 p-3 text-sm">
+                            <label className="flex items-center gap-1.5 shrink-0 cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={included}
+                                onChange={() =>
+                                  setInternalLinks((prev) =>
+                                    prev.some((l) => l.url === page.url)
+                                      ? prev.filter((l) => l.url !== page.url)
+                                      : [...prev, { url: page.url, label: page.label, description: page.description, must_link: false }],
+                                  )
+                                }
+                              />
+                              <span className="text-xs text-slate-500">Include</span>
+                            </label>
+                            <label className={`flex items-center gap-1.5 shrink-0 cursor-pointer ${included ? '' : 'opacity-40'}`}>
+                              <input
+                                type="checkbox"
+                                checked={!!current?.must_link}
+                                onChange={() =>
+                                  setInternalLinks((prev) => {
+                                    if (prev.some((l) => l.url === page.url)) {
+                                      return prev.map((l) => (l.url === page.url ? { ...l, must_link: !l.must_link } : l))
+                                    }
+                                    return [...prev, { url: page.url, label: page.label, description: page.description, must_link: true }]
+                                  })
+                                }
+                              />
+                              <span className="text-xs text-slate-500">Must-link</span>
+                            </label>
+                            <div className="min-w-0">
+                              <p className="font-medium text-slate-700 truncate">{page.label}</p>
+                              <p className="text-xs text-slate-400 truncate">{page.url}</p>
+                              {page.description && <p className="text-xs text-slate-500 mt-0.5 line-clamp-2">{page.description}</p>}
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
 
             <div className="space-y-3">
               {internalLinks.length === 0 && (
