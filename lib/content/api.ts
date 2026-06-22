@@ -19,6 +19,25 @@ export const CORS_HEADERS: Record<string, string> = {
 export const PUBLIC_CACHE = 'public, s-maxage=300, stale-while-revalidate=86400'
 export const PRIVATE_CACHE = 'private, max-age=30'
 
+/**
+ * Negative / non-live responses (404 Not Found, 410 Gone, tenant-not-found).
+ * These must NOT be edge-cached: a "not found" for a slug that is about to be
+ * published would otherwise stick around for the PUBLIC_CACHE window and get
+ * baked into a consumer's rebuilt static site, 404-ing a live article.
+ */
+export const NO_STORE = 'no-store'
+
+/**
+ * Cache tag applied (via the `Cache-Tag` response header) to every public,
+ * edge-cacheable content response for a tenant — list, single post, tags and
+ * theme. On publish/unpublish the deploy hook calls `revalidateTag` with this
+ * same tag, so Vercel purges the tenant's cached responses immediately instead
+ * of waiting out the PUBLIC_CACHE window. Keep the header and the purge in sync.
+ */
+export function contentTag(tenantId: string): string {
+  return `content-${tenantId}`
+}
+
 /** Derive a slug from a domain: "www.designsonprint.com" -> "designsonprint" */
 export function domainToSlug(domain: string): string {
   return domain

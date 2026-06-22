@@ -3,6 +3,8 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import {
   CORS_HEADERS,
   PUBLIC_CACHE,
+  NO_STORE,
+  contentTag,
   resolveTenant,
   etagFor,
   notModified,
@@ -26,7 +28,7 @@ export async function GET(
   if (!tenant) {
     return NextResponse.json(
       { error: 'Tenant not found' },
-      { status: 404, headers: { ...CORS_HEADERS, 'Cache-Control': PUBLIC_CACHE } },
+      { status: 404, headers: { ...CORS_HEADERS, 'Cache-Control': NO_STORE } },
     )
   }
 
@@ -42,11 +44,11 @@ export async function GET(
   if (notModified(req, etag)) {
     return new NextResponse(null, {
       status: 304,
-      headers: { ...CORS_HEADERS, ETag: etag, 'Cache-Control': PUBLIC_CACHE },
+      headers: { ...CORS_HEADERS, ETag: etag, 'Cache-Control': PUBLIC_CACHE, 'Cache-Tag': contentTag(tenant.id) },
     })
   }
 
   return NextResponse.json(body, {
-    headers: { ...CORS_HEADERS, ETag: etag, 'Cache-Control': PUBLIC_CACHE },
+    headers: { ...CORS_HEADERS, ETag: etag, 'Cache-Control': PUBLIC_CACHE, 'Cache-Tag': contentTag(tenant.id) },
   })
 }

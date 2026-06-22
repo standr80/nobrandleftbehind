@@ -4,6 +4,8 @@ import { toHtml } from '@/lib/mdx/toHtml'
 import {
   CORS_HEADERS,
   PUBLIC_CACHE,
+  NO_STORE,
+  contentTag,
   resolveTenant,
   getDefaultAuthor,
   POST_COLUMNS,
@@ -35,7 +37,7 @@ export async function GET(
   if (!tenant) {
     return NextResponse.json(
       { error: 'Tenant not found' },
-      { status: 404, headers: { ...CORS_HEADERS, 'Cache-Control': PUBLIC_CACHE } },
+      { status: 404, headers: { ...CORS_HEADERS, 'Cache-Control': NO_STORE } },
     )
   }
 
@@ -56,7 +58,7 @@ export async function GET(
   if (!data) {
     return NextResponse.json(
       { error: 'Post not found' },
-      { status: 404, headers: { ...CORS_HEADERS, 'Cache-Control': PUBLIC_CACHE } },
+      { status: 404, headers: { ...CORS_HEADERS, 'Cache-Control': NO_STORE } },
     )
   }
 
@@ -67,7 +69,7 @@ export async function GET(
   if (!isLive(post)) {
     return NextResponse.json(toTombstone(post), {
       status: 410,
-      headers: { ...CORS_HEADERS, 'Cache-Control': PUBLIC_CACHE },
+      headers: { ...CORS_HEADERS, 'Cache-Control': NO_STORE },
     })
   }
 
@@ -79,11 +81,11 @@ export async function GET(
   if (notModified(req, etag)) {
     return new NextResponse(null, {
       status: 304,
-      headers: { ...CORS_HEADERS, ETag: etag, 'Cache-Control': PUBLIC_CACHE },
+      headers: { ...CORS_HEADERS, ETag: etag, 'Cache-Control': PUBLIC_CACHE, 'Cache-Tag': contentTag(tenant.id) },
     })
   }
 
   return NextResponse.json(body, {
-    headers: { ...CORS_HEADERS, ETag: etag, 'Cache-Control': PUBLIC_CACHE },
+    headers: { ...CORS_HEADERS, ETag: etag, 'Cache-Control': PUBLIC_CACHE, 'Cache-Tag': contentTag(tenant.id) },
   })
 }
