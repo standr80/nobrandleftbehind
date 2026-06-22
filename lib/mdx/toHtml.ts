@@ -66,8 +66,32 @@ function inlineTailwindAlignment(html: string): string {
   })
 }
 
+/**
+ * Inline link styling onto every <a> in the body, so links are clearly
+ * highlighted wherever the exported HTML is rendered — including consumer sites
+ * whose own CSS strips link colour/underline (inline styles win over a host
+ * stylesheet). Always underlines; applies `linkColor` when given (the tenant's
+ * brand colour) so links stay on-brand. Existing attributes are preserved and
+ * any existing inline style is merged, with our declarations taking precedence.
+ */
+function inlineLinkStyles(html: string, linkColor?: string): string {
+  const decls = [...(linkColor ? [`color:${linkColor}`] : []), 'text-decoration:underline']
+  return html.replace(/<a\b([^>]*)>/gi, (full, attrs) => {
+    const styleMatch = attrs.match(/\bstyle="([^"]*)"/i)
+    const existing = styleMatch ? styleMatch[1].replace(/;\s*$/, '') : ''
+    const merged = [existing, ...decls].filter(Boolean).join(';')
+    const cleanAttrs = attrs.replace(/\s*\bstyle="[^"]*"/gi, '').trim()
+    return `<a${cleanAttrs ? ' ' + cleanAttrs : ''} style="${merged}">`
+  })
+}
+
+interface ToHtmlOptions {
+  /** Brand colour applied inline to links. Falls back to underline-only. */
+  linkColor?: string
+}
+
 /** Convert body_mdx (with optional YAML frontmatter) to an HTML string */
-export async function toHtml(mdx: string): Promise<string> {
+export async function toHtml(mdx: string, opts: ToHtmlOptions = {}): Promise<string> {
   const body = repairMojibake(stripFrontmatter(stripWrappingFence(mdx)))
   const file = await unified()
     .use(remarkParse)
@@ -76,7 +100,7 @@ export async function toHtml(mdx: string): Promise<string> {
     .use(rehypeRaw)
     .use(rehypeStringify, { allowDangerousHtml: true })
     .process(body)
-  return inlineTailwindAlignment(String(file))
+  return inlineLinkStyles(inlineTailwindAlignment(String(file)), opts.linkColor)
 }
 
 interface WrapOptions {
@@ -105,7 +129,7 @@ export function wrapInDocument(title: string, bodyHtml: string, opts: WrapOption
   h2 { font-size: 1.4em; }
   h3 { font-size: 1.15em; }
   p { margin: 0 0 1em; }
-  a { color: #2563eb; }
+  a { color: #2563eb; text-decoration: underline; }
   img { max-width: 100%; height: auto; border-radius: 4px; }
   pre { background: #f4f4f5; border-radius: 4px; padding: 1em; overflow-x: auto; font-size: 0.875em; }
   code { background: #f4f4f5; padding: 0.15em 0.35em; border-radius: 3px; font-size: 0.875em; }

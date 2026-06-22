@@ -73,7 +73,9 @@ export async function GET(
     })
   }
 
-  const bodyHtml = post.body_mdx ? await toHtml(post.body_mdx) : ''
+  const linkColor =
+    (tenant.blog_theme as { primaryColor?: string } | null)?.primaryColor || '#2563eb'
+  const bodyHtml = post.body_mdx ? await toHtml(post.body_mdx, { linkColor }) : ''
   const defaultAuthor = await getDefaultAuthor(db, tenant.id)
   const body = toPost(post, tenant.domain, bodyHtml, defaultAuthor)
   const etag = etagFor(body)
