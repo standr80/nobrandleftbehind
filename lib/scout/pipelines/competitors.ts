@@ -13,11 +13,9 @@
  */
 
 import crypto from 'crypto'
-import Anthropic from '@anthropic-ai/sdk'
+import { anthropic } from '@/lib/anthropic'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getKeywordGap, getNewBacklinks, type DfsGapItem } from '@/lib/integrations/dataforseo/client'
-
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 

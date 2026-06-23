@@ -6,15 +6,14 @@
  * and sends via Resend.
  */
 
-import Anthropic from '@anthropic-ai/sdk'
 import { Resend } from 'resend'
+import { anthropic } from '@/lib/anthropic'
 import { createAdminClient } from '@/lib/supabase/admin'
 import type { CompetitorResult } from './pipelines/competitors'
 import type { SearchOpportunityResult } from './pipelines/search-opportunity'
 import type { HandoffResult } from './clem-handoff'
 import type { RankSnapshotSummary } from './pipelines/own-site'
 
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 const resend = new Resend(process.env.RESEND_API_KEY)
 
 // ─── Types ────────────────────────────────────────────────────────────────────

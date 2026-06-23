@@ -6,6 +6,7 @@
  * continue with remaining pipelines. A partial briefing is better than none.
  */
 
+import { anthropic } from '@/lib/anthropic'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getCompetitorUrls } from '@/lib/sites'
 import { runCompetitorPipeline } from './pipelines/competitors'
@@ -245,15 +246,14 @@ async function extractSeedKeywords(
     return []
   }
 
-  const Anthropic = (await import('@anthropic-ai/sdk')).default
-  const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
-
-  const msg = await anthropic.messages.create({
-    model: 'claude-sonnet-4-6',
-    max_tokens: 200,
-    messages: [{
-      role: 'user',
-      content: `Generate 15 real search-engine keyword phrases for a business with this profile:
+  let text: string
+  try {
+    const msg = await anthropic.messages.create({
+      model: 'claude-sonnet-4-6',
+      max_tokens: 200,
+      messages: [{
+        role: 'user',
+        content: `Generate 15 real search-engine keyword phrases for a business with this profile:
 Domain: ${domain}
 Brand voice: ${brandVoice ?? 'not set'}
 Target audience: ${targetAudience ?? 'not set'}
@@ -266,10 +266,17 @@ Rules:
 - Include location-relevant terms if the business is local
 - Example good output: "custom business card printing", "cheap banner printing uk"
 - Do NOT include brand names or competitor names`,
-    }],
-  })
+      }],
+    })
 
-  const text = (msg.content[0] as { type: 'text'; text: string }).text
+    text = (msg.content[0] as { type: 'text'; text: string }).text
+  } catch (err) {
+    // Don't let a keyword-extraction hiccup (API error, rate limit, bad key)
+    // crash the whole Scout run — a partial briefing is better than none.
+    console.error('[Scout] extractSeedKeywords failed:', err instanceof Error ? err.message : err)
+    return []
+  }
+
   return text
     .split('\n')
     .map((l) => l.replace(/^[-•*\d.)\s]+/, '').trim().toLowerCase())
