@@ -44,6 +44,96 @@ export interface BriefingJson {
 
 // ─── Claude synthesis ─────────────────────────────────────────────────────────
 
+type ParsedSections = {
+  urgent: Omit<BriefingSection, 'severity'>[]
+  watch: Omit<BriefingSection, 'severity'>[]
+  wins: Omit<BriefingSection, 'severity'>[]
+  clemQueueSummary: string[]
+}
+
+/**
+ * Deterministic briefing built straight from the pipeline data, used when the
+ * Claude synthesis call is unavailable (e.g. a sustained 529 "overloaded" from
+ * the Anthropic API). Less polished than the AI version, but it means a Scout
+ * run still completes and surfaces its key signals instead of failing outright.
+ */
+function buildFallbackSections(
+  competitorResults: CompetitorResult[],
+  searchResults: SearchOpportunityResult,
+  rankSummary: RankSnapshotSummary | null,
+): ParsedSections {
+  const urgent: Omit<BriefingSection, 'severity'>[] = []
+  const watch: Omit<BriefingSection, 'severity'>[] = []
+  const wins: Omit<BriefingSection, 'severity'>[] = []
+
+  // Urgent — competitor pricing changes
+  for (const c of competitorResults) {
+    if (c.pricingChanged) {
+      urgent.push({
+        title: `Pricing change detected: ${c.competitorUrl}`,
+        detail: c.pricingChangeSummary ?? 'This competitor changed its pricing page.',
+        action: 'Review their new pricing and check yours stays competitive.',
+      })
+    }
+  }
+  // Urgent — seasonal deadlines
+  for (const s of searchResults.seasonalWindows) {
+    urgent.push({
+      title: `Seasonal opportunity: ${s.keyword}`,
+      detail: s.weeksUntilPeak != null ? `Peaks in roughly ${s.weeksUntilPeak} week(s).` : 'Approaching its seasonal peak.',
+      action: 'Publish content now to rank before the peak.',
+    })
+  }
+  // Urgent — rankings lost
+  if (rankSummary && rankSummary.droppedFromTop10 > 0) {
+    urgent.push({
+      title: `${rankSummary.droppedFromTop10} keyword(s) dropped out of the top 10`,
+      detail: 'One or more tracked keywords fell out of the top 10 this period.',
+      action: 'Review the affected pages and refresh the content.',
+    })
+  }
+
+  // Watch — competitor activity
+  for (const c of competitorResults) {
+    const bits: string[] = []
+    if (c.newPages.length) bits.push(`${c.newPages.length} new page(s)`)
+    if (c.newBlogPosts.length) bits.push(`${c.newBlogPosts.length} new blog post(s)`)
+    if (c.newHighAuthBacklinks.length) bits.push(`${c.newHighAuthBacklinks.length} new high-authority backlink(s)`)
+    if (bits.length) {
+      watch.push({
+        title: `Competitor activity: ${c.competitorUrl}`,
+        detail: `${bits.join(', ')}.`,
+        action: 'Review what they published and consider matching it.',
+      })
+    }
+  }
+  // Watch — rising trends
+  if (searchResults.risingTrends.length) {
+    watch.push({
+      title: `${searchResults.risingTrends.length} rising trend(s) detected`,
+      detail: `${searchResults.risingTrends.slice(0, 5).map((t) => t.keyword).join(', ')}.`,
+      action: 'Consider content targeting these emerging searches.',
+    })
+  }
+
+  // Wins — opportunities found
+  if (searchResults.totalAdded > 0) {
+    wins.push({
+      title: `${searchResults.totalAdded} keyword opportunit${searchResults.totalAdded === 1 ? 'y' : 'ies'} identified`,
+      detail: 'New opportunities were added to your Keywords page for review.',
+    })
+  }
+  // Wins — ranking gains
+  if (rankSummary && (rankSummary.improved > 0 || rankSummary.enteredTop10 > 0)) {
+    const parts: string[] = []
+    if (rankSummary.improved > 0) parts.push(`${rankSummary.improved} keyword(s) improved`)
+    if (rankSummary.enteredTop10 > 0) parts.push(`${rankSummary.enteredTop10} entered the top 10`)
+    wins.push({ title: 'Ranking improvements', detail: `${parts.join(', ')}.` })
+  }
+
+  return { urgent, watch, wins, clemQueueSummary: [] }
+}
+
 async function synthesiseBriefing(
   tenantName: string,
   weekStarting: string,
@@ -86,7 +176,9 @@ async function synthesiseBriefing(
     clemSuggestionsAdded: handoffResult.suggestionsCreated,
   }
 
-  const msg = await anthropic.messages.create({
+  let parsed: ParsedSections
+  try {
+   const msg = await anthropic.messages.create({
     model: 'claude-sonnet-4-6',
     max_tokens: 4000,
     system: `You are Scout, a market intelligence agent for ${tenantName}.
@@ -113,13 +205,14 @@ Return ONLY valid JSON matching this structure exactly:
     ],
   })
 
-  let parsed: { urgent: Omit<BriefingSection, 'severity'>[]; watch: Omit<BriefingSection, 'severity'>[]; wins: Omit<BriefingSection, 'severity'>[]; clemQueueSummary: string[] }
-  try {
     const text = (msg.content[0] as { type: 'text'; text: string }).text
     const jsonMatch = text.match(/\{[\s\S]*\}/)
     parsed = JSON.parse(jsonMatch?.[0] ?? text)
-  } catch {
-    parsed = { urgent: [], watch: [], wins: [], clemQueueSummary: [] }
+  } catch (err) {
+    // Claude unavailable (e.g. 529 overload) or returned unparseable output —
+    // fall back to a deterministic briefing so the run still completes.
+    console.error('[Scout] Briefing synthesis unavailable — using deterministic fallback:', err instanceof Error ? err.message : err)
+    parsed = buildFallbackSections(competitorResults, searchResults, rankSummary)
   }
 
   const totalNewPages = competitorResults.reduce((s, c) => s + c.newPages.length, 0)

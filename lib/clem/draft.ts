@@ -1,8 +1,7 @@
-import Anthropic from '@anthropic-ai/sdk'
+import { anthropic } from '@/lib/anthropic'
 import { createAdminClient } from '../supabase/admin'
 import { stripWrappingFence } from '../mdx/toHtml'
 
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! })
 const CLAUDE_MODEL = 'claude-sonnet-4-6'
 
 function generateSlug(title: string): string {

@@ -9,7 +9,7 @@
 
 import { auth } from '@clerk/nextjs/server'
 import { NextResponse } from 'next/server'
-import Anthropic from '@anthropic-ai/sdk'
+import { anthropic } from '@/lib/anthropic'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getActiveWorkspace } from '@/lib/workspace/active'
 
@@ -17,7 +17,6 @@ interface Props {
   params: Promise<{ id: string }>
 }
 
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
 export async function PATCH(request: Request, { params }: Props) {
   const { id } = await params

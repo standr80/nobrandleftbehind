@@ -8,12 +8,11 @@
  * article to draft rather than a raw keyword.
  */
 
-import Anthropic from '@anthropic-ai/sdk'
+import { anthropic } from '@/lib/anthropic'
 import { createAdminClient } from '@/lib/supabase/admin'
 import type { CompetitorResult } from './pipelines/competitors'
 import type { SearchOpportunityResult, OpportunityItem } from './pipelines/search-opportunity'
 
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
 export interface HandoffResult {
   suggestionsCreated: number
