@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation'
 import { getTenantByBlogHost } from '@/lib/blog/getTenantByBlogHost'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { toHtml } from '@/lib/mdx/toHtml'
+import { getDefaultAuthor } from '@/lib/content/api'
 import { tagToSlug } from '@/lib/blog/tagUtils'
 import type { Metadata } from 'next'
 
@@ -75,10 +76,18 @@ export default async function BlogPostPage({ params }: Props) {
   // Author (E-E-A-T): Supabase returns the embedded to-one relation as an
   // object or a 1-element array depending on inference — normalise both.
   const rawAuthor = (post as { author?: unknown }).author
-  const author = (Array.isArray(rawAuthor) ? rawAuthor[0] : rawAuthor) as
+  let author = (Array.isArray(rawAuthor) ? rawAuthor[0] : rawAuthor) as
     | { name?: string | null; job_title?: string | null; bio?: string | null; links?: unknown; slug?: string | null }
     | null
     | undefined
+
+  // Fall back to the tenant's default author (set in Settings) when the post
+  // has no author attributed, mirroring the Content API. Without this the
+  // hosted blog renders no byline at all for unattributed posts.
+  if (!author?.name) {
+    author = await getDefaultAuthor(db, tenant.id)
+  }
+
   const authorSameAs: string[] = Array.isArray(author?.links)
     ? (author!.links as unknown[])
         .map((l) => (l && typeof l === 'object' ? String((l as { url?: string }).url ?? '') : ''))
