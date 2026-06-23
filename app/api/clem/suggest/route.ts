@@ -1,6 +1,7 @@
 import { auth } from '@clerk/nextjs/server'
 import { NextResponse } from 'next/server'
 import { runSuggestions } from '@/lib/clem/suggest'
+import { aiErrorResponse } from '@/lib/anthropic'
 
 export async function POST(request: Request) {
   const { userId } = await auth()
@@ -15,6 +16,7 @@ export async function POST(request: Request) {
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
     console.error('[/api/clem/suggest]', message)
-    return NextResponse.json({ error: message }, { status: 500 })
+    const { error, status } = aiErrorResponse(err)
+    return NextResponse.json({ error }, { status })
   }
 }

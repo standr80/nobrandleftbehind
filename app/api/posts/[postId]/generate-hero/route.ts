@@ -2,6 +2,7 @@ import { auth } from '@clerk/nextjs/server'
 import { NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { generateHeroImage } from '@/lib/clem/generateHeroImage'
+import { aiErrorResponse } from '@/lib/anthropic'
 
 // Claude + Ideogram + sharp + upload can take up to 60s
 export const maxDuration = 60
@@ -52,7 +53,8 @@ export async function POST(request: Request, { params }: Params) {
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
     console.error('[generate-hero]', message)
-    return NextResponse.json({ error: message }, { status: 500 })
+    const { error, status } = aiErrorResponse(err)
+    return NextResponse.json({ error }, { status })
   }
 }
 

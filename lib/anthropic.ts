@@ -17,3 +17,30 @@ export const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
   maxRetries: 4,
 })
+
+/**
+ * True for transient Anthropic conditions that the caller should just retry
+ * later: 429 (rate limit), 503, and 529 `overloaded_error`. These are the
+ * provider being momentarily at capacity, not a bug in our request.
+ */
+export function isOverloadError(err: unknown): boolean {
+  const status = (err as { status?: number } | null)?.status
+  if (status === 429 || status === 503 || status === 529) return true
+  const msg = err instanceof Error ? err.message : String(err)
+  return /overloaded|rate.?limit|too many requests/i.test(msg)
+}
+
+/**
+ * Map any error from an Anthropic-backed call to a user-facing message + HTTP
+ * status. Overload/rate-limit errors become a friendly 503 "try again" instead
+ * of an opaque "529 ... Overloaded".
+ */
+export function aiErrorResponse(err: unknown): { error: string; status: number } {
+  if (isOverloadError(err)) {
+    return {
+      error: 'The AI service is busy right now (temporarily overloaded). Please try again in a minute.',
+      status: 503,
+    }
+  }
+  return { error: err instanceof Error ? err.message : String(err), status: 500 }
+}

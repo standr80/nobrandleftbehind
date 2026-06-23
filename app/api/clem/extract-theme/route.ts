@@ -2,6 +2,7 @@ import { auth } from '@clerk/nextjs/server'
 import { NextResponse } from 'next/server'
 import { extractTheme } from '@/lib/clem/extractTheme'
 import { getActiveWorkspace } from '@/lib/workspace/active'
+import { aiErrorResponse } from '@/lib/anthropic'
 
 const PLATFORM_ADMIN_ID = process.env.PLATFORM_ADMIN_CLERK_USER_ID
 
@@ -28,6 +29,7 @@ export async function POST(request: Request) {
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
     console.error('[/api/clem/extract-theme]', message)
-    return NextResponse.json({ error: message }, { status: 500 })
+    const { error, status } = aiErrorResponse(err)
+    return NextResponse.json({ error }, { status })
   }
 }
