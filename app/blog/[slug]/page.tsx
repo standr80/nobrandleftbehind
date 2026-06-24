@@ -3,7 +3,7 @@ import { notFound } from 'next/navigation'
 import { getTenantByBlogHost } from '@/lib/blog/getTenantByBlogHost'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { toHtml } from '@/lib/mdx/toHtml'
-import { getDefaultAuthor } from '@/lib/content/api'
+import { getDefaultAuthor, parseFaqItems, faqPageSchema } from '@/lib/content/api'
 import { tagToSlug } from '@/lib/blog/tagUtils'
 import type { Metadata } from 'next'
 
@@ -65,7 +65,7 @@ export default async function BlogPostPage({ params }: Props) {
 
   const { data: post } = await db
     .from('blog_posts')
-    .select('title, slug, excerpt, published_at, updated_at, tags, hero_image_url, hero_image_alt, body_mdx, author:authors(name, job_title, bio, links, slug)')
+    .select('title, slug, excerpt, published_at, updated_at, tags, hero_image_url, hero_image_alt, body_mdx, content_type, faq_items, author:authors(name, job_title, bio, links, slug)')
     .eq('tenant_id', tenant.id)
     .eq('slug', slug)
     .eq('status', 'published')
@@ -177,12 +177,25 @@ export default async function BlogPostPage({ params }: Props) {
     keywords: (post.tags ?? []).join(', ') || undefined,
   }
 
+  // FAQ posts also emit FAQPage structured data (built from the structured
+  // faq_items), which is what wins FAQ rich results and AI-Overview citations.
+  const faqLd =
+    (post as { content_type?: string | null }).content_type === 'faq'
+      ? faqPageSchema(parseFaqItems((post as { faq_items?: unknown }).faq_items))
+      : null
+
   return (
     <article>
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
+      {faqLd && (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(faqLd) }}
+        />
+      )}
       <style dangerouslySetInnerHTML={{ __html: postCss }} />
 
       {/* Hero image */}

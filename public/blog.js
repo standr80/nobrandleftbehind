@@ -319,6 +319,17 @@
         s.id = 'nblb-jsonld';
         s.textContent = JSON.stringify(ld);
         document.head.appendChild(s);
+
+        // FAQ pages: inject the ready-made FAQPage schema from the API.
+        var prevFaq = document.getElementById('nblb-faq-jsonld');
+        if (prevFaq) prevFaq.remove();
+        if (p.content_type === 'faq' && p.faq_jsonld) {
+          var f = document.createElement('script');
+          f.type = 'application/ld+json';
+          f.id = 'nblb-faq-jsonld';
+          f.textContent = p.faq_jsonld;
+          document.head.appendChild(f);
+        }
       } catch (e) {}
     }
 

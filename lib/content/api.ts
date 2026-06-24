@@ -92,10 +92,10 @@ export async function resolveTenant(db: Db, slug: string): Promise<ResolvedTenan
 
 /** Columns selected for list/summary responses. */
 export const SUMMARY_COLUMNS =
-  'id, title, slug, excerpt, meta_description, tags, hero_image_url, hero_image_alt, hero_image_credit, created_by, published_at, updated_at, deleted_at, status, author:authors(name, job_title, bio, links, slug)'
+  'id, title, slug, excerpt, meta_description, tags, hero_image_url, hero_image_alt, hero_image_credit, created_by, published_at, updated_at, deleted_at, status, content_type, author:authors(name, job_title, bio, links, slug)'
 
-/** Same as summary plus the body for single-post responses. */
-export const POST_COLUMNS = `${SUMMARY_COLUMNS}, body_mdx`
+/** Same as summary plus the body (and FAQ data) for single-post responses. */
+export const POST_COLUMNS = `${SUMMARY_COLUMNS}, body_mdx, faq_items`
 
 export interface RawPost {
   id: string
@@ -112,7 +112,9 @@ export interface RawPost {
   updated_at: string | null
   deleted_at: string | null
   status: string | null
+  content_type?: string | null
   body_mdx?: string | null
+  faq_items?: unknown
   author?: AuthorRow | AuthorRow[] | null
 }
 
@@ -161,6 +163,52 @@ export function toTombstone(p: RawPost) {
   }
 }
 
+// ---------------------------------------------------------------------------
+// FAQ
+// ---------------------------------------------------------------------------
+
+export interface FaqItem {
+  question: string
+  answer: string
+}
+
+/** Parse blog_posts.faq_items jsonb (stored as [{ q, a }]) into a clean list. */
+export function parseFaqItems(raw: unknown): FaqItem[] {
+  if (!Array.isArray(raw)) return []
+  return raw
+    .map((it) => {
+      const o = (it ?? {}) as { q?: unknown; a?: unknown; question?: unknown; answer?: unknown }
+      return {
+        question: String(o.q ?? o.question ?? '').trim(),
+        answer: String(o.a ?? o.answer ?? '').trim(),
+      }
+    })
+    .filter((it) => it.question && it.answer)
+}
+
+/** Strip light Markdown to plain text for schema answer fields. */
+function mdToPlain(s: string): string {
+  return s
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1') // [text](url) -> text
+    .replace(/[*_`#>]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+/** schema.org FAQPage object built from faq_items, or null when there are none. */
+export function faqPageSchema(items: FaqItem[]): object | null {
+  if (!items.length) return null
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: items.map((it) => ({
+      '@type': 'Question',
+      name: it.question,
+      acceptedAnswer: { '@type': 'Answer', text: mdToPlain(it.answer) },
+    })),
+  }
+}
+
 /** The tenant's default author, used when a post has none attributed. */
 export async function getDefaultAuthor(db: Db, tenantId: string): Promise<AuthorRow | null> {
   const { data } = await db
@@ -189,6 +237,7 @@ export function toSummary(p: RawPost, domain: string, fallbackAuthor: AuthorRow 
     author: (a && a.name) || p.created_by || 'Clem',
     author_title: a?.job_title ?? '',
     author_slug: a?.slug ?? '',
+    content_type: p.content_type ?? 'blog',
     published_at: p.published_at ?? '',
     updated_at: p.updated_at ?? '',
     url: postUrl(domain, p.slug ?? ''),
@@ -197,12 +246,18 @@ export function toSummary(p: RawPost, domain: string, fallbackAuthor: AuthorRow 
 
 export function toPost(p: RawPost, domain: string, bodyHtml: string, fallbackAuthor: AuthorRow | null = null) {
   const a = pickAuthor(p.author) || fallbackAuthor
+  const faqItems = parseFaqItems(p.faq_items)
+  const schema = faqPageSchema(faqItems)
   return {
     ...toSummary(p, domain, fallbackAuthor),
     author_bio: a?.bio ?? '',
     author_links: authorLinks(a),
     body_html: bodyHtml,
     body_format: 'html' as const,
+    // FAQ pages expose structured Q&A and a ready-to-embed FAQPage JSON-LD
+    // string so consumer sites can drop it straight into <head>. Empty for blogs.
+    faq_items: faqItems,
+    faq_jsonld: schema ? JSON.stringify(schema) : '',
   }
 }
 

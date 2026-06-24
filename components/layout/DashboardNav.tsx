@@ -30,9 +30,10 @@ export default function DashboardNav({
 
   // ── Active-route helpers ────────────────────────────────────────────────────
   const scoutActive = pathname.startsWith('/dashboard/scout')
-  const dashboardActive = pathname === '/dashboard' || (pathname.startsWith('/dashboard/') && !scoutActive)
+  const faqActive = pathname.startsWith('/dashboard/faq')
+  const dashboardActive = pathname === '/dashboard' || (pathname.startsWith('/dashboard/') && !scoutActive && !faqActive)
   const authorActive = pathname.startsWith('/author')
-  const clemActive = dashboardActive || authorActive
+  const clemActive = dashboardActive || authorActive || faqActive
   const settingsActive = pathname.startsWith('/settings')
   const adminActive = pathname.startsWith('/admin')
   const setupActive = pathname.startsWith('/setup')
@@ -113,6 +114,7 @@ export default function DashboardNav({
       {clemOpen && (
         <div className="space-y-0.5">
           <NavLink href="/dashboard" label="Dashboard" icon="▦" active={dashboardActive} indent />
+          <NavLink href="/dashboard/faq" label="FAQ" icon="❓" active={faqActive} indent />
           <NavLink href="/author" label="Author" icon="✎" active={authorActive} indent />
         </div>
       )}
