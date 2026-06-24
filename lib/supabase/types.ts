@@ -69,9 +69,13 @@ export type Database = {
           author_id: string | null
           auto_scheduled: boolean | null
           body_mdx: string | null
+          content_type: string
           created_at: string | null
           created_by: string | null
           deleted_at: string | null
+          faq_items: Json | null
+          last_refreshed_at: string | null
+          origin: string | null
           drafted_at: string | null
           excerpt: string | null
           git_merge_sha: string | null
@@ -103,9 +107,13 @@ export type Database = {
           author_id?: string | null
           auto_scheduled?: boolean | null
           body_mdx?: string | null
+          content_type?: string
           created_at?: string | null
           created_by?: string | null
           deleted_at?: string | null
+          faq_items?: Json | null
+          last_refreshed_at?: string | null
+          origin?: string | null
           drafted_at?: string | null
           excerpt?: string | null
           git_merge_sha?: string | null
@@ -137,9 +145,13 @@ export type Database = {
           author_id?: string | null
           auto_scheduled?: boolean | null
           body_mdx?: string | null
+          content_type?: string
           created_at?: string | null
           created_by?: string | null
           deleted_at?: string | null
+          faq_items?: Json | null
+          last_refreshed_at?: string | null
+          origin?: string | null
           drafted_at?: string | null
           excerpt?: string | null
           git_merge_sha?: string | null
@@ -656,8 +668,42 @@ export type Database = {
         }
         Relationships: []
       }
+      faq_questions: {
+        Row: {
+          created_at: string | null
+          id: string
+          question: string
+          source: string | null
+          status: string | null
+          tenant_id: string
+          topic: string | null
+          used_in_post_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          question: string
+          source?: string | null
+          status?: string | null
+          tenant_id: string
+          topic?: string | null
+          used_in_post_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          question?: string
+          source?: string | null
+          status?: string | null
+          tenant_id?: string
+          topic?: string | null
+          used_in_post_id?: string | null
+        }
+        Relationships: []
+      }
       suggestions: {
         Row: {
+          content_type: string
           created_at: string | null
           id: string
           proposed_title: string
@@ -669,6 +715,7 @@ export type Database = {
           tenant_id: string
         }
         Insert: {
+          content_type?: string
           created_at?: string | null
           id?: string
           proposed_title: string
@@ -680,6 +727,7 @@ export type Database = {
           tenant_id: string
         }
         Update: {
+          content_type?: string
           created_at?: string | null
           id?: string
           proposed_title?: string
