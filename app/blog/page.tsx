@@ -51,6 +51,7 @@ export default async function BlogListingPage({ searchParams }: Props) {
       .select('id, title, slug, excerpt, published_at, tags, hero_image_url, hero_image_alt', { count: 'exact' })
       .eq('tenant_id', tenant.id)
       .eq('status', 'published')
+      .eq('content_type', 'blog')
       .order('published_at', { ascending: false })
       .range(from, from + POSTS_PER_PAGE - 1),
     getSidebarData(tenant.id),

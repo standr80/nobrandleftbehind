@@ -19,7 +19,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   if (!tenant) return {}
 
   const db = createAdminClient()
-  const { data } = await db.from('blog_posts').select('tags').eq('tenant_id', tenant.id).eq('status', 'published')
+  const { data } = await db.from('blog_posts').select('tags').eq('tenant_id', tenant.id).eq('status', 'published').eq('content_type', 'blog')
   const allTags = [...new Set((data ?? []).flatMap((p) => p.tags ?? []))]
   const originalTag = slugToTag(tagSlug, allTags)
   if (!originalTag) return {}
@@ -49,7 +49,7 @@ export default async function TagPage({ params, searchParams }: Props) {
   // Resolve slug → original stored tag value
   const { data: allTagData } = await db
     .from('blog_posts').select('tags')
-    .eq('tenant_id', tenant.id).eq('status', 'published')
+    .eq('tenant_id', tenant.id).eq('status', 'published').eq('content_type', 'blog')
   const allTags = [...new Set((allTagData ?? []).flatMap((p) => p.tags ?? []))]
   const originalTag = slugToTag(tagSlug, allTags)
   if (!originalTag) notFound()
@@ -59,6 +59,7 @@ export default async function TagPage({ params, searchParams }: Props) {
       .select('id, title, slug, excerpt, published_at, tags, hero_image_url, hero_image_alt', { count: 'exact' })
       .eq('tenant_id', tenant.id)
       .eq('status', 'published')
+      .eq('content_type', 'blog')
       .contains('tags', [originalTag])
       .order('published_at', { ascending: false })
       .range(from, from + POSTS_PER_PAGE - 1),

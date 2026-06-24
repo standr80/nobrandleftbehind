@@ -51,6 +51,11 @@ export async function GET(
   const since = sp.get('since')
   const tag = sp.get('tag')
   const includeTheme = sp.get('include') === 'theme'
+  // Content-type filter for the public listing: 'blog' (default) keeps FAQ pages
+  // out of the blog feed; 'faq' returns only FAQs (for a dedicated FAQ hub);
+  // 'all' returns both. The incremental `since` sync is never type-filtered so
+  // consumers still receive — and pre-render — every content type.
+  const type = (sp.get('type') ?? 'blog').toLowerCase()
 
   const db = createAdminClient()
 
@@ -126,6 +131,7 @@ export async function GET(
       .order('published_at', { ascending: false })
       .order('id', { ascending: false })
     if (tag) q = q.contains('tags', [tag])
+    if (type !== 'all') q = q.eq('content_type', type)
 
     const { data, error, count } = await q.range(from, from + perPage - 1)
     if (error) {

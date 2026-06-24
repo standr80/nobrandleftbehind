@@ -23,6 +23,7 @@ export async function getSidebarData(tenantId: string): Promise<SidebarData> {
     .select('tags')
     .eq('tenant_id', tenantId)
     .eq('status', 'published')
+    .eq('content_type', 'blog')
 
   const tagCounts = new Map<string, number>()
   for (const post of data ?? []) {

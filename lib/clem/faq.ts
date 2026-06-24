@@ -151,7 +151,7 @@ ${tenant.forbidden_words?.length ? `- NEVER use these words or phrases: ${tenant
 
 Return ONLY valid JSON, no commentary, matching this exact shape:
 {
-  "title": "FAQ page title (include the topic and the word FAQ or Questions where natural)",
+  "title": "FAQ page title — include the topic and the word FAQ or Questions where natural. Do NOT include the site, brand, or company name (it is added automatically elsewhere).",
   "slug": "url-slug",
   "excerpt": "One-sentence summary under 160 chars",
   "metaDescription": "SEO meta description under 160 chars",
