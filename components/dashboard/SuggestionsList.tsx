@@ -116,9 +116,10 @@ function EditForm({ suggestion, onSave, onCancel }: EditFormProps) {
 interface AddFormProps {
   onAdd: (s: Suggestion) => void
   onCancel: () => void
+  tenantId: string
 }
 
-function AddForm({ onAdd, onCancel }: AddFormProps) {
+function AddForm({ onAdd, onCancel, tenantId }: AddFormProps) {
   const [title, setTitle] = useState('')
   const [rationale, setRationale] = useState('')
   const [keywords, setKeywords] = useState('')
@@ -135,6 +136,7 @@ function AddForm({ onAdd, onCancel }: AddFormProps) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          tenantId,
           proposed_title: title.trim(),
           rationale: rationale.trim() || null,
           target_keywords: kwArray,
@@ -297,6 +299,7 @@ export default function SuggestionsList({ suggestions: initialSuggestions, tenan
         {/* Add form at top */}
         {showAddForm && (
           <AddForm
+            tenantId={tenantId}
             onAdd={(s) => { setItems((prev) => [s, ...prev]); setShowAddForm(false) }}
             onCancel={() => setShowAddForm(false)}
           />

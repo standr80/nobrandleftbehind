@@ -13,6 +13,7 @@ interface Alert {
 
 interface Props {
   initialAlerts: Alert[]
+  tenantId: string
 }
 
 function fmtAge(dateStr: string | null): string {
@@ -35,14 +36,14 @@ function fmtFull(dateStr: string | null): string {
   })
 }
 
-export default function ScoutAlertsList({ initialAlerts }: Props) {
+export default function ScoutAlertsList({ initialAlerts, tenantId }: Props) {
   const [alerts, setAlerts] = useState(initialAlerts)
   const [dismissing, setDismissing] = useState<string | null>(null)
 
   async function dismiss(id: string) {
     setDismissing(id)
     try {
-      await fetch(`/api/scout/alerts/${id}`, { method: 'PATCH' })
+      await fetch(`/api/scout/alerts/${id}?tenantId=${encodeURIComponent(tenantId)}`, { method: 'PATCH' })
       setAlerts((prev) => prev.filter((a) => a.id !== id))
     } finally {
       setDismissing(null)

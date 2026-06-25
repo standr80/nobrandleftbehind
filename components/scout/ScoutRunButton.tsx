@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 
-export default function ScoutRunButton() {
+export default function ScoutRunButton({ tenantId }: { tenantId: string }) {
   const [running, setRunning] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const router = useRouter()
@@ -12,7 +12,11 @@ export default function ScoutRunButton() {
     setRunning(true)
     setError(null)
     try {
-      const res = await fetch('/api/scout/run', { method: 'POST' })
+      const res = await fetch('/api/scout/run', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tenantId }),
+      })
       const data = await res.json()
       if (!res.ok) {
         setError(data.error ?? 'Scout run failed')

@@ -1,7 +1,7 @@
 import { auth } from '@clerk/nextjs/server'
 import { NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { getActiveWorkspace } from '@/lib/workspace/active'
+import { resolveMutationWorkspace } from '@/lib/workspace/active'
 
 interface Params {
   params: Promise<{ id: string }>
@@ -12,11 +12,10 @@ export async function PATCH(request: Request, { params }: Params) {
   const { userId } = await auth()
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const workspace = await getActiveWorkspace(userId)
-  if (!workspace) return NextResponse.json({ error: 'No workspace found' }, { status: 404 })
-
   const { id } = await params
-  const { status } = (await request.json()) as { status?: string }
+  const { status, tenantId } = (await request.json()) as { status?: string; tenantId?: string }
+  const workspace = await resolveMutationWorkspace(userId, tenantId)
+  if (!workspace) return NextResponse.json({ error: 'Workspace not found' }, { status: 404 })
   if (status !== 'open' && status !== 'dismissed') {
     return NextResponse.json({ error: 'status must be open or dismissed' }, { status: 400 })
   }
@@ -33,12 +32,13 @@ export async function PATCH(request: Request, { params }: Params) {
 }
 
 // DELETE — remove a question. Scoped to the workspace.
-export async function DELETE(_request: Request, { params }: Params) {
+export async function DELETE(request: Request, { params }: Params) {
   const { userId } = await auth()
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const workspace = await getActiveWorkspace(userId)
-  if (!workspace) return NextResponse.json({ error: 'No workspace found' }, { status: 404 })
+  const requestedTenantId = new URL(request.url).searchParams.get('tenantId')
+  const workspace = await resolveMutationWorkspace(userId, requestedTenantId)
+  if (!workspace) return NextResponse.json({ error: 'Workspace not found' }, { status: 404 })
 
   const { id } = await params
   const db = createAdminClient()

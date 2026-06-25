@@ -11,7 +11,7 @@ import { auth } from '@clerk/nextjs/server'
 import { NextResponse } from 'next/server'
 import { anthropic } from '@/lib/anthropic'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { getActiveWorkspace } from '@/lib/workspace/active'
+import { resolveMutationWorkspace } from '@/lib/workspace/active'
 
 interface Props {
   params: Promise<{ id: string }>
@@ -23,11 +23,10 @@ export async function PATCH(request: Request, { params }: Props) {
   const { userId } = await auth()
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const workspace = await getActiveWorkspace(userId)
-  if (!workspace) return NextResponse.json({ error: 'No workspace' }, { status: 400 })
-
   const body = await request.json()
-  const { status } = body as { status?: string }
+  const { status, tenantId } = body as { status?: string; tenantId?: string }
+  const workspace = await resolveMutationWorkspace(userId, tenantId)
+  if (!workspace) return NextResponse.json({ error: 'No workspace' }, { status: 400 })
   if (!status || !['dismissed', 'sent_to_clem'].includes(status)) {
     return NextResponse.json({ error: 'Invalid status' }, { status: 400 })
   }
@@ -70,6 +69,8 @@ export async function PATCH(request: Request, { params }: Props) {
   }
 
   // ── Approve: generate a Clem suggestion via Claude ───────────────────────────
+  const { data: tenantRow } = await db.from('tenants').select('name').eq('id', workspace.tenantId).maybeSingle()
+  const tenantName = tenantRow?.name ?? 'the business'
   let title: string
   try {
     const msg = await anthropic.messages.create({
@@ -78,7 +79,7 @@ export async function PATCH(request: Request, { params }: Props) {
       messages: [
         {
           role: 'user',
-          content: `Generate a single compelling blog post title for "${workspace.tenant.name}" based on this keyword/question: "${opp.keyword}"
+          content: `Generate a single compelling blog post title for "${tenantName}" based on this keyword/question: "${opp.keyword}"
 Rules: Title only, no quotes, no explanation, 6-12 words, SEO-friendly, specific.`,
         },
       ],

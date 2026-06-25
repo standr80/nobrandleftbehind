@@ -85,7 +85,7 @@ export default function RankTracker({ tenantId }: { tenantId: string }) {
       await fetch('/api/scout/keywords/backfill-history', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ keyword, location, device }),
+        body: JSON.stringify({ tenantId, keyword, location, device }),
       })
       setReloadKey((k) => k + 1)
     } finally {
@@ -100,6 +100,7 @@ export default function RankTracker({ tenantId }: { tenantId: string }) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          tenantId,
           keyword: row.keyword,
           position: row.position,
           search_volume: row.search_volume,

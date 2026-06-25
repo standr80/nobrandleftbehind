@@ -1,7 +1,7 @@
 import { auth } from '@clerk/nextjs/server'
 import { NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { getActiveWorkspace } from '@/lib/workspace/active'
+import { getActiveWorkspace, resolveMutationWorkspace } from '@/lib/workspace/active'
 
 const QUESTION_COLUMNS = 'id, question, source, topic, status, used_in_post_id, created_at'
 
@@ -29,10 +29,10 @@ export async function POST(request: Request) {
   const { userId } = await auth()
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const workspace = await getActiveWorkspace(userId)
-  if (!workspace) return NextResponse.json({ error: 'No workspace found' }, { status: 404 })
-
   const body = await request.json()
+  const workspace = await resolveMutationWorkspace(userId, body.tenantId)
+  if (!workspace) return NextResponse.json({ error: 'Workspace not found' }, { status: 404 })
+
   const raw: unknown[] = Array.isArray(body.questions) ? body.questions : [body.question]
   const topic = body.topic ? String(body.topic).trim() : null
 

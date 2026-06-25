@@ -1,7 +1,7 @@
 import { auth, clerkClient } from '@clerk/nextjs/server'
 import { NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { getActiveWorkspace } from '@/lib/workspace/active'
+import { resolveMutationWorkspace } from '@/lib/workspace/active'
 import { sendWorkspaceInvite } from '@/lib/email/send'
 import { randomUUID } from 'crypto'
 
@@ -12,11 +12,11 @@ export async function POST(request: Request) {
   const { userId } = await auth()
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const workspace = await getActiveWorkspace(userId)
-  if (!workspace) return NextResponse.json({ error: 'No workspace found' }, { status: 404 })
+  const { email, role, tenantId } = await request.json()
+  // Resolve against the workspace the page was loaded with, not the shared cookie.
+  const workspace = await resolveMutationWorkspace(userId, tenantId)
+  if (!workspace) return NextResponse.json({ error: 'Workspace not found' }, { status: 404 })
   if (workspace.role !== 'admin') return NextResponse.json({ error: 'Admin only' }, { status: 403 })
-
-  const { email, role } = await request.json()
 
   if (!email?.trim()) return NextResponse.json({ error: 'email is required' }, { status: 400 })
   if (!role || !['admin', 'author', 'reviewer'].includes(role)) {
@@ -24,6 +24,14 @@ export async function POST(request: Request) {
   }
 
   const db = createAdminClient()
+
+  // resolveMutationWorkspace returns only ids/role, so load the tenant's
+  // name/domain (used in the invite email) explicitly.
+  const { data: tenantRow } = await db
+    .from('tenants')
+    .select('name, domain')
+    .eq('id', workspace.tenantId)
+    .maybeSingle()
 
   // Get inviter's name from Clerk; also check if the invitee already has an account
   let inviterName = 'A workspace admin'
@@ -99,8 +107,8 @@ export async function POST(request: Request) {
     await sendWorkspaceInvite({
       to: email,
       inviterName,
-      workspaceName: workspace.tenant.name,
-      workspaceDomain: workspace.tenant.domain,
+      workspaceName: tenantRow?.name ?? 'your workspace',
+      workspaceDomain: tenantRow?.domain ?? '',
       role,
       token,
     })

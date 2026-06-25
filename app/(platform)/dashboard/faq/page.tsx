@@ -26,7 +26,7 @@ export default async function FaqPage() {
         assemble them into an FAQ page (with FAQPage schema for rich results and AI citations).
         Generated pages flow through the normal review &amp; publish process.
       </p>
-      <FaqQuestionsManager key={workspace.tenantId} initialQuestions={questions ?? []} />
+      <FaqQuestionsManager key={workspace.tenantId} initialQuestions={questions ?? []} tenantId={workspace.tenantId} />
     </div>
   )
 }

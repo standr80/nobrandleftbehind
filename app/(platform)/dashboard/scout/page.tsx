@@ -67,7 +67,7 @@ export default async function ScoutOverviewPage() {
             Rankings, competitors, and keyword opportunities at a glance
           </p>
         </div>
-        <ScoutRunButton />
+        <ScoutRunButton tenantId={tenantId} />
       </div>
 
       {/* No config warning */}
@@ -125,7 +125,7 @@ export default async function ScoutOverviewPage() {
         {/* Alerts */}
         <div className="bg-white rounded-lg border border-slate-200 p-5">
           <h2 className="text-sm font-semibold text-slate-700 mb-4">Active alerts</h2>
-          <ScoutAlertsList key={tenantId} initialAlerts={alerts} />
+          <ScoutAlertsList key={tenantId} initialAlerts={alerts} tenantId={tenantId} />
         </div>
 
         {/* Latest briefing summary */}

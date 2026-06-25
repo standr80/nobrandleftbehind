@@ -1,6 +1,7 @@
 import { auth } from '@clerk/nextjs/server'
 import { NextResponse } from 'next/server'
-import { getActiveWorkspace } from '@/lib/workspace/active'
+import { resolveMutationWorkspace } from '@/lib/workspace/active'
+import { createAdminClient } from '@/lib/supabase/admin'
 
 export const maxDuration = 60
 
@@ -65,18 +66,28 @@ async function mapLimit<T, R>(items: T[], limit: number, fn: (t: T) => Promise<R
 
 // POST — scan the active workspace's website and return its content pages
 // (URL + label + short description) for building the internal link map.
-export async function POST() {
+export async function POST(request: Request) {
   const { userId } = await auth()
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const workspace = await getActiveWorkspace(userId)
+  const { tenantId } = await request.json().catch(() => ({}))
+  const workspace = await resolveMutationWorkspace(userId, tenantId)
   if (!workspace) return NextResponse.json({ error: 'No workspace found' }, { status: 404 })
   if (workspace.role !== 'admin') return NextResponse.json({ error: 'Admin only' }, { status: 403 })
 
   const apiKey = process.env.FIRECRAWL_API_KEY
   if (!apiKey) return NextResponse.json({ error: 'FIRECRAWL_API_KEY is not set' }, { status: 500 })
 
-  const siteUrl = normaliseUrl(workspace.tenant.domain)
+  // resolveMutationWorkspace returns only ids/role, so load the tenant's domain.
+  const db = createAdminClient()
+  const { data: tenantRow } = await db
+    .from('tenants')
+    .select('domain')
+    .eq('id', workspace.tenantId)
+    .maybeSingle()
+  if (!tenantRow?.domain) return NextResponse.json({ error: 'Workspace domain not set' }, { status: 400 })
+
+  const siteUrl = normaliseUrl(tenantRow.domain)
   let host: string
   try {
     host = new URL(siteUrl).host.replace(/^www\./, '')

@@ -28,6 +28,7 @@ export default async function KeywordsPage() {
       <KeywordOpportunityList
         key={workspace.tenantId}
         initialOpportunities={opportunities ?? []}
+        tenantId={workspace.tenantId}
       />
     </div>
   )

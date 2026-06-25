@@ -6,17 +6,18 @@
 
 import { auth } from '@clerk/nextjs/server'
 import { NextResponse } from 'next/server'
-import { getActiveWorkspace } from '@/lib/workspace/active'
+import { resolveMutationWorkspace } from '@/lib/workspace/active'
 import { runScoutForTenant } from '@/lib/scout/schedule'
 
 export const maxDuration = 300
 
-export async function POST() {
+export async function POST(request: Request) {
   try {
     const { userId } = await auth()
     if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-    const workspace = await getActiveWorkspace(userId)
+    const { tenantId } = await request.json().catch(() => ({}))
+    const workspace = await resolveMutationWorkspace(userId, tenantId)
     if (!workspace) return NextResponse.json({ error: 'No workspace' }, { status: 400 })
 
     const result = await runScoutForTenant(workspace.tenantId)

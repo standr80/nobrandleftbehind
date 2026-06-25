@@ -279,7 +279,7 @@ export default function SettingsForm({
       const res = await fetch('/api/invite', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: addEmail.trim(), role: addRole }),
+        body: JSON.stringify({ tenantId: tenant.id, email: addEmail.trim(), role: addRole }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error ?? 'Failed to send invite')
@@ -300,7 +300,7 @@ export default function SettingsForm({
       const res = await fetch('/api/tenant/members', {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ memberId }),
+        body: JSON.stringify({ tenantId: tenant.id, memberId }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error ?? 'Failed to remove')
@@ -1312,7 +1312,11 @@ export default function SettingsForm({
                       setScanning(true)
                       setScanError('')
                       try {
-                        const res = await fetch('/api/clem/map-site', { method: 'POST' })
+                        const res = await fetch('/api/clem/map-site', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ tenantId: tenant.id }),
+                        })
                         const json = await res.json()
                         if (!res.ok) setScanError(json.error || 'Scan failed')
                         else setDiscovered(json.pages || [])

@@ -1,7 +1,7 @@
 import { auth } from '@clerk/nextjs/server'
 import { NextResponse } from 'next/server'
 import { extractTheme } from '@/lib/clem/extractTheme'
-import { getActiveWorkspace } from '@/lib/workspace/active'
+import { resolveMutationWorkspace } from '@/lib/workspace/active'
 import { aiErrorResponse } from '@/lib/anthropic'
 
 const PLATFORM_ADMIN_ID = process.env.PLATFORM_ADMIN_CLERK_USER_ID
@@ -12,15 +12,17 @@ export async function POST(request: Request) {
   const { userId } = await auth()
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const workspace = await getActiveWorkspace(userId)
-  if (!workspace) return NextResponse.json({ error: 'No workspace' }, { status: 404 })
-
-  // Only platform admin or workspace admins can trigger this
-  const isAdmin = userId === PLATFORM_ADMIN_ID || workspace.role === 'admin'
-  if (!isAdmin) return NextResponse.json({ error: 'Admin only' }, { status: 403 })
-
   const body = await request.json()
-  const targetId = body.tenantId ?? workspace.tenantId
+  // Resolve against the page's workspace; platform admin can act on any tenant.
+  const isPlatformAdmin = userId === PLATFORM_ADMIN_ID
+  const workspace = await resolveMutationWorkspace(userId, body.tenantId)
+  if (!isPlatformAdmin) {
+    if (!workspace) return NextResponse.json({ error: 'No workspace' }, { status: 404 })
+    if (workspace.role !== 'admin') return NextResponse.json({ error: 'Admin only' }, { status: 403 })
+  }
+
+  const targetId = workspace?.tenantId ?? body.tenantId
+  if (!targetId) return NextResponse.json({ error: 'No workspace' }, { status: 404 })
   const overrideUrl: string | undefined = body.url || undefined
 
   try {

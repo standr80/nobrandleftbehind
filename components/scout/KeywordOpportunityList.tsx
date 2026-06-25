@@ -21,6 +21,7 @@ interface Opportunity {
 
 interface Props {
   initialOpportunities: Opportunity[]
+  tenantId: string
 }
 
 const TYPE_LABELS: Record<string, string> = {
@@ -41,7 +42,7 @@ const TYPE_COLOURS: Record<string, string> = {
 
 const STATUS_FILTER_OPTIONS = ['all', 'pending', 'sent_to_clem', 'dismissed'] as const
 
-export default function KeywordOpportunityList({ initialOpportunities }: Props) {
+export default function KeywordOpportunityList({ initialOpportunities, tenantId }: Props) {
   const [opportunities, setOpportunities] = useState(initialOpportunities)
   const [filter, setFilter] = useState<(typeof STATUS_FILTER_OPTIONS)[number]>('pending')
   const [typeFilter, setTypeFilter] = useState<string>('all')
@@ -62,7 +63,7 @@ export default function KeywordOpportunityList({ initialOpportunities }: Props) 
       const res = await fetch(`/api/scout/keywords/${id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status }),
+        body: JSON.stringify({ status, tenantId }),
       })
       if (res.ok) {
         setOpportunities((prev) =>

@@ -6,18 +6,19 @@
 import { auth } from '@clerk/nextjs/server'
 import { NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { getActiveWorkspace } from '@/lib/workspace/active'
+import { resolveMutationWorkspace } from '@/lib/workspace/active'
 
 interface Props {
   params: Promise<{ id: string }>
 }
 
-export async function PATCH(_request: Request, { params }: Props) {
+export async function PATCH(request: Request, { params }: Props) {
   const { id } = await params
   const { userId } = await auth()
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const workspace = await getActiveWorkspace(userId)
+  const requestedTenantId = new URL(request.url).searchParams.get('tenantId')
+  const workspace = await resolveMutationWorkspace(userId, requestedTenantId)
   if (!workspace) return NextResponse.json({ error: 'No workspace' }, { status: 400 })
 
   const db = createAdminClient()

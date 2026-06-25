@@ -15,9 +15,10 @@ export interface FaqQuestion {
 
 interface Props {
   initialQuestions: FaqQuestion[]
+  tenantId: string
 }
 
-export default function FaqQuestionsManager({ initialQuestions }: Props) {
+export default function FaqQuestionsManager({ initialQuestions, tenantId }: Props) {
   const [questions, setQuestions] = useState<FaqQuestion[]>(initialQuestions)
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [newText, setNewText] = useState('')
@@ -46,7 +47,7 @@ export default function FaqQuestionsManager({ initialQuestions }: Props) {
       const res = await fetch('/api/faq/questions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ questions: lines, topic: topic || undefined }),
+        body: JSON.stringify({ tenantId, questions: lines, topic: topic || undefined }),
       })
       const data = await res.json()
       if (!res.ok) { setError(data.error ?? 'Failed to add'); return }
@@ -58,7 +59,11 @@ export default function FaqQuestionsManager({ initialQuestions }: Props) {
   async function importPaa() {
     setBusy('import'); setError(null)
     try {
-      const res = await fetch('/api/faq/questions/import-paa', { method: 'POST' })
+      const res = await fetch('/api/faq/questions/import-paa', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tenantId }),
+      })
       const data = await res.json()
       if (!res.ok) { setError(data.error ?? 'Import failed'); return }
       await refresh()
@@ -71,7 +76,7 @@ export default function FaqQuestionsManager({ initialQuestions }: Props) {
       await fetch(`/api/faq/questions/${id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status }),
+        body: JSON.stringify({ tenantId, status }),
       })
       setSelected((s) => { const n = new Set(s); n.delete(id); return n })
       await refresh()
@@ -94,6 +99,7 @@ export default function FaqQuestionsManager({ initialQuestions }: Props) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          tenantId,
           questionIds: Array.from(selected),
           topic: topic || undefined,
           includeScoutPaa: false,
