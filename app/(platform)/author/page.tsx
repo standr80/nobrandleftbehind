@@ -24,7 +24,7 @@ export default async function AuthorPage() {
   if (!workspace) {
     return (
       <div className="max-w-5xl">
-        <h1 className="text-2xl font-bold mb-8">Author</h1>
+        <h1 className="text-2xl font-bold mb-8">Editor</h1>
         <div className="bg-white border border-slate-200 rounded-2xl p-12 text-center">
           <p className="text-slate-400 text-sm">No workspace linked to your account.</p>
         </div>
@@ -57,7 +57,7 @@ export default async function AuthorPage() {
             <span className="text-xs font-semibold text-indigo-500 uppercase tracking-widest">Clem</span>
             <span className="text-xs text-slate-400">{workspace.tenant.name} · {workspace.tenant.domain}</span>
           </div>
-          <h1 className="text-2xl font-bold">Author</h1>
+          <h1 className="text-2xl font-bold">Editor</h1>
           <p className="text-sm text-slate-400 mt-1">
             {totalActive} post{totalActive !== 1 ? 's' : ''} in progress
           </p>

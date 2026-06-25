@@ -113,9 +113,9 @@ export default function DashboardNav({
       </button>
       {clemOpen && (
         <div className="space-y-0.5">
-          <NavLink href="/dashboard" label="Dashboard" icon="▦" active={dashboardActive} indent />
+          <NavLink href="/dashboard" label="Blog" icon="▦" active={dashboardActive} indent />
           <NavLink href="/dashboard/faq" label="FAQ" icon="❓" active={faqActive} indent />
-          <NavLink href="/author" label="Author" icon="✎" active={authorActive} indent />
+          <NavLink href="/author" label="Editor" icon="✎" active={authorActive} indent />
         </div>
       )}
 
