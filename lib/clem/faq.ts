@@ -1,5 +1,6 @@
 import { anthropic } from '@/lib/anthropic'
 import { createAdminClient } from '../supabase/admin'
+import { categoriesForDomain } from './categories'
 
 const CLAUDE_MODEL = 'claude-sonnet-4-6'
 
@@ -156,7 +157,9 @@ Return ONLY valid JSON, no commentary, matching this exact shape:
   "excerpt": "One-sentence summary under 160 chars",
   "metaDescription": "SEO meta description under 160 chars",
   "intro": "Optional 1-2 sentence intro paragraph",
-  "tags": ["tag1", "tag2", "tag3"],
+  "tags": ${categoriesForDomain(tenant.domain).length
+    ? `[1–2 of these EXACT categories, copied verbatim, no new tags: ${categoriesForDomain(tenant.domain).join(', ')}]`
+    : '["tag1", "tag2", "tag3"]'},
   "faq_items": [{ "q": "the question", "a": "the answer in markdown" }]
 }`,
     messages: [

@@ -1,6 +1,7 @@
 import { anthropic } from '@/lib/anthropic'
 import { createAdminClient } from '../supabase/admin'
 import { stripWrappingFence } from '../mdx/toHtml'
+import { categoriesForDomain } from './categories'
 
 const CLAUDE_MODEL = 'claude-sonnet-4-6'
 
@@ -108,7 +109,11 @@ Requirements:
 - 3–4 sections with clear H2 headings
 - Practical, actionable content throughout
 - Natural keyword integration (never forced)
-- Strong conclusion with a clear takeaway${internalLinkingInstruction}
+- Strong conclusion with a clear takeaway${internalLinkingInstruction}${
+          categoriesForDomain(tenant.domain).length
+            ? `\n- For "tags", choose 1–2 of these EXACT categories (copy the wording verbatim, do NOT invent new tags): ${categoriesForDomain(tenant.domain).join(', ')}`
+            : ''
+        }
 
 Return the post as valid MDX with this exact frontmatter format:
 ---
