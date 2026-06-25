@@ -42,9 +42,21 @@ behaviour change for existing posts — everything defaults to `blog`.
 ### Goal
 Let Clem generate and maintain FAQ pages built from (a) real customer questions
 we add manually and (b) Scout's PAA mining (`scout_keyword_opportunities` where
-`opportunity_type = 'paa'`, currently produced but barely used). FAQ pages win
-featured snippets, People-Also-Ask slots, and AI-Overview/LLM citations — the
-highest-ROI format for the least new code.
+`opportunity_type = 'paa'`, currently produced but barely used). The Q&A content
+targets long-tail and question queries, and is strong for regular featured
+snippets, People-Also-Ask, and AI-Overview/LLM citations — high-ROI for the least
+new code.
+
+> **Note on FAQ rich results (important — changed since first draft).** Google has
+> deprecated the FAQ *rich result* (the expandable Q&A snippet): restricted to
+> government/health sites in Aug 2023, stopped showing entirely on 7 May 2026, and
+> FAQ support is being removed from the Rich Results Test / Search Console in
+> June–Aug 2026. So a FAQ page will **not** get the FAQ accordion in Google, and
+> the Rich Results Test will report only the Article (BlogPosting) schema — that is
+> expected, not a bug. We still emit `FAQPage` JSON-LD because (a) Google says it
+> continues to *use* the data to understand pages, and (b) other engines (Bing) and
+> AI answer engines still consume it. The traffic case rests on the **content**
+> (snippets, PAA, AI answers), not the rich result.
 
 ### Data sources
 - `scout_keyword_opportunities` rows with `opportunity_type IN ('paa','gap')` — already populated by Scout Pipeline 3.
@@ -94,9 +106,11 @@ New module `lib/clem/faq.ts`, mirroring `lib/clem/draft.ts`:
 API route `POST /api/clem/faq` (clone `app/api/clem/draft/route.ts`, including the
 `aiErrorResponse` overload handling we just added).
 
-### Rendering & schema (the part that earns the traffic)
-FAQPage JSON-LD is what gets you the rich result. Emit it from `faq_items` so
-every delivery surface gets it:
+### Rendering & schema
+Emit `FAQPage` JSON-LD from `faq_items` on every delivery surface. (This no longer
+produces a Google FAQ rich result — see the deprecation note above — but Google
+still uses it to understand the page, and Bing/AI engines consume it, so it's worth
+shipping. The visible, well-structured Q&A is what actually earns the traffic.)
 
 - **Content API** (`lib/content/api.ts`): in `toPost`, when `content_type==='faq'`,
   include `faq_items` and a ready-made `faq_jsonld` string in the response so
@@ -126,7 +140,9 @@ New: one module, one route, schema markup, one UI tab. Low risk.
 
 ### Acceptance criteria
 - Can generate an FAQ page from selected questions; it flows through review → publish.
-- Published FAQ page renders Q&A and validates as `FAQPage` in Google's Rich Results Test.
+- Published FAQ page renders the Q&A and carries valid `FAQPage` JSON-LD (verify with
+  the Schema Markup Validator at validator.schema.org — note Google's Rich Results
+  Test no longer reports FAQ, by design; see the deprecation note above).
 - PAA questions from Scout are selectable as FAQ inputs.
 
 ---
