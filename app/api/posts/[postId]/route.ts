@@ -1,6 +1,7 @@
 import { auth } from '@clerk/nextjs/server'
 import { NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { triggerDeployHook } from '@/lib/clem/deployHook'
 
 interface Params {
   params: Promise<{ postId: string }>
@@ -10,7 +11,7 @@ async function getPostAndVerifyMember(postId: string, userId: string) {
   const db = createAdminClient()
   const { data: post } = await db
     .from('blog_posts')
-    .select('tenant_id')
+    .select('tenant_id, status')
     .eq('id', postId)
     .single()
 
@@ -73,6 +74,14 @@ export async function PATCH(request: Request, { params }: Params) {
 
   const { error } = await db.from('blog_posts').update(updates).eq('id', postId)
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+  // If we just edited content that's already live (e.g. retitling a published
+  // FAQ/post), rebuild the tenant's static site + purge the content cache so the
+  // change appears publicly. Drafts don't need this. Fire-and-forget.
+  const stillPublished = post.status === 'published' && (updates.status ?? 'published') === 'published'
+  if (stillPublished) {
+    await triggerDeployHook(post.tenant_id)
+  }
 
   return NextResponse.json({ ok: true })
 }
