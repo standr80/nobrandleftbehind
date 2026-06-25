@@ -256,10 +256,15 @@ existing pages is one of the highest-ROI SEO actions and reuses almost everythin
 already built. Scout already detects the key signal (rank drops).
 
 ### Decay signals (combine into a score)
+- **Google Search Console decay (primary trigger).** Per-URL drops in impressions
+  and average position from the GSC Search Analytics API are the sharpest, free
+  signal of a page losing ground — refresh what's *slipping*, not what's merely
+  old. Make this the main trigger. (We already have the GSC API integration muscle
+  from Arena Sync.) Requires connecting each tenant's GSC property.
 - **Rank decline** — `scout_rank_history` (`position_change` negative,
-  `droppedFromTop10`); already captured by Scout's own-site pipeline.
-- **Traffic decline** — `analytics_page_daily` trend (available once Feature 2 ships;
-  until then, run on rank + age only).
+  `droppedFromTop10`); already captured by Scout's own-site pipeline (good fallback
+  before GSC is connected).
+- **Traffic decline** — `analytics_page_daily` trend (once Feature 2 ships).
 - **Age** — `published_at` / `last_refreshed_at` older than a per-tenant threshold.
 - **AI-Overview loss** — Scout already counts AI-Overview keywords; flag pages that lost presence.
 
@@ -280,6 +285,11 @@ already built. Scout already detects the key signal (rank drops).
      **Decision (locked): refreshes default to human review** (`in_review`).
      Direct auto-publish is an explicit per-tenant opt-in only (e.g.
      `scout_config.auto_refresh_publish`), off by default.
+     **Atomic freshness update (important):** the real content change, the
+     `dateModified`/`last_refreshed_at` bump, and the JSON-LD `dateModified` must
+     all happen together as one operation. Never bump the modified date without a
+     substantive edit — Google devalues (and can penalise) date-spoofing. No real
+     change → no date bump.
   5. On publish, the existing `triggerDeployHook` + content-cache purge (already
      built) make the change live — static consumers rebuild, Content API serves
      the new body on next request.
@@ -299,6 +309,18 @@ create table blog_post_versions (
 For git-based tenants, a refresh should open a **PR** (the `runPublish` git path
 already exists) rather than a direct overwrite — preserving the existing
 review-by-PR workflow and giving a rollback.
+
+### Duplicate-intent detection (companion to refresh)
+As Clem keeps producing, near-identical-intent pages start competing with each
+other in the index (we already have two on Megacheques: "Giant Cheques: Your
+Questions Answered" `content_type='blog'` and "Giant Novelty Cheques FAQ"
+`content_type='faq'`). The refresh agent (or a companion audit) should detect
+overlapping-intent pairs — by tag/keyword overlap and embedding similarity of
+title+excerpt — and flag them to **consolidate or deliberately differentiate**.
+On consolidation, keep the stronger page and **301-redirect the loser to the
+winner** (same redirect discipline as the Megacards migration; for static
+consumers this is a redirect-map entry). Never leave two live URLs fighting over
+one intent.
 
 ### Automation
 - Weekly cron `/api/clem/refresh` (mirror `app/api/cron/publish` — `CRON_SECRET`,
