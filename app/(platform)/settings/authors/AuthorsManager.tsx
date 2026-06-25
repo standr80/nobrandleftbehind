@@ -21,6 +21,7 @@ export interface Author {
 interface Props {
   initialAuthors: Author[]
   isAdmin: boolean
+  tenantId: string
 }
 
 const inputClass =
@@ -49,7 +50,7 @@ function toDraft(a: Author): Draft {
   }
 }
 
-export default function AuthorsManager({ initialAuthors, isAdmin }: Props) {
+export default function AuthorsManager({ initialAuthors, isAdmin, tenantId }: Props) {
   const [authors, setAuthors] = useState<Author[]>(initialAuthors)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [creating, setCreating] = useState(false)
@@ -93,6 +94,7 @@ export default function AuthorsManager({ initialAuthors, isAdmin }: Props) {
     setBusy(true)
     setError('')
     const payload = {
+      tenantId,
       name: draft.name.trim(),
       job_title: draft.job_title.trim() || null,
       bio: draft.bio.trim() || null,
@@ -127,7 +129,7 @@ export default function AuthorsManager({ initialAuthors, isAdmin }: Props) {
     if (!confirm(`Remove author "${a.name}"? Their articles stay published but become unattributed.`)) return
     setBusy(true)
     try {
-      const res = await fetch(`/api/authors/${a.id}`, { method: 'DELETE' })
+      const res = await fetch(`/api/authors/${a.id}?tenantId=${encodeURIComponent(tenantId)}`, { method: 'DELETE' })
       if (res.ok) setAuthors((list) => list.filter((x) => x.id !== a.id))
     } finally {
       setBusy(false)

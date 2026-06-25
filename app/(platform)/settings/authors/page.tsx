@@ -38,6 +38,7 @@ export default async function AuthorsPage() {
       <AuthorsManager
         initialAuthors={(authors as unknown as Author[]) ?? []}
         isAdmin={role === 'admin'}
+        tenantId={tenant.id}
       />
     </div>
   )

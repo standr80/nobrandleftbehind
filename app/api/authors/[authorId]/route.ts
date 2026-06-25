@@ -1,7 +1,7 @@
 import { auth } from '@clerk/nextjs/server'
 import { NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { getActiveWorkspace } from '@/lib/workspace/active'
+import { resolveMutationWorkspace } from '@/lib/workspace/active'
 import type { Json } from '@/lib/supabase/types'
 
 interface AuthorLink {
@@ -26,11 +26,14 @@ export async function PATCH(
   const { userId } = await auth()
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const workspace = await getActiveWorkspace(userId)
-  if (!workspace) return NextResponse.json({ error: 'No workspace found' }, { status: 404 })
+  const body = await request.json()
+  // Resolve against the tenant the page was loaded with (sent by the client),
+  // not the shared active-workspace cookie — otherwise another tab that switched
+  // workspace would point this edit at the wrong tenant (0 rows updated → error).
+  const workspace = await resolveMutationWorkspace(userId, body.tenantId)
+  if (!workspace) return NextResponse.json({ error: 'Workspace not found' }, { status: 404 })
   if (workspace.role !== 'admin') return NextResponse.json({ error: 'Admin only' }, { status: 403 })
 
-  const body = await request.json()
   const db = createAdminClient()
 
   const update: {
@@ -64,24 +67,26 @@ export async function PATCH(
     .eq('id', authorId)
     .eq('tenant_id', workspace.tenantId)
     .select('id, name, slug, job_title, bio, links, is_default, created_at')
-    .single()
+    .maybeSingle()
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (!data) return NextResponse.json({ error: 'Author not found in this workspace' }, { status: 404 })
   return NextResponse.json({ ok: true, author: data })
 }
 
 // DELETE — remove an author (admin only). Posts keep their content; author_id
 // is set null by the FK (on delete set null), falling back to the default/brand.
 export async function DELETE(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ authorId: string }> },
 ) {
   const { authorId } = await params
   const { userId } = await auth()
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const workspace = await getActiveWorkspace(userId)
-  if (!workspace) return NextResponse.json({ error: 'No workspace found' }, { status: 404 })
+  const requestedTenantId = new URL(request.url).searchParams.get('tenantId')
+  const workspace = await resolveMutationWorkspace(userId, requestedTenantId)
+  if (!workspace) return NextResponse.json({ error: 'Workspace not found' }, { status: 404 })
   if (workspace.role !== 'admin') return NextResponse.json({ error: 'Admin only' }, { status: 403 })
 
   const db = createAdminClient()

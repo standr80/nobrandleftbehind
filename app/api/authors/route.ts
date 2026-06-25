@@ -1,7 +1,7 @@
 import { auth } from '@clerk/nextjs/server'
 import { NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { getActiveWorkspace } from '@/lib/workspace/active'
+import { getActiveWorkspace, resolveMutationWorkspace } from '@/lib/workspace/active'
 import type { Json } from '@/lib/supabase/types'
 
 function slugify(s: string): string {
@@ -51,11 +51,14 @@ export async function POST(request: Request) {
   const { userId } = await auth()
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const workspace = await getActiveWorkspace(userId)
-  if (!workspace) return NextResponse.json({ error: 'No workspace found' }, { status: 404 })
+  const body = await request.json()
+  // Resolve against the tenant the page was loaded with (client-supplied), not
+  // the shared active-workspace cookie, so a workspace switch in another tab
+  // can't redirect this create to the wrong tenant.
+  const workspace = await resolveMutationWorkspace(userId, body.tenantId)
+  if (!workspace) return NextResponse.json({ error: 'Workspace not found' }, { status: 404 })
   if (workspace.role !== 'admin') return NextResponse.json({ error: 'Admin only' }, { status: 403 })
 
-  const body = await request.json()
   const name = String(body.name ?? '').trim()
   if (!name) return NextResponse.json({ error: 'name is required' }, { status: 400 })
 
