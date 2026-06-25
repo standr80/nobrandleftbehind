@@ -18,10 +18,8 @@ async function getDashboardStats(tenantId: string) {
       .order('created_at', { ascending: false }),
     db
       .from('blog_posts')
-      .select('id, status, title, slug, created_at', { count: 'exact' })
-      .eq('tenant_id', tenantId)
-      .order('created_at', { ascending: false })
-      .limit(5),
+      .select('id', { count: 'exact', head: true })
+      .eq('tenant_id', tenantId),
     getReferenceUrls(tenantId),
   ])
 
@@ -59,19 +57,10 @@ async function getDashboardStats(tenantId: string) {
     inReview: inReviewRes.count ?? 0,
     scheduled: scheduledRes.count ?? 0,
     publishedThisMonth: publishedRes.count ?? 0,
-    recentPosts: postsRes.data ?? [],
+    totalPosts: postsRes.count ?? 0,
     publishLog: publishLogRes.data ?? [],
     referenceSiteCount: referenceUrls.length,
   }
-}
-
-const STATUS_STYLES: Record<string, string> = {
-  draft: 'bg-amber-50 text-amber-700',
-  in_review: 'bg-blue-50 text-blue-700',
-  approved: 'bg-green-500/10 text-green-300',
-  scheduled: 'bg-purple-50 text-purple-700',
-  published: 'bg-emerald-50 text-emerald-700',
-  rejected: 'bg-red-50 text-red-600',
 }
 
 export default async function DashboardPage() {
@@ -84,7 +73,7 @@ export default async function DashboardPage() {
   if (!workspace) {
     return (
       <div className="max-w-2xl">
-        <h1 className="text-2xl font-bold mb-2">Dashboard</h1>
+        <h1 className="text-2xl font-bold mb-2">Blog</h1>
         <div className="bg-white border border-slate-200 rounded-2xl p-12 text-center mt-8">
           <p className="text-slate-600 mb-4">Your account isn&apos;t linked to a workspace yet.</p>
           <p className="text-slate-400 text-sm max-w-sm mx-auto">
@@ -115,54 +104,35 @@ export default async function DashboardPage() {
         </span>
       </div>
 
-      {/* Stats row */}
+      {/* Stats row — post-status cards link into the Editor, filtered */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-10">
         {[
-          { label: 'Pending suggestions', value: stats.pendingSuggestions },
-          { label: 'Drafts in review', value: stats.inReview },
-          { label: 'Scheduled posts', value: stats.scheduled },
-          { label: 'Published this month', value: stats.publishedThisMonth },
-        ].map(({ label, value }) => (
-          <div key={label} className="bg-white border border-slate-200 rounded-xl p-4">
-            <p className="text-2xl font-bold text-slate-900">{value}</p>
-            <p className="text-xs text-slate-400 mt-1">{label}</p>
-          </div>
-        ))}
+          { label: 'Pending suggestions', value: stats.pendingSuggestions, href: null },
+          { label: 'Drafts in review', value: stats.inReview, href: '/author?status=in_review' },
+          { label: 'Scheduled posts', value: stats.scheduled, href: '/author?status=scheduled' },
+          { label: 'Published this month', value: stats.publishedThisMonth, href: '/author?status=published' },
+        ].map(({ label, value, href }) => {
+          const card = (
+            <>
+              <p className="text-2xl font-bold text-slate-900">{value}</p>
+              <p className="text-xs text-slate-400 mt-1">{label}</p>
+            </>
+          )
+          return href ? (
+            <Link key={label} href={href} className="bg-white border border-slate-200 rounded-xl p-4 hover:border-indigo-300 transition-colors">
+              {card}
+            </Link>
+          ) : (
+            <div key={label} className="bg-white border border-slate-200 rounded-xl p-4">{card}</div>
+          )
+        })}
       </div>
 
       {/* Recent posts */}
-      {stats.recentPosts.length > 0 ? (
-        <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden mb-8">
-          <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between">
-            <h2 className="text-sm font-medium text-slate-700">Recent posts</h2>
-            <Link
-              href="/author"
-              className="text-xs text-indigo-600 hover:text-indigo-600 transition-colors"
-            >
-              View all →
-            </Link>
-          </div>
-          <ul className="divide-y divide-slate-100">
-            {stats.recentPosts.map((post) => (
-              <li key={post.id}>
-                <Link
-                  href={`/author/${post.id}`}
-                  className="flex items-center justify-between px-6 py-3.5 hover:bg-white transition-colors"
-                >
-                  <span className="text-sm text-slate-800 truncate mr-4">{post.title}</span>
-                  <span
-                    className={`shrink-0 text-xs px-2.5 py-0.5 rounded-full ${post.status ? (STATUS_STYLES[post.status] ?? 'bg-slate-100 text-slate-500') : 'bg-slate-100 text-slate-500'}`}
-                  >
-                    {post.status?.replace('_', ' ') ?? 'draft'}
-                  </span>
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </div>
-      ) : (
-        /* Empty state */
-        <div className="bg-white border border-slate-200 rounded-2xl p-12 flex flex-col items-center text-center">
+      {/* Empty state — only when the workspace has no posts at all. The full post
+          list lives in the Editor (linked from the stat cards above). */}
+      {stats.totalPosts === 0 && (
+        <div className="bg-white border border-slate-200 rounded-2xl p-12 flex flex-col items-center text-center mb-8">
           <div className="w-16 h-16 rounded-2xl bg-indigo-50 border border-indigo-200 flex items-center justify-center text-3xl mb-6">
             ✦
           </div>
@@ -233,7 +203,7 @@ export default async function DashboardPage() {
       )}
 
       {/* Generate button when posts exist */}
-      {stats.recentPosts.length > 0 && (
+      {stats.totalPosts > 0 && (
         <div className="flex items-center justify-between bg-white border border-slate-200 rounded-xl px-6 py-4">
           <div>
             <p className="text-sm font-medium">Generate new topics</p>
