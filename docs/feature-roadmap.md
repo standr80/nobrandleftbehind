@@ -322,6 +322,19 @@ winner** (same redirect discipline as the Megacards migration; for static
 consumers this is a redirect-map entry). Never leave two live URLs fighting over
 one intent.
 
+### Editor UI additions (build alongside refresh)
+The Editor (`app/(platform)/author/page.tsx`) is already a server-paginated,
+sortable, filterable table (Title · Type · Status · Updated). Two additions pair
+naturally with this feature and were deferred from that build:
+- **Origin + "Last refreshed" columns.** Surface `blog_posts.origin`
+  (`clem`/`scout`/`refresh`/`manual`) and `last_refreshed_at`, with a **"needs
+  refresh" flag** driven by the decay score. This turns the Editor into the
+  refresh agent's control surface (sort by staleness, see what's been refreshed).
+  Add `origin`/`last_refreshed_at` to the table query + a sortable column.
+- **Bulk actions.** Row checkboxes → select many → publish / unpublish / dismiss /
+  send-to-refresh in one go. Biggest UI lift; do after the columns. Reuse the
+  existing per-post status route, batched, with the same workspace-scoping pattern.
+
 ### Automation
 - Weekly cron `/api/clem/refresh` (mirror `app/api/cron/publish` — `CRON_SECRET`,
   Vercel cron entry in `vercel.json`), opt-in per tenant + a cap, exactly like
