@@ -240,28 +240,30 @@ const UPDATE_MUTATION = `mutation ClemUpdateArticle($id: ID!, $article: ArticleU
   articleUpdate(id: $id, article: $article) { ${ARTICLE_FIELDS} }
 }`
 
-// FAQ posts publish as Shopify Pages (/pages/<handle>) instead of blog articles.
-// Same access scope (write_content covers pages). Pages have no blog/author/tags.
+const ARTICLE_DELETE_MUTATION = `mutation ClemDeleteArticle($id: ID!) {
+  articleDelete(id: $id) { deletedArticleId userErrors { code field message } }
+}`
+
+// Page mutations are retained only to clean up LEGACY FAQ pages (FAQs published
+// as /pages/<slug> before they moved to a dedicated FAQ blog). New FAQs are
+// articles in the FAQ blog. We branch unpublish/delete on the stored GID type.
 const PAGE_FIELDS = `
   page { id handle }
   userErrors { code field message }
 `
 
-const PAGE_CREATE_MUTATION = `mutation ClemCreatePage($page: PageCreateInput!) {
-  pageCreate(page: $page) { ${PAGE_FIELDS} }
-}`
-
 const PAGE_UPDATE_MUTATION = `mutation ClemUpdatePage($id: ID!, $page: PageUpdateInput!) {
   pageUpdate(id: $id, page: $page) { ${PAGE_FIELDS} }
-}`
-
-const ARTICLE_DELETE_MUTATION = `mutation ClemDeleteArticle($id: ID!) {
-  articleDelete(id: $id) { deletedArticleId userErrors { code field message } }
 }`
 
 const PAGE_DELETE_MUTATION = `mutation ClemDeletePage($id: ID!) {
   pageDelete(id: $id) { deletedPageId userErrors { code field message } }
 }`
+
+/** True if a stored Shopify GID refers to a Page (legacy FAQ) vs an Article. */
+function gidIsPage(gid: string | null | undefined): boolean {
+  return !!gid && gid.includes('/Page/')
+}
 
 /** Wrap a schema.org object as a JSON-LD <script> (escaping '<' for safety). */
 function jsonLdScript(obj: object | null): string {
@@ -279,7 +281,7 @@ export async function runShopifyPublish(tenantId: string, postId: string): Promi
       db
         .from('tenants')
         .select(
-          'cms_type, name, blog_theme, shopify_shop_domain, shopify_client_id, shopify_client_secret, shopify_access_token, shopify_blog_id, shopify_api_version, shopify_store_url'
+          'cms_type, name, blog_theme, shopify_shop_domain, shopify_client_id, shopify_client_secret, shopify_access_token, shopify_blog_id, shopify_faq_blog_id, shopify_api_version, shopify_store_url'
         )
         .eq('id', tenantId)
         .single(),
@@ -292,14 +294,17 @@ export async function runShopifyPublish(tenantId: string, postId: string): Promi
   if (tenant.cms_type !== 'shopify') {
     throw new Error(`[shopify] Tenant cms_type is '${tenant.cms_type}', expected 'shopify'`)
   }
+  // FAQ posts publish into a dedicated FAQ blog (/blogs/faqs); everything else
+  // into the main blog. Same store + scope — just a different blog id.
+  const isFaq = post.content_type === 'faq'
   const shopDomainRaw = tenant.shopify_shop_domain
-  const blogIdRaw = tenant.shopify_blog_id
+  const blogIdRaw = isFaq ? tenant.shopify_faq_blog_id : tenant.shopify_blog_id
   const hasCreds =
     (tenant.shopify_client_id && tenant.shopify_client_secret) || tenant.shopify_access_token
   if (!shopDomainRaw || !hasCreds || !blogIdRaw) {
     throw new Error(
       `[shopify] Tenant ${tenantId} has incomplete Shopify config. Set shopify_shop_domain, ` +
-        `shopify_blog_id and either shopify_client_id + shopify_client_secret or shopify_access_token.`
+        `${isFaq ? 'shopify_faq_blog_id' : 'shopify_blog_id'} and either shopify_client_id + shopify_client_secret or shopify_access_token.`
     )
   }
 
@@ -334,10 +339,8 @@ export async function runShopifyPublish(tenantId: string, postId: string): Promi
   const authorName = author?.name || tenant.name || 'Team'
 
   // ── 4. Build body HTML + structured data ────────────────────────────────────
-  // FAQ posts (content_type='faq') publish as a Shopify PAGE (/pages/<slug>)
-  // with FAQPage schema; everything else is a blog ARTICLE with an author bio
-  // box + BlogPosting/Person schema.
-  const isFaq = post.content_type === 'faq'
+  // FAQ articles get FAQPage schema; regular posts get an author bio box +
+  // BlogPosting/Person schema.
   const theme = (tenant.blog_theme ?? null) as { primaryColor?: string } | null
   const bodyHtml = await toHtml(post.body_mdx ?? '', { linkColor: theme?.primaryColor })
   // published_at is only stamped in step 8, so on a first publish it's still
@@ -363,102 +366,62 @@ export async function runShopifyPublish(tenantId: string, postId: string): Promi
       ]
     : []
 
-  // ── 5–7. Create/update the Shopify resource (Page for FAQ, else Article) ─────
-  const alreadyPushed = Boolean(post.shopify_article_id)
+  // ── 5–7. Create/update the article (FAQ → FAQ blog, else main blog) ──────────
   const base = (tenant.shopify_store_url?.trim().replace(/\/$/, '')) || `https://${shopDomain}`
-  let created: ArticleResult | null
-  let articleUrl: string
+  // A legacy FAQ published as a Page has a Page GID stored — treat it as new so
+  // we create a fresh article (the stray page is cleaned up on next delete).
+  const alreadyPushed =
+    Boolean(post.shopify_article_id) && !gidIsPage(post.shopify_article_id)
 
-  if (isFaq) {
-    // Shopify Page — no blog/author/tags/image fields.
-    const pageInput: Record<string, unknown> = {
-      title: post.title,
-      handle: post.slug,
-      body: fullBody,
-      isPublished: true,
-    }
-    if (seoMetafields.length) pageInput.metafields = seoMetafields
-    let pageRes: { page: ArticleResult | null; userErrors: ShopifyUserError[] }
-    if (alreadyPushed) {
-      const data = await shopifyGraphql<{ pageUpdate: typeof pageRes }>(
-        shopDomain,
-        apiVersion,
-        accessToken,
-        PAGE_UPDATE_MUTATION,
-        { id: post.shopify_article_id, page: pageInput }
-      )
-      pageRes = data.pageUpdate
-    } else {
-      const data = await shopifyGraphql<{ pageCreate: typeof pageRes }>(
-        shopDomain,
-        apiVersion,
-        accessToken,
-        PAGE_CREATE_MUTATION,
-        { page: pageInput }
-      )
-      pageRes = data.pageCreate
-    }
-    if (pageRes.userErrors?.length) {
-      throw new Error(
-        `[shopify] page${alreadyPushed ? 'Update' : 'Create'} failed: ` +
-          pageRes.userErrors.map((e) => `${(e.field ?? []).join('.')} ${e.message}`).join('; ')
-      )
-    }
-    created = pageRes.page
-    if (!created) throw new Error('[shopify] Page mutation returned no page')
-    articleUrl = `${base}/pages/${created.handle}`
-  } else {
-    // Shopify Article (blog post).
-    const article: Record<string, unknown> = {
-      blogId: blogGid,
-      title: post.title,
-      handle: post.slug,
-      body: fullBody,
-      author: { name: authorName },
-      isPublished: true,
-    }
-    if (post.meta_description) article.summary = post.meta_description
-    if (seoMetafields.length) article.metafields = seoMetafields
-    if (Array.isArray(post.tags) && post.tags.length) article.tags = post.tags
-    // Shopify needs a publicly reachable image URL; skip repo-relative paths.
-    if (post.hero_image_url && /^https?:\/\//i.test(post.hero_image_url)) {
-      article.image = { url: post.hero_image_url, altText: post.hero_image_alt ?? post.title }
-    }
-
-    let result: { article: ArticleResult | null; userErrors: ShopifyUserError[] }
-    if (alreadyPushed) {
-      // articleUpdate can't move blogs; drop blogId from the update input.
-      const updateInput = { ...article }
-      delete updateInput.blogId
-      const data = await shopifyGraphql<{ articleUpdate: typeof result }>(
-        shopDomain,
-        apiVersion,
-        accessToken,
-        UPDATE_MUTATION,
-        { id: post.shopify_article_id, article: updateInput }
-      )
-      result = data.articleUpdate
-    } else {
-      const data = await shopifyGraphql<{ articleCreate: typeof result }>(
-        shopDomain,
-        apiVersion,
-        accessToken,
-        CREATE_MUTATION,
-        { article }
-      )
-      result = data.articleCreate
-    }
-    if (result.userErrors?.length) {
-      throw new Error(
-        `[shopify] article${alreadyPushed ? 'Update' : 'Create'} failed: ` +
-          result.userErrors.map((e) => `${(e.field ?? []).join('.')} ${e.message}`).join('; ')
-      )
-    }
-    created = result.article
-    if (!created) throw new Error('[shopify] Mutation returned no article')
-    const blogHandle = created.blog?.handle ?? 'blog'
-    articleUrl = `${base}/blogs/${blogHandle}/${created.handle}`
+  const article: Record<string, unknown> = {
+    blogId: blogGid,
+    title: post.title,
+    handle: post.slug,
+    body: fullBody,
+    author: { name: authorName },
+    isPublished: true,
   }
+  if (post.meta_description) article.summary = post.meta_description
+  if (seoMetafields.length) article.metafields = seoMetafields
+  if (Array.isArray(post.tags) && post.tags.length) article.tags = post.tags
+  // Shopify needs a publicly reachable image URL; skip repo-relative paths.
+  if (post.hero_image_url && /^https?:\/\//i.test(post.hero_image_url)) {
+    article.image = { url: post.hero_image_url, altText: post.hero_image_alt ?? post.title }
+  }
+
+  let result: { article: ArticleResult | null; userErrors: ShopifyUserError[] }
+  if (alreadyPushed) {
+    // articleUpdate can't move blogs; drop blogId from the update input.
+    const updateInput = { ...article }
+    delete updateInput.blogId
+    const data = await shopifyGraphql<{ articleUpdate: typeof result }>(
+      shopDomain,
+      apiVersion,
+      accessToken,
+      UPDATE_MUTATION,
+      { id: post.shopify_article_id, article: updateInput }
+    )
+    result = data.articleUpdate
+  } else {
+    const data = await shopifyGraphql<{ articleCreate: typeof result }>(
+      shopDomain,
+      apiVersion,
+      accessToken,
+      CREATE_MUTATION,
+      { article }
+    )
+    result = data.articleCreate
+  }
+  if (result.userErrors?.length) {
+    throw new Error(
+      `[shopify] article${alreadyPushed ? 'Update' : 'Create'} failed: ` +
+        result.userErrors.map((e) => `${(e.field ?? []).join('.')} ${e.message}`).join('; ')
+    )
+  }
+  const created = result.article
+  if (!created) throw new Error('[shopify] Mutation returned no article')
+  const blogHandle = created.blog?.handle ?? (isFaq ? 'faqs' : 'blog')
+  const articleUrl = `${base}/blogs/${blogHandle}/${created.handle}`
 
   // ── 8. Update the post ──────────────────────────────────────────────────────
   const now = new Date().toISOString()
@@ -482,10 +445,10 @@ export async function runShopifyPublish(tenantId: string, postId: string): Promi
   await db.from('publish_log').insert({
     tenant_id: tenantId,
     post_id: postId,
-    action: `shopify_${isFaq ? 'page' : 'article'}_${alreadyPushed ? 'updated' : 'created'}`,
+    action: `shopify_${isFaq ? 'faq' : 'article'}_${alreadyPushed ? 'updated' : 'created'}`,
     success: true,
     response_data: {
-      resource: isFaq ? 'page' : 'article',
+      resource: isFaq ? 'faq' : 'article',
       resource_id: created.id,
       url: articleUrl,
     },
@@ -535,9 +498,11 @@ export async function runShopifyUnpublish(tenantId: string, postId: string): Pro
     staticToken: tenant.shopify_access_token,
   })
 
-  const isFaq = post.content_type === 'faq'
+  // Branch on the stored GID: legacy FAQ pages use pageUpdate, everything else
+  // (incl. FAQ articles in the FAQ blog) uses articleUpdate.
+  const isPage = gidIsPage(post.shopify_article_id)
   let userErrors: ShopifyUserError[]
-  if (isFaq) {
+  if (isPage) {
     const data = await shopifyGraphql<{
       pageUpdate: { page: ArticleResult | null; userErrors: ShopifyUserError[] }
     }>(shopDomain, apiVersion, accessToken, PAGE_UPDATE_MUTATION, {
@@ -565,7 +530,7 @@ export async function runShopifyUnpublish(tenantId: string, postId: string): Pro
   await db.from('publish_log').insert({
     tenant_id: tenantId,
     post_id: postId,
-    action: `shopify_${isFaq ? 'page' : 'article'}_unpublished`,
+    action: `shopify_${isPage ? 'page' : 'article'}_unpublished`,
     success: true,
     response_data: { resource_id: post.shopify_article_id },
     attempted_at: new Date().toISOString(),
@@ -614,9 +579,11 @@ export async function runShopifyDelete(tenantId: string, postId: string): Promis
     staticToken: tenant.shopify_access_token,
   })
 
-  const isFaq = post.content_type === 'faq'
+  // Branch on the stored GID: legacy FAQ pages use pageDelete, articles (incl.
+  // FAQ articles in the FAQ blog) use articleDelete.
+  const isPage = gidIsPage(post.shopify_article_id)
   let userErrors: ShopifyUserError[]
-  if (isFaq) {
+  if (isPage) {
     const data = await shopifyGraphql<{
       pageDelete: { deletedPageId: string | null; userErrors: ShopifyUserError[] }
     }>(shopDomain, apiVersion, accessToken, PAGE_DELETE_MUTATION, { id: post.shopify_article_id })

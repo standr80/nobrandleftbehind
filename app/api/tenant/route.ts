@@ -49,6 +49,7 @@ export async function PATCH(request: Request) {
     shopify_client_secret?: string | null
     shopify_access_token?: string | null
     shopify_blog_id?: string | null
+    shopify_faq_blog_id?: string | null
     shopify_api_version?: string | null
     shopify_store_url?: string | null
   } = {}
@@ -60,7 +61,7 @@ export async function PATCH(request: Request) {
     'white_label_domain', 'blog_theme', 'theme_extract_url', 'blog_footer',
     'ideogram_api_key', 'image_gen_enabled', 'deploy_hook_url', 'internal_links',
     'shopify_shop_domain', 'shopify_client_id', 'shopify_client_secret',
-    'shopify_access_token', 'shopify_blog_id',
+    'shopify_access_token', 'shopify_blog_id', 'shopify_faq_blog_id',
     'shopify_api_version', 'shopify_store_url',
   ] as const
   for (const key of allowed) {

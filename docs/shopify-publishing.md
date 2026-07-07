@@ -79,14 +79,26 @@ In NBLB, open the workspace for that store → **Settings → Publishing**:
 Re-publishing an already-pushed post updates the same Shopify article (no
 duplicates) — NBLB remembers the article ID.
 
-## FAQ posts → Shopify Pages
+## FAQ posts → a dedicated FAQ blog
 
-FAQ content (Clem posts with `content_type = 'faq'`) publishes as a Shopify
-**Page** (`/pages/<slug>`), not a blog article — same app, same `write_content`
-scope, so no extra setup. The page body carries the Q&A plus **FAQPage** JSON-LD
-(built from the post's `faq_items`) for FAQ rich results / AI-overview citations.
-Regular posts continue to publish as blog articles (`/blogs/<blog>/<slug>`).
-Unpublishing a FAQ hides the Page (`pageUpdate isPublished:false`).
+FAQ content (Clem posts with `content_type = 'faq'`) publishes as an **article in
+a separate Shopify blog** — e.g. a blog with handle `faqs`, giving
+`/blogs/faqs/<slug>`. Shopify auto-lists every FAQ at `/blogs/faqs` (that page is
+your FAQ index), and each FAQ keeps its own URL plus **FAQPage** JSON-LD (from the
+post's `faq_items`) for rich results / AI-overview citations. Regular posts keep
+going to the main blog (`/blogs/<blog>/<slug>`).
+
+Benefit: **one menu link** to `/blogs/faqs`, added once — every new FAQ group then
+appears on the index automatically, no per-page admin.
+
+Setup (once per store):
+1. In Shopify admin, **Content → Blogs → Add blog**, name it e.g. **FAQs** (handle becomes `faqs` → `/blogs/faqs`).
+2. Open the blog and copy its numeric **Blog ID** from the admin URL (`.../content/blogs/**NNN**`).
+3. In NBLB Settings → Publishing, paste it into **FAQ Blog ID** (separate from the main **Blog ID**).
+4. Add `/blogs/faqs` to your store's menu (**Content → Menus**) once.
+
+Unpublishing a FAQ hides the article; deleting removes it. (Any FAQ published as a
+`/pages/...` page before this change is cleaned up automatically on delete.)
 
 ## Notes & limits (v1)
 

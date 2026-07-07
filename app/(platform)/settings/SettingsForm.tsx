@@ -49,6 +49,7 @@ interface Tenant {
   shopify_client_secret: string | null
   shopify_access_token: string | null
   shopify_blog_id: string | null
+  shopify_faq_blog_id: string | null
   shopify_api_version: string | null
   shopify_store_url: string | null
 }
@@ -186,6 +187,7 @@ export default function SettingsForm({
   const [shopifyClientSecret, setShopifyClientSecret] = useState(tenant.shopify_client_secret ?? '')
   const [shopifyAccessToken, setShopifyAccessToken] = useState(tenant.shopify_access_token ?? '')
   const [shopifyBlogId, setShopifyBlogId] = useState(tenant.shopify_blog_id ?? '')
+  const [shopifyFaqBlogId, setShopifyFaqBlogId] = useState(tenant.shopify_faq_blog_id ?? '')
   const [shopifyApiVersion, setShopifyApiVersion] = useState(tenant.shopify_api_version ?? '')
   const [shopifyStoreUrl, setShopifyStoreUrl] = useState(tenant.shopify_store_url ?? '')
   const [cadence, setCadence] = useState(tenant.publish_cadence ?? '2pw')
@@ -227,6 +229,7 @@ export default function SettingsForm({
           shopify_client_secret: shopifyClientSecret.trim() || null,
           shopify_access_token: shopifyAccessToken.trim() || null,
           shopify_blog_id: shopifyBlogId.trim() || null,
+          shopify_faq_blog_id: shopifyFaqBlogId.trim() || null,
           shopify_api_version: shopifyApiVersion.trim() || null,
           shopify_store_url: shopifyStoreUrl.trim().replace(/\/$/, '') || null,
           deploy_hook_url: deployHookUrl.trim() || null,
@@ -1164,6 +1167,11 @@ export default function SettingsForm({
                     <label className={labelClass}>Blog ID</label>
                     <input className={inputClass} value={shopifyBlogId} onChange={(e) => setShopifyBlogId(e.target.value)} placeholder="e.g. 389767568" />
                     <p className="text-xs text-slate-400 mt-1">The target blog new posts go into. Numeric ID or full <code>gid://</code>.</p>
+                  </div>
+                  <div>
+                    <label className={labelClass}>FAQ Blog ID</label>
+                    <input className={inputClass} value={shopifyFaqBlogId} onChange={(e) => setShopifyFaqBlogId(e.target.value)} placeholder="e.g. 389767599" />
+                    <p className="text-xs text-slate-400 mt-1">Separate blog for FAQ posts (e.g. a blog with handle <code>faqs</code> → <code>/blogs/faqs</code>). Numeric ID or <code>gid://</code>.</p>
                   </div>
                   <div>
                     <label className={labelClass}>API version (optional)</label>

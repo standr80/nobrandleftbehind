@@ -67,6 +67,7 @@ export default async function SettingsPage() {
           shopify_client_secret: (tenant as unknown as { shopify_client_secret: string | null }).shopify_client_secret ?? null,
           shopify_access_token: (tenant as unknown as { shopify_access_token: string | null }).shopify_access_token ?? null,
           shopify_blog_id: (tenant as unknown as { shopify_blog_id: string | null }).shopify_blog_id ?? null,
+          shopify_faq_blog_id: (tenant as unknown as { shopify_faq_blog_id: string | null }).shopify_faq_blog_id ?? null,
           shopify_api_version: (tenant as unknown as { shopify_api_version: string | null }).shopify_api_version ?? null,
           shopify_store_url: (tenant as unknown as { shopify_store_url: string | null }).shopify_store_url ?? null,
         }}
