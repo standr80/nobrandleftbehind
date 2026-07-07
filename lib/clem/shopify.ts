@@ -1,5 +1,6 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 import { toHtml } from '@/lib/mdx/toHtml'
+import { parseFaqItems, faqPageSchema } from '@/lib/content/api'
 
 /**
  * Publishes a Clem blog post into a Shopify store's NATIVE blog via the
@@ -239,6 +240,27 @@ const UPDATE_MUTATION = `mutation ClemUpdateArticle($id: ID!, $article: ArticleU
   articleUpdate(id: $id, article: $article) { ${ARTICLE_FIELDS} }
 }`
 
+// FAQ posts publish as Shopify Pages (/pages/<handle>) instead of blog articles.
+// Same access scope (write_content covers pages). Pages have no blog/author/tags.
+const PAGE_FIELDS = `
+  page { id handle }
+  userErrors { code field message }
+`
+
+const PAGE_CREATE_MUTATION = `mutation ClemCreatePage($page: PageCreateInput!) {
+  pageCreate(page: $page) { ${PAGE_FIELDS} }
+}`
+
+const PAGE_UPDATE_MUTATION = `mutation ClemUpdatePage($id: ID!, $page: PageUpdateInput!) {
+  pageUpdate(id: $id, page: $page) { ${PAGE_FIELDS} }
+}`
+
+/** Wrap a schema.org object as a JSON-LD <script> (escaping '<' for safety). */
+function jsonLdScript(obj: object | null): string {
+  if (!obj) return ''
+  return `<script type="application/ld+json">${JSON.stringify(obj).replace(/</g, '\\u003c')}</script>`
+}
+
 export async function runShopifyPublish(tenantId: string, postId: string): Promise<void> {
   const db = createAdminClient()
 
@@ -303,73 +325,113 @@ export async function runShopifyPublish(tenantId: string, postId: string): Promi
   }
   const authorName = author?.name || tenant.name || 'Team'
 
-  // ── 4. Build article body HTML (+ author bio box + Person JSON-LD) ──────────
+  // ── 4. Build body HTML + structured data ────────────────────────────────────
+  // FAQ posts (content_type='faq') publish as a Shopify PAGE (/pages/<slug>)
+  // with FAQPage schema; everything else is a blog ARTICLE with an author bio
+  // box + BlogPosting/Person schema.
+  const isFaq = post.content_type === 'faq'
   const theme = (tenant.blog_theme ?? null) as { primaryColor?: string } | null
   const bodyHtml = await toHtml(post.body_mdx ?? '', { linkColor: theme?.primaryColor })
-  const fullBody =
-    bodyHtml +
-    buildAuthorBioHtml(author) +
-    buildAuthorJsonLd(author, tenant.name ?? authorName, post.title, post.meta_description, post.published_at)
+  const fullBody = isFaq
+    ? bodyHtml + jsonLdScript(faqPageSchema(parseFaqItems(post.faq_items)))
+    : bodyHtml +
+      buildAuthorBioHtml(author) +
+      buildAuthorJsonLd(author, tenant.name ?? authorName, post.title, post.meta_description, post.published_at)
 
-  // ── 5. Assemble the article input ──────────────────────────────────────────
-  const article: Record<string, unknown> = {
-    blogId: blogGid,
-    title: post.title,
-    handle: post.slug,
-    body: fullBody,
-    author: { name: authorName },
-    isPublished: true,
-  }
-  if (post.meta_description) article.summary = post.meta_description
-  if (Array.isArray(post.tags) && post.tags.length) article.tags = post.tags
-  // Shopify needs a publicly reachable image URL; skip repo-relative paths.
-  if (post.hero_image_url && /^https?:\/\//i.test(post.hero_image_url)) {
-    article.image = {
-      url: post.hero_image_url,
-      altText: post.hero_image_alt ?? post.title,
-    }
-  }
-
-  // ── 6. Create or update ─────────────────────────────────────────────────────
+  // ── 5–7. Create/update the Shopify resource (Page for FAQ, else Article) ─────
   const alreadyPushed = Boolean(post.shopify_article_id)
-  let result: { article: ArticleResult | null; userErrors: ShopifyUserError[] }
-
-  if (alreadyPushed) {
-    // articleUpdate can't move blogs; drop blogId from the update input.
-    const updateInput = { ...article }
-    delete updateInput.blogId
-    const data = await shopifyGraphql<{ articleUpdate: typeof result }>(
-      shopDomain,
-      apiVersion,
-      accessToken,
-      UPDATE_MUTATION,
-      { id: post.shopify_article_id, article: updateInput }
-    )
-    result = data.articleUpdate
-  } else {
-    const data = await shopifyGraphql<{ articleCreate: typeof result }>(
-      shopDomain,
-      apiVersion,
-      accessToken,
-      CREATE_MUTATION,
-      { article }
-    )
-    result = data.articleCreate
-  }
-
-  if (result.userErrors?.length) {
-    throw new Error(
-      `[shopify] article${alreadyPushed ? 'Update' : 'Create'} failed: ` +
-        result.userErrors.map((e) => `${(e.field ?? []).join('.')} ${e.message}`).join('; ')
-    )
-  }
-  const created = result.article
-  if (!created) throw new Error('[shopify] Mutation returned no article')
-
-  // ── 7. Build the public URL ─────────────────────────────────────────────────
   const base = (tenant.shopify_store_url?.trim().replace(/\/$/, '')) || `https://${shopDomain}`
-  const blogHandle = created.blog?.handle ?? 'blog'
-  const articleUrl = `${base}/blogs/${blogHandle}/${created.handle}`
+  let created: ArticleResult | null
+  let articleUrl: string
+
+  if (isFaq) {
+    // Shopify Page — no blog/author/tags/image fields.
+    const pageInput: Record<string, unknown> = {
+      title: post.title,
+      handle: post.slug,
+      body: fullBody,
+      isPublished: true,
+    }
+    let pageRes: { page: ArticleResult | null; userErrors: ShopifyUserError[] }
+    if (alreadyPushed) {
+      const data = await shopifyGraphql<{ pageUpdate: typeof pageRes }>(
+        shopDomain,
+        apiVersion,
+        accessToken,
+        PAGE_UPDATE_MUTATION,
+        { id: post.shopify_article_id, page: pageInput }
+      )
+      pageRes = data.pageUpdate
+    } else {
+      const data = await shopifyGraphql<{ pageCreate: typeof pageRes }>(
+        shopDomain,
+        apiVersion,
+        accessToken,
+        PAGE_CREATE_MUTATION,
+        { page: pageInput }
+      )
+      pageRes = data.pageCreate
+    }
+    if (pageRes.userErrors?.length) {
+      throw new Error(
+        `[shopify] page${alreadyPushed ? 'Update' : 'Create'} failed: ` +
+          pageRes.userErrors.map((e) => `${(e.field ?? []).join('.')} ${e.message}`).join('; ')
+      )
+    }
+    created = pageRes.page
+    if (!created) throw new Error('[shopify] Page mutation returned no page')
+    articleUrl = `${base}/pages/${created.handle}`
+  } else {
+    // Shopify Article (blog post).
+    const article: Record<string, unknown> = {
+      blogId: blogGid,
+      title: post.title,
+      handle: post.slug,
+      body: fullBody,
+      author: { name: authorName },
+      isPublished: true,
+    }
+    if (post.meta_description) article.summary = post.meta_description
+    if (Array.isArray(post.tags) && post.tags.length) article.tags = post.tags
+    // Shopify needs a publicly reachable image URL; skip repo-relative paths.
+    if (post.hero_image_url && /^https?:\/\//i.test(post.hero_image_url)) {
+      article.image = { url: post.hero_image_url, altText: post.hero_image_alt ?? post.title }
+    }
+
+    let result: { article: ArticleResult | null; userErrors: ShopifyUserError[] }
+    if (alreadyPushed) {
+      // articleUpdate can't move blogs; drop blogId from the update input.
+      const updateInput = { ...article }
+      delete updateInput.blogId
+      const data = await shopifyGraphql<{ articleUpdate: typeof result }>(
+        shopDomain,
+        apiVersion,
+        accessToken,
+        UPDATE_MUTATION,
+        { id: post.shopify_article_id, article: updateInput }
+      )
+      result = data.articleUpdate
+    } else {
+      const data = await shopifyGraphql<{ articleCreate: typeof result }>(
+        shopDomain,
+        apiVersion,
+        accessToken,
+        CREATE_MUTATION,
+        { article }
+      )
+      result = data.articleCreate
+    }
+    if (result.userErrors?.length) {
+      throw new Error(
+        `[shopify] article${alreadyPushed ? 'Update' : 'Create'} failed: ` +
+          result.userErrors.map((e) => `${(e.field ?? []).join('.')} ${e.message}`).join('; ')
+      )
+    }
+    created = result.article
+    if (!created) throw new Error('[shopify] Mutation returned no article')
+    const blogHandle = created.blog?.handle ?? 'blog'
+    articleUrl = `${base}/blogs/${blogHandle}/${created.handle}`
+  }
 
   // ── 8. Update the post ──────────────────────────────────────────────────────
   const now = new Date().toISOString()
@@ -393,29 +455,29 @@ export async function runShopifyPublish(tenantId: string, postId: string): Promi
   await db.from('publish_log').insert({
     tenant_id: tenantId,
     post_id: postId,
-    action: alreadyPushed ? 'shopify_article_updated' : 'shopify_article_created',
+    action: `shopify_${isFaq ? 'page' : 'article'}_${alreadyPushed ? 'updated' : 'created'}`,
     success: true,
     response_data: {
-      article_id: created.id,
-      article_url: articleUrl,
-      blog_handle: blogHandle,
+      resource: isFaq ? 'page' : 'article',
+      resource_id: created.id,
+      url: articleUrl,
     },
     attempted_at: now,
   })
 }
 
 /**
- * Unpublish a post's Shopify article (articleUpdate → isPublished: false).
- * Shopify hides the article from the storefront but keeps it in admin, so the
- * shopify_article_id is retained — re-publishing later updates the same article.
- * No-op if the post was never pushed to Shopify.
+ * Unpublish a post's Shopify resource (isPublished: false) — articleUpdate for a
+ * blog post, pageUpdate for a FAQ page. Shopify hides it from the storefront but
+ * keeps it in admin, so shopify_article_id is retained — re-publishing later
+ * updates the same resource. No-op if the post was never pushed to Shopify.
  */
 export async function runShopifyUnpublish(tenantId: string, postId: string): Promise<void> {
   const db = createAdminClient()
 
   const [{ data: post, error: postErr }, { data: tenant, error: tenantErr }] =
     await Promise.all([
-      db.from('blog_posts').select('shopify_article_id').eq('id', postId).single(),
+      db.from('blog_posts').select('shopify_article_id, content_type').eq('id', postId).single(),
       db
         .from('tenants')
         .select(
@@ -446,14 +508,26 @@ export async function runShopifyUnpublish(tenantId: string, postId: string): Pro
     staticToken: tenant.shopify_access_token,
   })
 
-  const data = await shopifyGraphql<{
-    articleUpdate: { article: ArticleResult | null; userErrors: ShopifyUserError[] }
-  }>(shopDomain, apiVersion, accessToken, UPDATE_MUTATION, {
-    id: post.shopify_article_id,
-    article: { isPublished: false },
-  })
+  const isFaq = post.content_type === 'faq'
+  let userErrors: ShopifyUserError[]
+  if (isFaq) {
+    const data = await shopifyGraphql<{
+      pageUpdate: { page: ArticleResult | null; userErrors: ShopifyUserError[] }
+    }>(shopDomain, apiVersion, accessToken, PAGE_UPDATE_MUTATION, {
+      id: post.shopify_article_id,
+      page: { isPublished: false },
+    })
+    userErrors = data.pageUpdate.userErrors
+  } else {
+    const data = await shopifyGraphql<{
+      articleUpdate: { article: ArticleResult | null; userErrors: ShopifyUserError[] }
+    }>(shopDomain, apiVersion, accessToken, UPDATE_MUTATION, {
+      id: post.shopify_article_id,
+      article: { isPublished: false },
+    })
+    userErrors = data.articleUpdate.userErrors
+  }
 
-  const { userErrors } = data.articleUpdate
   if (userErrors?.length) {
     throw new Error(
       `[shopify] unpublish failed: ` +
@@ -464,9 +538,9 @@ export async function runShopifyUnpublish(tenantId: string, postId: string): Pro
   await db.from('publish_log').insert({
     tenant_id: tenantId,
     post_id: postId,
-    action: 'shopify_article_unpublished',
+    action: `shopify_${isFaq ? 'page' : 'article'}_unpublished`,
     success: true,
-    response_data: { article_id: post.shopify_article_id },
+    response_data: { resource_id: post.shopify_article_id },
     attempted_at: new Date().toISOString(),
   })
 }

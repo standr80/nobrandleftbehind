@@ -79,6 +79,15 @@ In NBLB, open the workspace for that store → **Settings → Publishing**:
 Re-publishing an already-pushed post updates the same Shopify article (no
 duplicates) — NBLB remembers the article ID.
 
+## FAQ posts → Shopify Pages
+
+FAQ content (Clem posts with `content_type = 'faq'`) publishes as a Shopify
+**Page** (`/pages/<slug>`), not a blog article — same app, same `write_content`
+scope, so no extra setup. The page body carries the Q&A plus **FAQPage** JSON-LD
+(built from the post's `faq_items`) for FAQ rich results / AI-overview citations.
+Regular posts continue to publish as blog articles (`/blogs/<blog>/<slug>`).
+Unpublishing a FAQ hides the Page (`pageUpdate isPublished:false`).
+
 ## Notes & limits (v1)
 
 - **Hero images:** only included if the post's hero image is a public `http(s)` URL.
