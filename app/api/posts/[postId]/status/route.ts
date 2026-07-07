@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { calculateNextSlot } from '@/lib/clem/schedule'
 import { runPublish } from '@/lib/clem/publish'
-import { runShopifyPublish } from '@/lib/clem/shopify'
+import { runShopifyPublish, runShopifyUnpublish } from '@/lib/clem/shopify'
 import { triggerDeployHook } from '@/lib/clem/deployHook'
 
 interface Params {
@@ -171,6 +171,27 @@ export async function POST(request: Request, { params }: Params) {
     }
 
     case 'unpublish': {
+      // Shopify tenants: the article lives in the store, so hide it there too
+      // (isPublished: false) before flipping the local status. Other cms_types
+      // (embed/git) just update the DB — the Content API stops serving it.
+      const { data: tenant } = await db
+        .from('tenants')
+        .select('cms_type')
+        .eq('id', post.tenant_id)
+        .single()
+
+      if (tenant?.cms_type === 'shopify') {
+        try {
+          await runShopifyUnpublish(post.tenant_id, postId)
+        } catch (unpubErr) {
+          console.error('[unpublish] runShopifyUnpublish failed:', unpubErr)
+          return NextResponse.json(
+            { error: unpubErr instanceof Error ? unpubErr.message : 'Unpublish failed' },
+            { status: 500 }
+          )
+        }
+      }
+
       await db
         .from('blog_posts')
         .update({

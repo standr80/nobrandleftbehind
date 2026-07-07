@@ -403,3 +403,70 @@ export async function runShopifyPublish(tenantId: string, postId: string): Promi
     attempted_at: now,
   })
 }
+
+/**
+ * Unpublish a post's Shopify article (articleUpdate → isPublished: false).
+ * Shopify hides the article from the storefront but keeps it in admin, so the
+ * shopify_article_id is retained — re-publishing later updates the same article.
+ * No-op if the post was never pushed to Shopify.
+ */
+export async function runShopifyUnpublish(tenantId: string, postId: string): Promise<void> {
+  const db = createAdminClient()
+
+  const [{ data: post, error: postErr }, { data: tenant, error: tenantErr }] =
+    await Promise.all([
+      db.from('blog_posts').select('shopify_article_id').eq('id', postId).single(),
+      db
+        .from('tenants')
+        .select(
+          'shopify_shop_domain, shopify_client_id, shopify_client_secret, shopify_access_token, shopify_api_version'
+        )
+        .eq('id', tenantId)
+        .single(),
+    ])
+
+  if (postErr || !post) throw new Error(`[shopify] Post not found: ${postId}`)
+  if (tenantErr || !tenant) throw new Error(`[shopify] Tenant not found: ${tenantId}`)
+
+  // Never pushed to Shopify → nothing to unpublish.
+  if (!post.shopify_article_id) return
+
+  const shopDomainRaw = tenant.shopify_shop_domain
+  const hasCreds =
+    (tenant.shopify_client_id && tenant.shopify_client_secret) || tenant.shopify_access_token
+  if (!shopDomainRaw || !hasCreds) {
+    throw new Error(`[shopify] Tenant ${tenantId} has incomplete Shopify config for unpublish.`)
+  }
+
+  const shopDomain = normaliseShopDomain(shopDomainRaw)
+  const apiVersion = tenant.shopify_api_version?.trim() || DEFAULT_SHOPIFY_API_VERSION
+  const accessToken = await getAccessToken(shopDomain, {
+    clientId: tenant.shopify_client_id,
+    clientSecret: tenant.shopify_client_secret,
+    staticToken: tenant.shopify_access_token,
+  })
+
+  const data = await shopifyGraphql<{
+    articleUpdate: { article: ArticleResult | null; userErrors: ShopifyUserError[] }
+  }>(shopDomain, apiVersion, accessToken, UPDATE_MUTATION, {
+    id: post.shopify_article_id,
+    article: { isPublished: false },
+  })
+
+  const { userErrors } = data.articleUpdate
+  if (userErrors?.length) {
+    throw new Error(
+      `[shopify] unpublish failed: ` +
+        userErrors.map((e) => `${(e.field ?? []).join('.')} ${e.message}`).join('; ')
+    )
+  }
+
+  await db.from('publish_log').insert({
+    tenant_id: tenantId,
+    post_id: postId,
+    action: 'shopify_article_unpublished',
+    success: true,
+    response_data: { article_id: post.shopify_article_id },
+    attempted_at: new Date().toISOString(),
+  })
+}
