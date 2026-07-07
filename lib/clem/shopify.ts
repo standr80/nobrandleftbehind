@@ -255,6 +255,14 @@ const PAGE_UPDATE_MUTATION = `mutation ClemUpdatePage($id: ID!, $page: PageUpdat
   pageUpdate(id: $id, page: $page) { ${PAGE_FIELDS} }
 }`
 
+const ARTICLE_DELETE_MUTATION = `mutation ClemDeleteArticle($id: ID!) {
+  articleDelete(id: $id) { deletedArticleId userErrors { code field message } }
+}`
+
+const PAGE_DELETE_MUTATION = `mutation ClemDeletePage($id: ID!) {
+  pageDelete(id: $id) { deletedPageId userErrors { code field message } }
+}`
+
 /** Wrap a schema.org object as a JSON-LD <script> (escaping '<' for safety). */
 function jsonLdScript(obj: object | null): string {
   if (!obj) return ''
@@ -562,4 +570,72 @@ export async function runShopifyUnpublish(tenantId: string, postId: string): Pro
     response_data: { resource_id: post.shopify_article_id },
     attempted_at: new Date().toISOString(),
   })
+}
+
+/**
+ * Permanently delete a post's Shopify resource — articleDelete for a blog post,
+ * pageDelete for a FAQ page. Call this BEFORE deleting the NBLB row (it reads
+ * shopify_article_id + content_type from it). No-op if never pushed. An
+ * already-deleted resource is treated as success so it can't block deletion.
+ */
+export async function runShopifyDelete(tenantId: string, postId: string): Promise<void> {
+  const db = createAdminClient()
+
+  const [{ data: post, error: postErr }, { data: tenant, error: tenantErr }] =
+    await Promise.all([
+      db.from('blog_posts').select('shopify_article_id, content_type').eq('id', postId).single(),
+      db
+        .from('tenants')
+        .select(
+          'shopify_shop_domain, shopify_client_id, shopify_client_secret, shopify_access_token, shopify_api_version'
+        )
+        .eq('id', tenantId)
+        .single(),
+    ])
+
+  if (postErr || !post) throw new Error(`[shopify] Post not found: ${postId}`)
+  if (tenantErr || !tenant) throw new Error(`[shopify] Tenant not found: ${tenantId}`)
+
+  // Never pushed to Shopify → nothing to delete.
+  if (!post.shopify_article_id) return
+
+  const shopDomainRaw = tenant.shopify_shop_domain
+  const hasCreds =
+    (tenant.shopify_client_id && tenant.shopify_client_secret) || tenant.shopify_access_token
+  if (!shopDomainRaw || !hasCreds) {
+    throw new Error(`[shopify] Tenant ${tenantId} has incomplete Shopify config for delete.`)
+  }
+
+  const shopDomain = normaliseShopDomain(shopDomainRaw)
+  const apiVersion = tenant.shopify_api_version?.trim() || DEFAULT_SHOPIFY_API_VERSION
+  const accessToken = await getAccessToken(shopDomain, {
+    clientId: tenant.shopify_client_id,
+    clientSecret: tenant.shopify_client_secret,
+    staticToken: tenant.shopify_access_token,
+  })
+
+  const isFaq = post.content_type === 'faq'
+  let userErrors: ShopifyUserError[]
+  if (isFaq) {
+    const data = await shopifyGraphql<{
+      pageDelete: { deletedPageId: string | null; userErrors: ShopifyUserError[] }
+    }>(shopDomain, apiVersion, accessToken, PAGE_DELETE_MUTATION, { id: post.shopify_article_id })
+    userErrors = data.pageDelete.userErrors
+  } else {
+    const data = await shopifyGraphql<{
+      articleDelete: { deletedArticleId: string | null; userErrors: ShopifyUserError[] }
+    }>(shopDomain, apiVersion, accessToken, ARTICLE_DELETE_MUTATION, { id: post.shopify_article_id })
+    userErrors = data.articleDelete.userErrors
+  }
+
+  // Treat "already gone" as success so a missing resource never blocks the delete.
+  const realErrors = (userErrors ?? []).filter(
+    (e) => !/not found|does(n'?| not)? exist|no longer/i.test(e.message)
+  )
+  if (realErrors.length) {
+    throw new Error(
+      `[shopify] delete failed: ` +
+        realErrors.map((e) => `${(e.field ?? []).join('.')} ${e.message}`).join('; ')
+    )
+  }
 }

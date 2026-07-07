@@ -2,6 +2,7 @@ import { auth } from '@clerk/nextjs/server'
 import { NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { triggerDeployHook } from '@/lib/clem/deployHook'
+import { runShopifyDelete } from '@/lib/clem/shopify'
 
 interface Params {
   params: Promise<{ postId: string }>
@@ -96,6 +97,27 @@ export async function DELETE(_request: Request, { params }: Params) {
 
   if (!post) return NextResponse.json({ error: 'Post not found' }, { status: 404 })
   if (!member) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+
+  // Shopify tenants: delete the live article/page BEFORE removing the NBLB row
+  // (runShopifyDelete needs the row's shopify_article_id + content_type). If it
+  // fails we keep the row so the user can retry rather than orphaning the resource.
+  const { data: tenant } = await db
+    .from('tenants')
+    .select('cms_type')
+    .eq('id', post.tenant_id)
+    .single()
+
+  if (tenant?.cms_type === 'shopify') {
+    try {
+      await runShopifyDelete(post.tenant_id, postId)
+    } catch (delErr) {
+      console.error('[delete] runShopifyDelete failed:', delErr)
+      return NextResponse.json(
+        { error: delErr instanceof Error ? delErr.message : 'Shopify delete failed' },
+        { status: 500 }
+      )
+    }
+  }
 
   const { error } = await db.from('blog_posts').delete().eq('id', postId)
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
