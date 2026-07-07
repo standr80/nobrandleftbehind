@@ -23,6 +23,99 @@ import { toHtml } from '@/lib/mdx/toHtml'
 
 const DEFAULT_SHOPIFY_API_VERSION = '2025-10'
 
+interface AuthorRecord {
+  name: string | null
+  job_title: string | null
+  bio: string | null
+  links: unknown
+  slug: string | null
+}
+
+function escapeHtml(s: string): string {
+  return s.replace(/[&<>"']/g, (c) =>
+    ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!
+  )
+}
+
+/** Normalise the authors.links jsonb ([{label,url}]) to a clean array. */
+function authorLinks(links: unknown): { label: string; url: string }[] {
+  if (!Array.isArray(links)) return []
+  return (links as unknown[])
+    .map((l) => (l && typeof l === 'object' ? (l as { label?: string; url?: string }) : null))
+    .filter((l): l is { label?: string; url?: string } => Boolean(l && l.url))
+    .map((l) => ({ label: String(l.label ?? l.url), url: String(l.url) }))
+}
+
+/**
+ * Render an "About the author" box as inline-styled HTML appended to the
+ * article body. Shopify's native article author is only a name string, so bio /
+ * job title / links can't live in a native field — we surface them on-page here
+ * (self-contained inline styles so it renders regardless of the store theme).
+ */
+function buildAuthorBioHtml(author: AuthorRecord | null): string {
+  if (!author?.name) return ''
+  const links = authorLinks(author.links)
+  // Nothing beyond the name (already shown as the byline) — skip the box.
+  if (!author.bio && !author.job_title && links.length === 0) return ''
+
+  const linksHtml = links.length
+    ? `<p style="margin:0;display:flex;gap:1rem;flex-wrap:wrap">${links
+        .map(
+          (l) =>
+            `<a href="${escapeHtml(l.url)}" target="_blank" rel="noopener noreferrer" style="text-decoration:underline">${escapeHtml(l.label)}</a>`
+        )
+        .join('')}</p>`
+    : ''
+
+  return (
+    `<div style="margin-top:2.5rem;padding:1.25rem 1.5rem;border:1px solid #e5e7eb;border-radius:0.75rem;background:#f9fafb">` +
+    `<p style="margin:0 0 .5rem;font-weight:700;font-size:.8rem;letter-spacing:.04em;text-transform:uppercase;opacity:.6">About the author</p>` +
+    `<p style="margin:0 0 .35rem;font-weight:600">${escapeHtml(author.name)}` +
+    (author.job_title ? `<span style="font-weight:500;opacity:.7"> · ${escapeHtml(author.job_title)}</span>` : '') +
+    `</p>` +
+    (author.bio ? `<p style="margin:0 0 .5rem;font-size:.9rem;line-height:1.6;opacity:.85">${escapeHtml(author.bio)}</p>` : '') +
+    linksHtml +
+    `</div>`
+  )
+}
+
+/**
+ * BlogPosting + Person JSON-LD for E-E-A-T (jobTitle + sameAs from author
+ * links). Appended into the body so author credentials are machine-readable
+ * even though Shopify's native author field can't carry them.
+ */
+function buildAuthorJsonLd(
+  author: AuthorRecord | null,
+  publisherName: string,
+  title: string,
+  description: string | null,
+  publishedAt: string | null
+): string {
+  const sameAs = authorLinks(author?.links).map((l) => l.url)
+  const authorNode =
+    author?.name
+      ? {
+          '@type': 'Person',
+          name: author.name,
+          ...(author.job_title ? { jobTitle: author.job_title } : {}),
+          ...(sameAs.length ? { sameAs } : {}),
+        }
+      : { '@type': 'Organization', name: publisherName }
+
+  const data = {
+    '@context': 'https://schema.org',
+    '@type': 'BlogPosting',
+    headline: title,
+    ...(description ? { description } : {}),
+    ...(publishedAt ? { datePublished: publishedAt } : {}),
+    author: authorNode,
+    publisher: { '@type': 'Organization', name: publisherName },
+  }
+  // Escape '<' so a stray sequence can't break out of the <script> element.
+  const json = JSON.stringify(data).replace(/</g, '\\u003c')
+  return `<script type="application/ld+json">${json}</script>`
+}
+
 /**
  * Obtain an Admin API access token for the shop.
  *  - Preferred: client credentials grant (Dev Dashboard app) — POST client_id +
@@ -191,31 +284,39 @@ export async function runShopifyPublish(tenantId: string, postId: string): Promi
     staticToken: tenant.shopify_access_token,
   })
 
-  // ── 3. Resolve author name (post author → tenant default → tenant name) ─────
-  let authorName = tenant.name ?? 'Team'
+  // ── 3. Resolve author (post author → tenant default → tenant name) ──────────
+  // Full E-E-A-T record — Shopify's native `author` is name-only, so the bio,
+  // job title and links are rendered into the body (§4) instead.
+  const AUTHOR_COLS = 'name, job_title, bio, links, slug'
+  let author: AuthorRecord | null = null
   if (post.author_id) {
-    const { data: a } = await db.from('authors').select('name').eq('id', post.author_id).single()
-    if (a?.name) authorName = a.name
+    const { data } = await db.from('authors').select(AUTHOR_COLS).eq('id', post.author_id).single()
+    author = (data as AuthorRecord | null) ?? null
   } else {
-    const { data: a } = await db
+    const { data } = await db
       .from('authors')
-      .select('name')
+      .select(AUTHOR_COLS)
       .eq('tenant_id', tenantId)
       .eq('is_default', true)
       .maybeSingle()
-    if (a?.name) authorName = a.name
+    author = (data as AuthorRecord | null) ?? null
   }
+  const authorName = author?.name || tenant.name || 'Team'
 
-  // ── 4. Build article body HTML ─────────────────────────────────────────────
+  // ── 4. Build article body HTML (+ author bio box + Person JSON-LD) ──────────
   const theme = (tenant.blog_theme ?? null) as { primaryColor?: string } | null
   const bodyHtml = await toHtml(post.body_mdx ?? '', { linkColor: theme?.primaryColor })
+  const fullBody =
+    bodyHtml +
+    buildAuthorBioHtml(author) +
+    buildAuthorJsonLd(author, tenant.name ?? authorName, post.title, post.meta_description, post.published_at)
 
   // ── 5. Assemble the article input ──────────────────────────────────────────
   const article: Record<string, unknown> = {
     blogId: blogGid,
     title: post.title,
     handle: post.slug,
-    body: bodyHtml,
+    body: fullBody,
     author: { name: authorName },
     isPublished: true,
   }
