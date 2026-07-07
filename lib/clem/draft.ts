@@ -14,6 +14,26 @@ function generateSlug(title: string): string {
     .slice(0, 80)
 }
 
+/**
+ * Strip any 4-digit year (19xx/20xx) from a slug so URLs stay evergreen — a
+ * yearless slug survives an annual title refresh without needing a redirect.
+ */
+function stripYearFromSlug(slug: string): string {
+  return slug
+    .replace(/\b(19|20)\d{2}\b/g, '')
+    .replace(/-{2,}/g, '-')
+    .replace(/^-+|-+$/g, '')
+}
+
+/** Clamp a meta description to ~160 chars at a word boundary (SEO snippet length). */
+function clampMeta(s: string | undefined, max = 160): string {
+  const t = (s ?? '').replace(/\s+/g, ' ').trim()
+  if (t.length <= max) return t
+  const cut = t.slice(0, max)
+  const sp = cut.lastIndexOf(' ')
+  return (sp > 40 ? cut.slice(0, sp) : cut).replace(/[\s.,;:!-]+$/, '')
+}
+
 function parseFrontmatter(mdx: string): Record<string, string> {
   const match = mdx.match(/^---\n([\s\S]*?)\n---/)
   if (!match) return {}
@@ -59,6 +79,7 @@ export async function runDraft(tenantId: string, suggestionId: string): Promise<
   console.log(`[clem/draft] Writing "${suggestion.proposed_title}" for ${tenant.name}…`)
 
   const today = new Date().toISOString().split('T')[0]
+  const currentYear = new Date().getFullYear()
 
   // Internal link map: the host site's key pages Clem may link to. Clem links
   // ONLY to these (never invents a URL) and always includes any must-link page.
@@ -109,7 +130,9 @@ Requirements:
 - 3–4 sections with clear H2 headings
 - Practical, actionable content throughout
 - Natural keyword integration (never forced)
-- Strong conclusion with a clear takeaway${internalLinkingInstruction}${
+- Strong conclusion with a clear takeaway
+- Evergreen content: do NOT put a year in the slug. Prefer timeless phrasing over specific years. If you must reference "now", use ${currentYear} and use it consistently — the title and body must never disagree on the year.
+- Where it strengthens a claim, include a concrete, realistic data point or figure (e.g. typical margins, price ranges, percentages) rather than only general advice — specifics earn citations.${internalLinkingInstruction}${
           categoriesForDomain(tenant.domain).length
             ? `\n- For "tags", choose 1–2 of these EXACT categories (copy the wording verbatim, do NOT invent new tags): ${categoriesForDomain(tenant.domain).join(', ')}`
             : ''
@@ -118,10 +141,10 @@ Requirements:
 Return the post as valid MDX with this exact frontmatter format:
 ---
 title: "Post title here"
-slug: "url-slug-here"
+slug: "url-slug-here (lowercase, hyphenated, EVERGREEN — no year or date)"
 date: "${today}"
-excerpt: "One or two sentence summary for listing pages and SEO (under 160 chars)."
-metaDescription: "SEO meta description under 160 characters."
+excerpt: "One or two sentence summary for listing pages (under 160 chars)."
+metaDescription: "Purpose-built SEO meta description, 140–155 characters, leads with the primary keyword and gives a compelling reason to click. NOT just the first sentence of the post."
 tags: ["tag1", "tag2", "tag3"]
 author: "Clem"
 status: "draft"
@@ -143,7 +166,8 @@ status: "draft"
   if (fmStart > 0) mdxContent = mdxContent.slice(fmStart)
 
   const fm = parseFrontmatter(mdxContent)
-  const slug = fm.slug || generateSlug(suggestion.proposed_title)
+  // Normalise + strip any year so the slug is evergreen, whatever the model returned.
+  const slug = stripYearFromSlug(generateSlug(fm.slug || suggestion.proposed_title))
 
   // Handle duplicate slugs by appending a timestamp
   const { data: existing } = await db
@@ -171,7 +195,7 @@ status: "draft"
       slug: finalSlug,
       body_mdx: mdxContent,
       excerpt: fm.excerpt || null,
-      meta_description: fm.metaDescription || null,
+      meta_description: clampMeta(fm.metaDescription) || null,
       tags,
       status: 'draft',
       drafted_at: new Date().toISOString(),

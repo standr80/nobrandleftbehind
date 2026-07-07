@@ -13,6 +13,23 @@ function generateSlug(text: string): string {
     .slice(0, 80)
 }
 
+/** Strip any 4-digit year from a slug so FAQ URLs stay evergreen. */
+function stripYearFromSlug(slug: string): string {
+  return slug
+    .replace(/\b(19|20)\d{2}\b/g, '')
+    .replace(/-{2,}/g, '-')
+    .replace(/^-+|-+$/g, '')
+}
+
+/** Clamp a meta description to ~160 chars at a word boundary (SEO snippet length). */
+function clampMeta(s: string | undefined, max = 160): string {
+  const t = (s ?? '').replace(/\s+/g, ' ').trim()
+  if (t.length <= max) return t
+  const cut = t.slice(0, max)
+  const sp = cut.lastIndexOf(' ')
+  return (sp > 40 ? cut.slice(0, sp) : cut).replace(/[\s.,;:!-]+$/, '')
+}
+
 export interface FaqDraftInput {
   /** Topic/theme for the FAQ page; seeds title + slug when none supplied. */
   topic?: string
@@ -146,16 +163,17 @@ Writing guidelines:
 - Target audience: ${tenant.target_audience ?? 'General audience'}
 ${tenant.forbidden_words?.length ? `- NEVER use these words or phrases: ${tenant.forbidden_words.join(', ')}` : ''}
 - Write in British English
-- Each answer must be self-contained and directly answer the question (snippet-friendly), 40–120 words
-- Be specific, factual and practical. Do NOT invent statistics, prices, or claims you cannot support
+- Each answer must be self-contained and lead with a direct answer in the first sentence (snippet-friendly), 40–120 words
+- Where you can give a realistic, defensible figure (typical price ranges, margins, percentages), include it — concrete specifics earn AI citations — but never fabricate precise statistics you cannot support
+- Do NOT end every answer with a call to action. At most 2–3 answers across the whole FAQ should include a contact/link CTA, and vary the wording; the rest should simply answer the question and stop
 - No clichés, jargon, or filler${internalLinkingInstruction(tenant.internal_links)}
 
 Return ONLY valid JSON, no commentary, matching this exact shape:
 {
   "title": "FAQ page title — include the topic and the word FAQ or Questions where natural. Do NOT include the site, brand, or company name (it is added automatically elsewhere).",
-  "slug": "url-slug",
+  "slug": "url-slug (lowercase, hyphenated, EVERGREEN — no year or date)",
   "excerpt": "One-sentence summary under 160 chars",
-  "metaDescription": "SEO meta description under 160 chars",
+  "metaDescription": "Purpose-built SEO meta description, 140–155 characters, leading with the primary keyword — NOT just the first sentence of the intro",
   "intro": "Optional 1-2 sentence intro paragraph",
   "tags": ${categoriesForDomain(tenant.domain).length
     ? `[1–2 of these EXACT categories, copied verbatim, no new tags: ${categoriesForDomain(tenant.domain).join(', ')}]`
@@ -170,7 +188,7 @@ Return ONLY valid JSON, no commentary, matching this exact shape:
 Base it on these real questions (merge near-duplicates, keep the clearest wording, drop anything off-topic or not relevant to ${tenant.name}):
 ${finalQuestions.map((q) => `- ${q}`).join('\n')}
 
-Aim for ${Math.min(finalQuestions.length, 10)} high-quality Q&A pairs.`,
+Aim for 8–12 high-quality Q&A pairs. Prioritise the real questions above; if they yield fewer than 8, add further genuinely common questions that real customers ask about this topic (People-Also-Ask style — phrased the way someone would type or speak them) to reach at least 8. Order them so the most-asked questions come first.`,
       },
     ],
   })
@@ -192,7 +210,7 @@ Aim for ${Math.min(finalQuestions.length, 10)} high-quality Q&A pairs.`,
   if (!faqItems.length) throw new Error('FAQ generation produced no valid Q&A pairs')
 
   const title = (gen.title || `${topicLabel} — Frequently Asked Questions`).trim()
-  const baseSlug = (gen.slug && generateSlug(gen.slug)) || generateSlug(title)
+  const baseSlug = stripYearFromSlug((gen.slug && generateSlug(gen.slug)) || generateSlug(title))
 
   // Unique slug per tenant.
   const { data: existing } = await db
@@ -221,6 +239,7 @@ Aim for ${Math.min(finalQuestions.length, 10)} high-quality Q&A pairs.`,
     '---',
     '',
     gen.intro ? `${gen.intro.trim()}\n` : '',
+    `_Last updated: ${new Date().toLocaleDateString('en-GB', { month: 'long', year: 'numeric' })}_\n`,
     faqItems.map((it) => `## ${it.q}\n\n${it.a}`).join('\n\n'),
   ]
     .filter((line) => line !== '')
@@ -235,7 +254,7 @@ Aim for ${Math.min(finalQuestions.length, 10)} high-quality Q&A pairs.`,
       slug: finalSlug,
       body_mdx: bodyMdx,
       excerpt: gen.excerpt ?? null,
-      meta_description: gen.metaDescription ?? null,
+      meta_description: clampMeta(gen.metaDescription) || null,
       tags,
       content_type: 'faq',
       faq_items: faqItems as unknown as import('@/lib/supabase/types').Json,

@@ -332,11 +332,28 @@ export async function runShopifyPublish(tenantId: string, postId: string): Promi
   const isFaq = post.content_type === 'faq'
   const theme = (tenant.blog_theme ?? null) as { primaryColor?: string } | null
   const bodyHtml = await toHtml(post.body_mdx ?? '', { linkColor: theme?.primaryColor })
+  // published_at is only stamped in step 8, so on a first publish it's still
+  // null here — fall back to now so BlogPosting always has a datePublished.
+  const publishedAt = post.published_at ?? new Date().toISOString()
   const fullBody = isFaq
     ? bodyHtml + jsonLdScript(faqPageSchema(parseFaqItems(post.faq_items)))
     : bodyHtml +
       buildAuthorBioHtml(author) +
-      buildAuthorJsonLd(author, tenant.name ?? authorName, post.title, post.meta_description, post.published_at)
+      buildAuthorJsonLd(author, tenant.name ?? authorName, post.title, post.meta_description, publishedAt)
+
+  // Shopify SEO meta description (global.description_tag). Without this Shopify
+  // auto-generates the meta description from the body — usually far too long and
+  // truncated in search. Applies to both articles and pages.
+  const seoMetafields = post.meta_description
+    ? [
+        {
+          namespace: 'global',
+          key: 'description_tag',
+          type: 'single_line_text_field',
+          value: post.meta_description,
+        },
+      ]
+    : []
 
   // ── 5–7. Create/update the Shopify resource (Page for FAQ, else Article) ─────
   const alreadyPushed = Boolean(post.shopify_article_id)
@@ -352,6 +369,7 @@ export async function runShopifyPublish(tenantId: string, postId: string): Promi
       body: fullBody,
       isPublished: true,
     }
+    if (seoMetafields.length) pageInput.metafields = seoMetafields
     let pageRes: { page: ArticleResult | null; userErrors: ShopifyUserError[] }
     if (alreadyPushed) {
       const data = await shopifyGraphql<{ pageUpdate: typeof pageRes }>(
@@ -392,6 +410,7 @@ export async function runShopifyPublish(tenantId: string, postId: string): Promi
       isPublished: true,
     }
     if (post.meta_description) article.summary = post.meta_description
+    if (seoMetafields.length) article.metafields = seoMetafields
     if (Array.isArray(post.tags) && post.tags.length) article.tags = post.tags
     // Shopify needs a publicly reachable image URL; skip repo-relative paths.
     if (post.hero_image_url && /^https?:\/\//i.test(post.hero_image_url)) {
