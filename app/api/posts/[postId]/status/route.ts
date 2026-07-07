@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { calculateNextSlot } from '@/lib/clem/schedule'
 import { runPublish } from '@/lib/clem/publish'
+import { runShopifyPublish } from '@/lib/clem/shopify'
 import { triggerDeployHook } from '@/lib/clem/deployHook'
 
 interface Params {
@@ -129,7 +130,7 @@ export async function POST(request: Request, { params }: Params) {
         .eq('id', post.tenant_id)
         .single()
 
-      if (tenant?.cms_type === 'git') {
+      if (tenant?.cms_type === 'git' || tenant?.cms_type === 'shopify') {
         // First stamp approval so the post is in a valid state
         await db
           .from('blog_posts')
@@ -141,9 +142,14 @@ export async function POST(request: Request, { params }: Params) {
           .eq('id', postId)
 
         try {
-          await runPublish(post.tenant_id, postId)
+          if (tenant.cms_type === 'shopify') {
+            // Publishes into the store's native blog and marks the post published.
+            await runShopifyPublish(post.tenant_id, postId)
+          } else {
+            await runPublish(post.tenant_id, postId)
+          }
         } catch (publishErr) {
-          console.error('[publish_now] runPublish failed:', publishErr)
+          console.error('[publish_now] publish failed:', publishErr)
           return NextResponse.json(
             { error: publishErr instanceof Error ? publishErr.message : 'Publish failed' },
             { status: 500 }

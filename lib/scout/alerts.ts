@@ -11,7 +11,11 @@
 import { Resend } from 'resend'
 import { createAdminClient } from '@/lib/supabase/admin'
 
-const resend = new Resend(process.env.RESEND_API_KEY)
+// Lazy so a missing RESEND_API_KEY doesn't throw at module load (which breaks
+// `next build` page-data collection). Only constructed when actually sending.
+function getResend() {
+  return new Resend(process.env.RESEND_API_KEY)
+}
 
 export interface AlertCheckResult {
   tenantsChecked: number
@@ -89,7 +93,7 @@ export async function runDailyAlertCheck(): Promise<AlertCheckResult> {
 </html>`
 
       for (const recipient of recipients) {
-        await resend.emails.send({
+        await getResend().emails.send({
           from: 'Scout <scout@nobrandleftbehind.com>',
           to: recipient.email,
           subject: `🔴 Scout Alert — ${urgentAlerts.length} urgent item${urgentAlerts.length !== 1 ? 's' : ''} — ${tenantName}`,

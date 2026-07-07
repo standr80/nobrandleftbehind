@@ -11,6 +11,7 @@ const DAYS_OPTIONS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 's
 const CMS_OPTIONS = [
   { value: 'embed', label: 'NBLB Hosted (embed)', description: 'Posts go live instantly via the Content API + blog.js embed — no repo or PR' },
   { value: 'git', label: 'Git (GitHub PR)', description: 'Clem opens a PR on your repo' },
+  { value: 'shopify', label: 'Shopify', description: "Publish into the store's native blog via the Admin API" },
   { value: 'ghost', label: 'Ghost', description: 'Publish via Ghost Admin API' },
   { value: 'wordpress', label: 'WordPress', description: 'Publish via WordPress REST API' },
   { value: 'webhook', label: 'Custom webhook', description: 'POST to your own endpoint' },
@@ -43,6 +44,13 @@ interface Tenant {
   image_gen_enabled: boolean | null
   deploy_hook_url: string | null
   internal_links: InternalLink[] | null
+  shopify_shop_domain: string | null
+  shopify_client_id: string | null
+  shopify_client_secret: string | null
+  shopify_access_token: string | null
+  shopify_blog_id: string | null
+  shopify_api_version: string | null
+  shopify_store_url: string | null
 }
 
 interface InternalLink {
@@ -173,6 +181,13 @@ export default function SettingsForm({
   const [gitRepo, setGitRepo] = useState(tenant.git_repo ?? '')
   const [gitBranch, setGitBranch] = useState(tenant.git_branch ?? 'main')
   const [gitBlogPath, setGitBlogPath] = useState(tenant.git_blog_path ?? 'content/blog')
+  const [shopifyShopDomain, setShopifyShopDomain] = useState(tenant.shopify_shop_domain ?? '')
+  const [shopifyClientId, setShopifyClientId] = useState(tenant.shopify_client_id ?? '')
+  const [shopifyClientSecret, setShopifyClientSecret] = useState(tenant.shopify_client_secret ?? '')
+  const [shopifyAccessToken, setShopifyAccessToken] = useState(tenant.shopify_access_token ?? '')
+  const [shopifyBlogId, setShopifyBlogId] = useState(tenant.shopify_blog_id ?? '')
+  const [shopifyApiVersion, setShopifyApiVersion] = useState(tenant.shopify_api_version ?? '')
+  const [shopifyStoreUrl, setShopifyStoreUrl] = useState(tenant.shopify_store_url ?? '')
   const [cadence, setCadence] = useState(tenant.publish_cadence ?? '2pw')
   const [days, setDays] = useState<string[]>(tenant.publish_days ?? ['tuesday', 'thursday'])
   const [time, setTime] = useState(tenant.publish_time ?? '09:00')
@@ -207,6 +222,13 @@ export default function SettingsForm({
           git_repo: gitRepo || null,
           git_branch: gitBranch || 'main',
           git_blog_path: gitBlogPath || 'content/blog',
+          shopify_shop_domain: shopifyShopDomain.trim() || null,
+          shopify_client_id: shopifyClientId.trim() || null,
+          shopify_client_secret: shopifyClientSecret.trim() || null,
+          shopify_access_token: shopifyAccessToken.trim() || null,
+          shopify_blog_id: shopifyBlogId.trim() || null,
+          shopify_api_version: shopifyApiVersion.trim() || null,
+          shopify_store_url: shopifyStoreUrl.trim().replace(/\/$/, '') || null,
           deploy_hook_url: deployHookUrl.trim() || null,
           publish_cadence: cadence,
           publish_days: days,
@@ -1107,6 +1129,51 @@ export default function SettingsForm({
                     <label className={labelClass}>Blog path</label>
                     <input className={inputClass} value={gitBlogPath} onChange={(e) => setGitBlogPath(e.target.value)} placeholder="content/blog" />
                   </div>
+                </div>
+              </div>
+            )}
+
+            {cmsType === 'shopify' && (
+              <div className="space-y-4 pt-2">
+                <div>
+                  <label className={labelClass}>Shop domain</label>
+                  <input className={inputClass} value={shopifyShopDomain} onChange={(e) => setShopifyShopDomain(e.target.value)} placeholder="your-store.myshopify.com" />
+                  <p className="text-xs text-slate-400 mt-1">The store&apos;s <code>.myshopify.com</code> admin domain (used for API calls, not your public domain).</p>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className={labelClass}>Client ID</label>
+                    <input className={inputClass} value={shopifyClientId} onChange={(e) => setShopifyClientId(e.target.value)} placeholder="from the Dev Dashboard app" />
+                  </div>
+                  <div>
+                    <label className={labelClass}>Client Secret</label>
+                    <input type="password" className={inputClass} value={shopifyClientSecret} onChange={(e) => setShopifyClientSecret(e.target.value)} placeholder="••••••••" />
+                  </div>
+                </div>
+                <p className="text-xs text-slate-400 -mt-2">
+                  From a Shopify <strong>Dev Dashboard</strong> app installed on the store, with the <code>write_content</code> scope.
+                  NBLB exchanges these for a 24h access token per publish. Stored server-side only. (New custom apps can no longer be made in the Shopify admin.)
+                </p>
+                <div>
+                  <label className={labelClass}>Legacy static token (optional)</label>
+                  <input type="password" className={inputClass} value={shopifyAccessToken} onChange={(e) => setShopifyAccessToken(e.target.value)} placeholder="shpat_... (only for old admin-created apps)" />
+                  <p className="text-xs text-slate-400 mt-1">Only for a legacy admin-created custom app. Leave blank if using Client ID/Secret above.</p>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className={labelClass}>Blog ID</label>
+                    <input className={inputClass} value={shopifyBlogId} onChange={(e) => setShopifyBlogId(e.target.value)} placeholder="e.g. 389767568" />
+                    <p className="text-xs text-slate-400 mt-1">The target blog new posts go into. Numeric ID or full <code>gid://</code>.</p>
+                  </div>
+                  <div>
+                    <label className={labelClass}>API version (optional)</label>
+                    <input className={inputClass} value={shopifyApiVersion} onChange={(e) => setShopifyApiVersion(e.target.value)} placeholder="2025-10" />
+                  </div>
+                </div>
+                <div>
+                  <label className={labelClass}>Public store URL (optional)</label>
+                  <input className={inputClass} value={shopifyStoreUrl} onChange={(e) => setShopifyStoreUrl(e.target.value)} placeholder="https://www.putterfingers.com" />
+                  <p className="text-xs text-slate-400 mt-1">Used to build article links. Defaults to the shop domain. Posts live at <code>/blogs/&lt;blog&gt;/&lt;post&gt;</code>.</p>
                 </div>
               </div>
             )}

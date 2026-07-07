@@ -81,6 +81,8 @@ export type Database = {
           git_merge_sha: string | null
           git_pr_number: number | null
           git_pr_url: string | null
+          shopify_article_id: string | null
+          shopify_article_url: string | null
           hero_image_alt: string | null
           hero_image_credit: string | null
           hero_image_url: string | null
@@ -119,6 +121,8 @@ export type Database = {
           git_merge_sha?: string | null
           git_pr_number?: number | null
           git_pr_url?: string | null
+          shopify_article_id?: string | null
+          shopify_article_url?: string | null
           hero_image_alt?: string | null
           hero_image_credit?: string | null
           hero_image_url?: string | null
@@ -157,6 +161,8 @@ export type Database = {
           git_merge_sha?: string | null
           git_pr_number?: number | null
           git_pr_url?: string | null
+          shopify_article_id?: string | null
+          shopify_article_url?: string | null
           hero_image_alt?: string | null
           hero_image_credit?: string | null
           hero_image_url?: string | null
@@ -834,6 +840,13 @@ export type Database = {
           blog_theme: Json | null
           brand_voice: string | null
           cms_type: string | null
+          shopify_shop_domain: string | null
+          shopify_client_id: string | null
+          shopify_client_secret: string | null
+          shopify_access_token: string | null
+          shopify_blog_id: string | null
+          shopify_api_version: string | null
+          shopify_store_url: string | null
           created_at: string | null
           domain: string
           forbidden_words: string[] | null
@@ -872,6 +885,13 @@ export type Database = {
           blog_theme?: Json | null
           brand_voice?: string | null
           cms_type?: string | null
+          shopify_shop_domain?: string | null
+          shopify_client_id?: string | null
+          shopify_client_secret?: string | null
+          shopify_access_token?: string | null
+          shopify_blog_id?: string | null
+          shopify_api_version?: string | null
+          shopify_store_url?: string | null
           created_at?: string | null
           domain: string
           forbidden_words?: string[] | null
@@ -910,6 +930,13 @@ export type Database = {
           blog_theme?: Json | null
           brand_voice?: string | null
           cms_type?: string | null
+          shopify_shop_domain?: string | null
+          shopify_client_id?: string | null
+          shopify_client_secret?: string | null
+          shopify_access_token?: string | null
+          shopify_blog_id?: string | null
+          shopify_api_version?: string | null
+          shopify_store_url?: string | null
           created_at?: string | null
           domain?: string
           forbidden_words?: string[] | null

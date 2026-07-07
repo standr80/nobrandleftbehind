@@ -2,6 +2,7 @@ import { auth } from '@clerk/nextjs/server'
 import { NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { runPublish } from '@/lib/clem/publish'
+import { runShopifyPublish } from '@/lib/clem/shopify'
 import { triggerDeployHook } from '@/lib/clem/deployHook'
 
 export async function POST(request: Request) {
@@ -27,6 +28,13 @@ export async function POST(request: Request) {
   if (tenant?.cms_type === 'git') {
     await runPublish(tenantId, postId)
     return NextResponse.json({ ok: true, mode: 'git_pr' })
+  }
+
+  // Shopify tenants: push the post into the store's native blog via the Admin
+  // API. runShopifyPublish marks the post published + stores the article id/url.
+  if (tenant?.cms_type === 'shopify') {
+    await runShopifyPublish(tenantId, postId)
+    return NextResponse.json({ ok: true, mode: 'shopify' })
   }
 
   const now = new Date().toISOString()

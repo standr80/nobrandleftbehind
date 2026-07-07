@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { runPublish } from '@/lib/clem/publish'
+import { runShopifyPublish } from '@/lib/clem/shopify'
 import { triggerDeployHook } from '@/lib/clem/deployHook'
 
 /**
@@ -48,7 +49,10 @@ export async function GET(request: Request) {
   )
 
   const gitPosts = duePosts.filter((p) => cmsTypeByTenant[p.tenant_id] === 'git')
-  const directPosts = duePosts.filter((p) => cmsTypeByTenant[p.tenant_id] !== 'git')
+  const shopifyPosts = duePosts.filter((p) => cmsTypeByTenant[p.tenant_id] === 'shopify')
+  const directPosts = duePosts.filter(
+    (p) => cmsTypeByTenant[p.tenant_id] !== 'git' && cmsTypeByTenant[p.tenant_id] !== 'shopify'
+  )
 
   const results = { published: 0, pr_opened: 0, errors: 0, postIds: [] as string[] }
 
@@ -82,6 +86,21 @@ export async function GET(request: Request) {
     } catch (err) {
       results.errors += 1
       console.error(`[cron/publish] Failed to open PR for post ${post.id}:`, err)
+    }
+  }
+
+  // ── Shopify publish (shopify tenants) ──────────────────────────────────────
+  // Each call pushes the post into the store's native blog and marks it
+  // published (status/published_at set inside runShopifyPublish).
+  for (const post of shopifyPosts) {
+    try {
+      await runShopifyPublish(post.tenant_id, post.id)
+      results.published += 1
+      results.postIds.push(post.id)
+      console.log(`[cron/publish] Published to Shopify: "${post.title}" (${post.id})`)
+    } catch (err) {
+      results.errors += 1
+      console.error(`[cron/publish] Failed to publish post ${post.id} to Shopify:`, err)
     }
   }
 

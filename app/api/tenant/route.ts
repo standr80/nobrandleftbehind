@@ -44,6 +44,13 @@ export async function PATCH(request: Request) {
     image_gen_enabled?: boolean | null
     deploy_hook_url?: string | null
     internal_links?: import('@/lib/supabase/types').Json | null
+    shopify_shop_domain?: string | null
+    shopify_client_id?: string | null
+    shopify_client_secret?: string | null
+    shopify_access_token?: string | null
+    shopify_blog_id?: string | null
+    shopify_api_version?: string | null
+    shopify_store_url?: string | null
   } = {}
 
   const allowed = [
@@ -52,6 +59,9 @@ export async function PATCH(request: Request) {
     'publish_cadence', 'publish_days', 'publish_time', 'post_cadence_active',
     'white_label_domain', 'blog_theme', 'theme_extract_url', 'blog_footer',
     'ideogram_api_key', 'image_gen_enabled', 'deploy_hook_url', 'internal_links',
+    'shopify_shop_domain', 'shopify_client_id', 'shopify_client_secret',
+    'shopify_access_token', 'shopify_blog_id',
+    'shopify_api_version', 'shopify_store_url',
   ] as const
   for (const key of allowed) {
     if (key in body) (updates as Record<string, unknown>)[key] = body[key]

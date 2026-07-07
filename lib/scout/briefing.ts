@@ -14,7 +14,11 @@ import type { SearchOpportunityResult } from './pipelines/search-opportunity'
 import type { HandoffResult } from './clem-handoff'
 import type { RankSnapshotSummary } from './pipelines/own-site'
 
-const resend = new Resend(process.env.RESEND_API_KEY)
+// Lazy so a missing RESEND_API_KEY doesn't throw at module load (which breaks
+// `next build` page-data collection). Only constructed when actually sending.
+function getResend() {
+  return new Resend(process.env.RESEND_API_KEY)
+}
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -368,7 +372,7 @@ export async function sendBriefingEmail(
   const html = renderBriefingHtml(briefing, dashboardUrl)
 
   for (const recipient of recipients) {
-    await resend.emails.send({
+    await getResend().emails.send({
       from: 'Scout <scout@nobrandleftbehind.com>',
       to: recipient.email,
       subject: `Scout Weekly Briefing — ${briefing.tenantName} — ${briefing.weekStarting}`,

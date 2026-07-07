@@ -62,6 +62,13 @@ export default async function SettingsPage() {
           image_gen_enabled: (tenant as unknown as { image_gen_enabled: boolean | null }).image_gen_enabled ?? null,
           deploy_hook_url: (tenant as unknown as { deploy_hook_url: string | null }).deploy_hook_url ?? null,
           internal_links: (tenant as unknown as { internal_links: { url: string; label?: string; description?: string; must_link?: boolean }[] | null }).internal_links ?? null,
+          shopify_shop_domain: (tenant as unknown as { shopify_shop_domain: string | null }).shopify_shop_domain ?? null,
+          shopify_client_id: (tenant as unknown as { shopify_client_id: string | null }).shopify_client_id ?? null,
+          shopify_client_secret: (tenant as unknown as { shopify_client_secret: string | null }).shopify_client_secret ?? null,
+          shopify_access_token: (tenant as unknown as { shopify_access_token: string | null }).shopify_access_token ?? null,
+          shopify_blog_id: (tenant as unknown as { shopify_blog_id: string | null }).shopify_blog_id ?? null,
+          shopify_api_version: (tenant as unknown as { shopify_api_version: string | null }).shopify_api_version ?? null,
+          shopify_store_url: (tenant as unknown as { shopify_store_url: string | null }).shopify_store_url ?? null,
         }}
         members={members ?? []}
         isAdmin={role === 'admin'}
