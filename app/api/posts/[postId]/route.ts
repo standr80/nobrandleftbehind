@@ -119,6 +119,15 @@ export async function DELETE(_request: Request, { params }: Params) {
     }
   }
 
+  // Free any FAQ source questions this post consumed so they return to the bank
+  // and can be reused. Must run BEFORE the delete: used_in_post_id is ON DELETE
+  // SET NULL, so after deletion we could no longer find them, and they'd be
+  // stranded as status='used' with no post. No-op for non-FAQ posts.
+  await db
+    .from('faq_questions')
+    .update({ status: 'open', used_in_post_id: null })
+    .eq('used_in_post_id', postId)
+
   const { error } = await db.from('blog_posts').delete().eq('id', postId)
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
