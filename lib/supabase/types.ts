@@ -848,6 +848,8 @@ export type Database = {
           shopify_faq_blog_id: string | null
           shopify_api_version: string | null
           shopify_store_url: string | null
+          indexnow_key: string | null
+          indexnow_key_location: string | null
           created_at: string | null
           domain: string
           forbidden_words: string[] | null
@@ -894,6 +896,8 @@ export type Database = {
           shopify_faq_blog_id?: string | null
           shopify_api_version?: string | null
           shopify_store_url?: string | null
+          indexnow_key?: string | null
+          indexnow_key_location?: string | null
           created_at?: string | null
           domain: string
           forbidden_words?: string[] | null
@@ -940,6 +944,8 @@ export type Database = {
           shopify_faq_blog_id?: string | null
           shopify_api_version?: string | null
           shopify_store_url?: string | null
+          indexnow_key?: string | null
+          indexnow_key_location?: string | null
           created_at?: string | null
           domain?: string
           forbidden_words?: string[] | null

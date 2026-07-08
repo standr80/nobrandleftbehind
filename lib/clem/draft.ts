@@ -132,7 +132,11 @@ Requirements:
 - Natural keyword integration (never forced)
 - Strong conclusion with a clear takeaway
 - Evergreen content: do NOT put a year in the slug. Prefer timeless phrasing over specific years. If you must reference "now", use ${currentYear} and use it consistently — the title and body must never disagree on the year.
-- Where it strengthens a claim, include a concrete, realistic data point or figure (e.g. typical margins, price ranges, percentages) rather than only general advice — specifics earn citations.${internalLinkingInstruction}${
+- Where it strengthens a claim, include a concrete, realistic data point or figure (e.g. typical margins, price ranges, percentages) rather than only general advice — specifics earn citations.
+- ANSWER-FIRST: open every H2 section with a 1–2 sentence direct answer or key takeaway BEFORE elaborating, so the passage stands alone if quoted out of context.
+- NAME THE SUBJECT at the start of each section and paragraph — never open with an ambiguous pronoun (It / This / They / These) whose referent lives in another section. Each section must be fully understandable in isolation (write "Enamel pins are…", not "These are…").
+- COMPARISONS AS TABLES: when comparing 3 or more options (products, methods, tiers), present them as a Markdown table (e.g. columns Option | Typical price | Best for) rather than prose — tables get extracted and cited far more often.
+- OUTBOUND CITATIONS: include 1–2 links to genuinely authoritative external sources (industry data, ONS, official platform docs) where they support a factual claim. Do not invent URLs — only link sources you are confident exist.${internalLinkingInstruction}${
           categoriesForDomain(tenant.domain).length
             ? `\n- For "tags", choose 1–2 of these EXACT categories (copy the wording verbatim, do NOT invent new tags): ${categoriesForDomain(tenant.domain).join(', ')}`
             : ''

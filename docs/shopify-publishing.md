@@ -100,6 +100,32 @@ Setup (once per store):
 Unpublishing a FAQ hides the article; deleting removes it. (Any FAQ published as a
 `/pages/...` page before this change is cleaned up automatically on delete.)
 
+## Internal linking (automatic)
+
+Every published post gets a **"Related reading"** block appended to its body,
+linking to its most related published siblings (same content type, ranked by
+shared tags). It's delimited by HTML comments (`<!--nblb-related-start--> …
+<!--nblb-related-end-->`) so it can be rewritten cleanly. Publishing a new post
+also **retroactively** refreshes the block on those related older posts so they
+link forward to the new one — internal-link equity flows both ways with no manual
+work. This is best-effort: a linking hiccup never blocks the publish itself.
+
+## IndexNow (faster AI/search discovery)
+
+ChatGPT search runs on Bing, and Shopify doesn't ping IndexNow — so new content
+can wait days to surface. With IndexNow configured, Clem notifies Bing on publish
+and content appears in hours. One-time setup per store:
+
+1. Generate a key (any 8–128 char hex/GUID string; e.g. from an online IndexNow key generator).
+2. Create a UTF-8 text file named `{key}.txt` whose only content is the key.
+3. In Shopify admin, **Settings → Files**, upload that `.txt` file, and copy its CDN URL.
+4. In NBLB Settings → Publishing, set **IndexNow key** (the key) and **IndexNow key file URL** (the CDN URL from step 3).
+5. (Recommended) Add the site in **Bing Webmaster Tools** so you can see submissions.
+
+Notes: the ping uses your **Public store URL** as the host, so make sure that
+field is set to the public domain (not the `myshopify.com` one). Leave the key
+fields blank to disable. The ping is best-effort and never blocks publishing.
+
 ## Notes & limits (v1)
 
 - **Hero images:** only included if the post's hero image is a public `http(s)` URL.

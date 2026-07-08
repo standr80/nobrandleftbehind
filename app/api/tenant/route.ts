@@ -52,6 +52,8 @@ export async function PATCH(request: Request) {
     shopify_faq_blog_id?: string | null
     shopify_api_version?: string | null
     shopify_store_url?: string | null
+    indexnow_key?: string | null
+    indexnow_key_location?: string | null
   } = {}
 
   const allowed = [
@@ -63,6 +65,7 @@ export async function PATCH(request: Request) {
     'shopify_shop_domain', 'shopify_client_id', 'shopify_client_secret',
     'shopify_access_token', 'shopify_blog_id', 'shopify_faq_blog_id',
     'shopify_api_version', 'shopify_store_url',
+    'indexnow_key', 'indexnow_key_location',
   ] as const
   for (const key of allowed) {
     if (key in body) (updates as Record<string, unknown>)[key] = body[key]

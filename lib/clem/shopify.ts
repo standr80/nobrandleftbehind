@@ -1,6 +1,7 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 import { toHtml } from '@/lib/mdx/toHtml'
 import { parseFaqItems, faqPageSchema } from '@/lib/content/api'
+import { pingIndexNow } from '@/lib/clem/indexNow'
 
 /**
  * Publishes a Clem blog post into a Shopify store's NATIVE blog via the
@@ -265,6 +266,142 @@ function gidIsPage(gid: string | null | undefined): boolean {
   return !!gid && gid.includes('/Page/')
 }
 
+// Read an article's current HTML body so we can idempotently refresh only its
+// "Related reading" block (retroactive internal linking).
+const ARTICLE_BODY_QUERY = `query ClemGetArticleBody($id: ID!) {
+  article(id: $id) { body }
+}`
+
+// ── Related reading (internal linking) ──────────────────────────────────────
+// A "Related reading" block is delimited by HTML comments so it can be rewritten
+// idempotently on every publish without touching the surrounding prose.
+const RELATED_START = '<!--nblb-related-start-->'
+const RELATED_END = '<!--nblb-related-end-->'
+
+interface RelatedItem {
+  title: string
+  url: string
+}
+
+function relatedReadingBlock(items: RelatedItem[]): string {
+  if (!items.length) return ''
+  const lis = items
+    .map((it) => `<li><a href="${escapeHtml(it.url)}">${escapeHtml(it.title)}</a></li>`)
+    .join('')
+  return (
+    RELATED_START +
+    `<div style="margin-top:2.5rem;padding-top:1.25rem;border-top:1px solid #e5e7eb">` +
+    `<p style="margin:0 0 .5rem;font-weight:700;font-size:.8rem;letter-spacing:.04em;text-transform:uppercase;opacity:.6">Related reading</p>` +
+    `<ul style="margin:0;padding-left:1.25rem;line-height:1.7">${lis}</ul>` +
+    `</div>` +
+    RELATED_END
+  )
+}
+
+/** Replace the delimited related block (or append it, or remove it). Idempotent. */
+function upsertRelatedBlock(html: string, block: string): string {
+  const start = html.indexOf(RELATED_START)
+  const end = html.indexOf(RELATED_END)
+  if (start !== -1 && end !== -1 && end > start) {
+    return html.slice(0, start) + block + html.slice(end + RELATED_END.length)
+  }
+  return block ? html + block : html
+}
+
+type Db = ReturnType<typeof createAdminClient>
+
+interface RelatedRow {
+  id: string
+  title: string
+  content_type: string
+  tags: string[] | null
+  shopify_article_id: string | null
+  shopify_article_url: string | null
+}
+
+/**
+ * Published siblings of `post` in the same content type, ranked by shared-tag
+ * overlap then recency. Used to build the Related-reading block.
+ */
+async function getRelatedPublished(
+  db: Db,
+  tenantId: string,
+  post: { id: string; content_type: string; tags: string[] | null },
+  limit = 3
+): Promise<RelatedRow[]> {
+  const { data } = await db
+    .from('blog_posts')
+    .select('id, title, content_type, tags, shopify_article_id, shopify_article_url, published_at')
+    .eq('tenant_id', tenantId)
+    .eq('status', 'published')
+    .eq('content_type', post.content_type)
+    .neq('id', post.id)
+    .not('shopify_article_id', 'is', null)
+    .order('published_at', { ascending: false })
+    .limit(50)
+
+  const rows = (data ?? []) as RelatedRow[]
+  const mine = new Set((post.tags ?? []).map((t) => t.toLowerCase()))
+  return rows
+    .map((r) => ({ r, overlap: (r.tags ?? []).filter((t) => mine.has(t.toLowerCase())).length }))
+    .sort((a, b) => b.overlap - a.overlap) // rows already come recency-ordered
+    .slice(0, limit)
+    .map((s) => s.r)
+}
+
+function relatedItemsFrom(rows: RelatedRow[]): RelatedItem[] {
+  return rows
+    .filter((r) => r.shopify_article_url)
+    .map((r) => ({ title: r.title, url: r.shopify_article_url as string }))
+}
+
+/**
+ * Retroactively refresh one older article's Related-reading block to include the
+ * newly published post. Reads the live body and rewrites only the delimited
+ * block. Best-effort — throws are caught by the caller so linking never blocks
+ * the main publish.
+ */
+async function refreshRelatedBlock(
+  db: Db,
+  shopDomain: string,
+  apiVersion: string,
+  accessToken: string,
+  tenantId: string,
+  y: RelatedRow
+): Promise<void> {
+  if (!y.shopify_article_id || gidIsPage(y.shopify_article_id)) return
+  const rel = await getRelatedPublished(
+    db,
+    tenantId,
+    { id: y.id, content_type: y.content_type, tags: y.tags },
+    3
+  )
+  const block = relatedReadingBlock(relatedItemsFrom(rel))
+
+  const read = await shopifyGraphql<{ article: { body: string | null } | null }>(
+    shopDomain,
+    apiVersion,
+    accessToken,
+    ARTICLE_BODY_QUERY,
+    { id: y.shopify_article_id }
+  )
+  const currentBody = read.article?.body ?? ''
+  if (!currentBody) return
+  const newBody = upsertRelatedBlock(currentBody, block)
+  if (newBody === currentBody) return
+
+  const res = await shopifyGraphql<{ articleUpdate: { userErrors: ShopifyUserError[] } }>(
+    shopDomain,
+    apiVersion,
+    accessToken,
+    UPDATE_MUTATION,
+    { id: y.shopify_article_id, article: { body: newBody } }
+  )
+  if (res.articleUpdate.userErrors?.length) {
+    throw new Error(res.articleUpdate.userErrors.map((e) => e.message).join('; '))
+  }
+}
+
 /** Wrap a schema.org object as a JSON-LD <script> (escaping '<' for safety). */
 function jsonLdScript(obj: object | null): string {
   if (!obj) return ''
@@ -281,7 +418,7 @@ export async function runShopifyPublish(tenantId: string, postId: string): Promi
       db
         .from('tenants')
         .select(
-          'cms_type, name, blog_theme, shopify_shop_domain, shopify_client_id, shopify_client_secret, shopify_access_token, shopify_blog_id, shopify_faq_blog_id, shopify_api_version, shopify_store_url'
+          'cms_type, name, blog_theme, shopify_shop_domain, shopify_client_id, shopify_client_secret, shopify_access_token, shopify_blog_id, shopify_faq_blog_id, shopify_api_version, shopify_store_url, indexnow_key, indexnow_key_location'
         )
         .eq('id', tenantId)
         .single(),
@@ -366,6 +503,16 @@ export async function runShopifyPublish(tenantId: string, postId: string): Promi
       ]
     : []
 
+  // Forward internal links: append a Related-reading block pointing at this
+  // post's published siblings (same content type, ranked by shared tags).
+  const relatedRows = await getRelatedPublished(
+    db,
+    tenantId,
+    { id: post.id, content_type: post.content_type, tags: post.tags },
+    3
+  )
+  const bodyWithRelated = fullBody + relatedReadingBlock(relatedItemsFrom(relatedRows))
+
   // ── 5–7. Create/update the article (FAQ → FAQ blog, else main blog) ──────────
   const base = (tenant.shopify_store_url?.trim().replace(/\/$/, '')) || `https://${shopDomain}`
   // A legacy FAQ published as a Page has a Page GID stored — treat it as new so
@@ -377,7 +524,7 @@ export async function runShopifyPublish(tenantId: string, postId: string): Promi
     blogId: blogGid,
     title: post.title,
     handle: post.slug,
-    body: fullBody,
+    body: bodyWithRelated,
     author: { name: authorName },
     isPublished: true,
   }
@@ -453,6 +600,25 @@ export async function runShopifyPublish(tenantId: string, postId: string): Promi
       url: articleUrl,
     },
     attempted_at: now,
+  })
+
+  // ── 10. Retroactive internal linking ────────────────────────────────────────
+  // Refresh each related sibling's Related-reading block so it now links back to
+  // this newly published post. Best-effort per post — never blocks the publish.
+  for (const y of relatedRows) {
+    try {
+      await refreshRelatedBlock(db, shopDomain, apiVersion, accessToken, tenantId, y)
+    } catch (e) {
+      console.error('[shopify] retroactive related-link update failed for', y.id, e)
+    }
+  }
+
+  // ── 11. IndexNow ping ───────────────────────────────────────────────────────
+  // Tell Bing/IndexNow (→ ChatGPT search) about the new URL immediately.
+  // Inert unless the tenant has an IndexNow key configured. Never throws.
+  await pingIndexNow([articleUrl], {
+    key: tenant.indexnow_key,
+    keyLocation: tenant.indexnow_key_location,
   })
 }
 

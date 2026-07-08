@@ -52,6 +52,8 @@ interface Tenant {
   shopify_faq_blog_id: string | null
   shopify_api_version: string | null
   shopify_store_url: string | null
+  indexnow_key: string | null
+  indexnow_key_location: string | null
 }
 
 interface InternalLink {
@@ -190,6 +192,8 @@ export default function SettingsForm({
   const [shopifyFaqBlogId, setShopifyFaqBlogId] = useState(tenant.shopify_faq_blog_id ?? '')
   const [shopifyApiVersion, setShopifyApiVersion] = useState(tenant.shopify_api_version ?? '')
   const [shopifyStoreUrl, setShopifyStoreUrl] = useState(tenant.shopify_store_url ?? '')
+  const [indexnowKey, setIndexnowKey] = useState(tenant.indexnow_key ?? '')
+  const [indexnowKeyLocation, setIndexnowKeyLocation] = useState(tenant.indexnow_key_location ?? '')
   const [cadence, setCadence] = useState(tenant.publish_cadence ?? '2pw')
   const [days, setDays] = useState<string[]>(tenant.publish_days ?? ['tuesday', 'thursday'])
   const [time, setTime] = useState(tenant.publish_time ?? '09:00')
@@ -232,6 +236,8 @@ export default function SettingsForm({
           shopify_faq_blog_id: shopifyFaqBlogId.trim() || null,
           shopify_api_version: shopifyApiVersion.trim() || null,
           shopify_store_url: shopifyStoreUrl.trim().replace(/\/$/, '') || null,
+          indexnow_key: indexnowKey.trim() || null,
+          indexnow_key_location: indexnowKeyLocation.trim() || null,
           deploy_hook_url: deployHookUrl.trim() || null,
           publish_cadence: cadence,
           publish_days: days,
@@ -1183,6 +1189,19 @@ export default function SettingsForm({
                   <input className={inputClass} value={shopifyStoreUrl} onChange={(e) => setShopifyStoreUrl(e.target.value)} placeholder="https://www.putterfingers.com" />
                   <p className="text-xs text-slate-400 mt-1">Used to build article links. Defaults to the shop domain. Posts live at <code>/blogs/&lt;blog&gt;/&lt;post&gt;</code>.</p>
                 </div>
+                <div className="grid grid-cols-2 gap-4 pt-2 border-t border-slate-100">
+                  <div>
+                    <label className={labelClass}>IndexNow key (optional)</label>
+                    <input className={inputClass} value={indexnowKey} onChange={(e) => setIndexnowKey(e.target.value)} placeholder="a1b2c3d4..." />
+                  </div>
+                  <div>
+                    <label className={labelClass}>IndexNow key file URL</label>
+                    <input className={inputClass} value={indexnowKeyLocation} onChange={(e) => setIndexnowKeyLocation(e.target.value)} placeholder="https://.../cdn/.../key.txt" />
+                  </div>
+                </div>
+                <p className="text-xs text-slate-400 -mt-2">
+                  Pings Bing/IndexNow (→ ChatGPT search) on publish. Upload a <code>{'{key}'}.txt</code> file via Shopify <strong>Settings → Files</strong> and paste its CDN URL here. Leave blank to disable.
+                </p>
               </div>
             )}
 

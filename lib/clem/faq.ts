@@ -164,7 +164,9 @@ Writing guidelines:
 ${tenant.forbidden_words?.length ? `- NEVER use these words or phrases: ${tenant.forbidden_words.join(', ')}` : ''}
 - Write in British English
 - Each answer must be self-contained and lead with a direct answer in the first sentence (snippet-friendly), 40–120 words
+- NAME THE SUBJECT in the opening sentence of every answer — never start with a pronoun that refers back to the question or another answer (write "Band merch pricing depends on…", not "It depends on…"). Each answer must be fully understandable if lifted out on its own
 - Where you can give a realistic, defensible figure (typical price ranges, margins, percentages), include it — concrete specifics earn AI citations — but never fabricate precise statistics you cannot support
+- If an answer compares 3 or more options, present them as a small Markdown table rather than prose
 - Do NOT end every answer with a call to action. At most 2–3 answers across the whole FAQ should include a contact/link CTA, and vary the wording; the rest should simply answer the question and stop
 - No clichés, jargon, or filler${internalLinkingInstruction(tenant.internal_links)}
 
