@@ -83,6 +83,7 @@ export type Database = {
           git_pr_url: string | null
           shopify_article_id: string | null
           shopify_article_url: string | null
+          cluster_id: string | null
           hero_image_alt: string | null
           hero_image_credit: string | null
           hero_image_url: string | null
@@ -123,6 +124,7 @@ export type Database = {
           git_pr_url?: string | null
           shopify_article_id?: string | null
           shopify_article_url?: string | null
+          cluster_id?: string | null
           hero_image_alt?: string | null
           hero_image_credit?: string | null
           hero_image_url?: string | null
@@ -163,6 +165,7 @@ export type Database = {
           git_pr_url?: string | null
           shopify_article_id?: string | null
           shopify_article_url?: string | null
+          cluster_id?: string | null
           hero_image_alt?: string | null
           hero_image_credit?: string | null
           hero_image_url?: string | null
@@ -850,6 +853,7 @@ export type Database = {
           shopify_store_url: string | null
           indexnow_key: string | null
           indexnow_key_location: string | null
+          content_clusters: Json | null
           created_at: string | null
           domain: string
           forbidden_words: string[] | null
@@ -898,6 +902,7 @@ export type Database = {
           shopify_store_url?: string | null
           indexnow_key?: string | null
           indexnow_key_location?: string | null
+          content_clusters?: Json | null
           created_at?: string | null
           domain: string
           forbidden_words?: string[] | null
@@ -946,6 +951,7 @@ export type Database = {
           shopify_store_url?: string | null
           indexnow_key?: string | null
           indexnow_key_location?: string | null
+          content_clusters?: Json | null
           created_at?: string | null
           domain?: string
           forbidden_words?: string[] | null

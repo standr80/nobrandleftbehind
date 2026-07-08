@@ -54,6 +54,14 @@ interface Tenant {
   shopify_store_url: string | null
   indexnow_key: string | null
   indexnow_key_location: string | null
+  content_clusters: ContentCluster[] | null
+}
+
+interface ContentCluster {
+  name: string
+  money_url: string
+  money_label?: string
+  keywords?: string[]
 }
 
 interface InternalLink {
@@ -194,6 +202,16 @@ export default function SettingsForm({
   const [shopifyStoreUrl, setShopifyStoreUrl] = useState(tenant.shopify_store_url ?? '')
   const [indexnowKey, setIndexnowKey] = useState(tenant.indexnow_key ?? '')
   const [indexnowKeyLocation, setIndexnowKeyLocation] = useState(tenant.indexnow_key_location ?? '')
+  const [clusters, setClusters] = useState<{ name: string; money_url: string; money_label: string; keywords: string }[]>(
+    Array.isArray(tenant.content_clusters)
+      ? tenant.content_clusters.map((c) => ({
+          name: c.name ?? '',
+          money_url: c.money_url ?? '',
+          money_label: c.money_label ?? '',
+          keywords: Array.isArray(c.keywords) ? c.keywords.join(', ') : '',
+        }))
+      : [],
+  )
   const [cadence, setCadence] = useState(tenant.publish_cadence ?? '2pw')
   const [days, setDays] = useState<string[]>(tenant.publish_days ?? ['tuesday', 'thursday'])
   const [time, setTime] = useState(tenant.publish_time ?? '09:00')
@@ -238,6 +256,14 @@ export default function SettingsForm({
           shopify_store_url: shopifyStoreUrl.trim().replace(/\/$/, '') || null,
           indexnow_key: indexnowKey.trim() || null,
           indexnow_key_location: indexnowKeyLocation.trim() || null,
+          content_clusters: clusters
+            .filter((c) => c.name.trim())
+            .map((c) => ({
+              name: c.name.trim(),
+              money_url: c.money_url.trim(),
+              money_label: c.money_label.trim() || undefined,
+              keywords: c.keywords.split(',').map((k) => k.trim()).filter(Boolean),
+            })),
           deploy_hook_url: deployHookUrl.trim() || null,
           publish_cadence: cadence,
           publish_days: days,
@@ -1215,6 +1241,65 @@ export default function SettingsForm({
                 </p>
               </div>
             )}
+
+            <hr className="border-slate-200" />
+
+            <div>
+              <label className={labelClass}>Content clusters (hub &amp; spoke)</label>
+              <p className="text-xs text-slate-400 mb-3">
+                Topics with a commercial &quot;money&quot; page at the centre. Clem classifies each post into a
+                cluster and links it to that page. Keywords help the classifier choose.
+              </p>
+              <div className="space-y-3">
+                {clusters.length === 0 && (
+                  <p className="text-xs text-slate-400">No clusters yet.</p>
+                )}
+                {clusters.map((c, i) => (
+                  <div key={i} className="border border-slate-200 rounded-xl p-3 space-y-2">
+                    <div className="flex gap-2">
+                      <input
+                        className={inputClass}
+                        value={c.name}
+                        onChange={(e) => setClusters((prev) => prev.map((x, idx) => (idx === i ? { ...x, name: e.target.value } : x)))}
+                        placeholder="Cluster name (e.g. Band merch)"
+                      />
+                      <button
+                        onClick={() => setClusters((prev) => prev.filter((_, idx) => idx !== i))}
+                        className="shrink-0 px-3 text-xs text-slate-400 hover:text-red-600"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <input
+                        className={inputClass}
+                        value={c.money_url}
+                        onChange={(e) => setClusters((prev) => prev.map((x, idx) => (idx === i ? { ...x, money_url: e.target.value } : x)))}
+                        placeholder="Money page URL"
+                      />
+                      <input
+                        className={inputClass}
+                        value={c.money_label}
+                        onChange={(e) => setClusters((prev) => prev.map((x, idx) => (idx === i ? { ...x, money_label: e.target.value } : x)))}
+                        placeholder="Money page link text"
+                      />
+                    </div>
+                    <input
+                      className={inputClass}
+                      value={c.keywords}
+                      onChange={(e) => setClusters((prev) => prev.map((x, idx) => (idx === i ? { ...x, keywords: e.target.value } : x)))}
+                      placeholder="Keywords, comma separated"
+                    />
+                  </div>
+                ))}
+              </div>
+              <button
+                onClick={() => setClusters((prev) => [...prev, { name: '', money_url: '', money_label: '', keywords: '' }])}
+                className="mt-3 text-xs text-indigo-600 hover:text-indigo-500"
+              >
+                + Add cluster
+              </button>
+            </div>
           </>
         )}
 

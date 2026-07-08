@@ -71,6 +71,7 @@ export default async function SettingsPage() {
           shopify_api_version: (tenant as unknown as { shopify_api_version: string | null }).shopify_api_version ?? null,
           indexnow_key: (tenant as unknown as { indexnow_key: string | null }).indexnow_key ?? null,
           indexnow_key_location: (tenant as unknown as { indexnow_key_location: string | null }).indexnow_key_location ?? null,
+          content_clusters: (tenant as unknown as { content_clusters: { name: string; money_url: string; money_label?: string; keywords?: string[] }[] | null }).content_clusters ?? null,
           shopify_store_url: (tenant as unknown as { shopify_store_url: string | null }).shopify_store_url ?? null,
         }}
         members={members ?? []}

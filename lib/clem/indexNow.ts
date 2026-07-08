@@ -38,6 +38,7 @@ export async function pingIndexNow(
       console.error('[indexnow] ping failed', res.status, await res.text().catch(() => ''))
       return false
     }
+    console.log(`[indexnow] pinged (${res.status}):`, list.join(', '))
     return true
   } catch (e) {
     console.error('[indexnow] ping error', e)

@@ -59,6 +59,7 @@ interface FaqGeneration {
   metaDescription?: string
   intro?: string
   tags?: string[]
+  cluster?: string
   faq_items: FaqItem[]
 }
 
@@ -100,6 +101,16 @@ export async function runFaqDraft(tenantId: string, input: FaqDraftInput): Promi
   if (tenantErr || !tenant) throw new Error(`Tenant ${tenantId} not found`)
 
   const maxQuestions = input.maxQuestions ?? 12
+
+  // Content clusters — classify this FAQ into one for hub-and-spoke linking.
+  type Cluster = { name?: string; keywords?: string[] }
+  const clusters: Cluster[] = Array.isArray(tenant.content_clusters)
+    ? (tenant.content_clusters as Cluster[]).filter((c) => c && typeof c.name === 'string' && c.name)
+    : []
+  const clusterInstruction = clusters.length
+    ? `\n\nContent cluster: choose the SINGLE best-fitting cluster for this FAQ and return its exact name in "cluster" (verbatim), or "" if none fit. Clusters:\n${clusters.map((c) => `- ${c.name}${c.keywords?.length ? ` (keywords: ${c.keywords.join(', ')})` : ''}`).join('\n')}`
+    : ''
+  const clusterNames = new Set(clusters.map((c) => c.name as string))
 
   // ── Gather candidate questions from all sources ──────────────────────────
   const questions: string[] = []
@@ -177,11 +188,12 @@ Return ONLY valid JSON, no commentary, matching this exact shape:
   "excerpt": "One-sentence summary under 160 chars",
   "metaDescription": "Purpose-built SEO meta description, 140–155 characters, leading with the primary keyword — NOT just the first sentence of the intro",
   "intro": "Optional 1-2 sentence intro paragraph",
+  "cluster": "exact cluster name from the list, or empty string if none fit",
   "tags": ${categoriesForDomain(tenant.domain).length
     ? `[1–2 of these EXACT categories, copied verbatim, no new tags: ${categoriesForDomain(tenant.domain).join(', ')}]`
     : '["tag1", "tag2", "tag3"]'},
   "faq_items": [{ "q": "the question", "a": "the answer in markdown" }]
-}`,
+}${clusterInstruction}`,
     messages: [
       {
         role: 'user',
@@ -259,6 +271,7 @@ Aim for 8–12 high-quality Q&A pairs. Prioritise the real questions above; if t
       meta_description: clampMeta(gen.metaDescription) || null,
       tags,
       content_type: 'faq',
+      cluster_id: clusterNames.has(gen.cluster ?? '') ? gen.cluster : null,
       faq_items: faqItems as unknown as import('@/lib/supabase/types').Json,
       origin: 'clem',
       status: 'draft',

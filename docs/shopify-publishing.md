@@ -110,6 +110,17 @@ also **retroactively** refreshes the block on those related older posts so they
 link forward to the new one — internal-link equity flows both ways with no manual
 work. This is best-effort: a linking hiccup never blocks the publish itself.
 
+## Content clusters (hub-and-spoke linking)
+
+Define topical **clusters** per workspace in Settings → Publishing, each with a
+commercial "money" page at its centre (e.g. cluster "Band merch" → money page
+`/pages/custom-band-merch`, plus example keywords). Then:
+
+- Clem **classifies** every new post/FAQ into the best-fitting cluster at generation (stored on the post).
+- On publish, the post's **Related-reading block pins a link to its cluster's money page first**, so blog posts and FAQs funnel authority to the commercial page — the hub-and-spoke pattern.
+
+Leave clusters empty to disable — posts then just get sibling links, no money-page pin.
+
 ## IndexNow (faster AI/search discovery)
 
 ChatGPT search runs on Bing, and Shopify doesn't ping IndexNow — so new content

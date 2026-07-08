@@ -101,6 +101,20 @@ Available pages to link to:
 ${linkMap.map((l) => `- ${l.url}${l.label ? ` — ${l.label}` : ''}${l.description ? `: ${l.description}` : ''}${l.must_link ? ' [MUST LINK]' : ''}`).join('\n')}`
     : ''
 
+  // Content clusters — classify the post into one so it can be hub-and-spoke
+  // linked to the cluster's commercial page at publish time.
+  type Cluster = { name?: string; keywords?: string[] }
+  const clusters: Cluster[] = Array.isArray(tenant.content_clusters)
+    ? (tenant.content_clusters as Cluster[]).filter((c) => c && typeof c.name === 'string' && c.name)
+    : []
+  const clusterInstruction = clusters.length
+    ? `
+
+Content cluster: choose the SINGLE best-fitting cluster for this post from the list below and return its exact name in the "cluster" field (copy verbatim). If none fit, use "". Clusters:
+${clusters.map((c) => `- ${c.name}${c.keywords?.length ? ` (keywords: ${c.keywords.join(', ')})` : ''}`).join('\n')}`
+    : ''
+  const clusterNames = new Set(clusters.map((c) => c.name as string))
+
   const response = await anthropic.messages.create({
     model: CLAUDE_MODEL,
     max_tokens: 8192,
@@ -136,7 +150,7 @@ Requirements:
 - ANSWER-FIRST: open every H2 section with a 1–2 sentence direct answer or key takeaway BEFORE elaborating, so the passage stands alone if quoted out of context.
 - NAME THE SUBJECT at the start of each section and paragraph — never open with an ambiguous pronoun (It / This / They / These) whose referent lives in another section. Each section must be fully understandable in isolation (write "Enamel pins are…", not "These are…").
 - COMPARISONS AS TABLES: when comparing 3 or more options (products, methods, tiers), present them as a Markdown table (e.g. columns Option | Typical price | Best for) rather than prose — tables get extracted and cited far more often.
-- OUTBOUND CITATIONS: include 1–2 links to genuinely authoritative external sources (industry data, ONS, official platform docs) where they support a factual claim. Do not invent URLs — only link sources you are confident exist.${internalLinkingInstruction}${
+- OUTBOUND CITATIONS: include 1–2 links to genuinely authoritative external sources (industry data, ONS, official platform docs) where they support a factual claim. Do not invent URLs — only link sources you are confident exist.${internalLinkingInstruction}${clusterInstruction}${
           categoriesForDomain(tenant.domain).length
             ? `\n- For "tags", choose 1–2 of these EXACT categories (copy the wording verbatim, do NOT invent new tags): ${categoriesForDomain(tenant.domain).join(', ')}`
             : ''
@@ -150,6 +164,7 @@ date: "${today}"
 excerpt: "One or two sentence summary for listing pages (under 160 chars)."
 metaDescription: "Purpose-built SEO meta description, 140–155 characters, leads with the primary keyword and gives a compelling reason to click. NOT just the first sentence of the post."
 tags: ["tag1", "tag2", "tag3"]
+cluster: "exact cluster name from the list above, or empty string if none fit"
 author: "Clem"
 status: "draft"
 ---
@@ -201,6 +216,7 @@ status: "draft"
       excerpt: fm.excerpt || null,
       meta_description: clampMeta(fm.metaDescription) || null,
       tags,
+      cluster_id: clusterNames.has(fm.cluster) ? fm.cluster : null,
       status: 'draft',
       drafted_at: new Date().toISOString(),
       suggested_at: suggestion.created_at,

@@ -315,8 +315,19 @@ interface RelatedRow {
   title: string
   content_type: string
   tags: string[] | null
+  cluster_id: string | null
   shopify_article_id: string | null
   shopify_article_url: string | null
+}
+
+// Cluster money-page link (hub-and-spoke): the pinned first entry in a post's
+// Related-reading block, funnelling authority to the cluster's commercial page.
+type ClusterDef = { name?: string; money_url?: string; money_label?: string }
+function clusterMoneyItem(clusters: unknown, clusterId: string | null): RelatedItem | null {
+  if (!clusterId || !Array.isArray(clusters)) return null
+  const c = (clusters as ClusterDef[]).find((x) => x && x.name === clusterId && x.money_url)
+  if (!c?.money_url) return null
+  return { title: c.money_label || c.name || 'Learn more', url: c.money_url }
 }
 
 /**
@@ -331,7 +342,7 @@ async function getRelatedPublished(
 ): Promise<RelatedRow[]> {
   const { data } = await db
     .from('blog_posts')
-    .select('id, title, content_type, tags, shopify_article_id, shopify_article_url, published_at')
+    .select('id, title, content_type, tags, cluster_id, shopify_article_id, shopify_article_url, published_at')
     .eq('tenant_id', tenantId)
     .eq('status', 'published')
     .eq('content_type', post.content_type)
@@ -344,6 +355,9 @@ async function getRelatedPublished(
   const mine = new Set((post.tags ?? []).map((t) => t.toLowerCase()))
   return rows
     .map((r) => ({ r, overlap: (r.tags ?? []).filter((t) => mine.has(t.toLowerCase())).length }))
+    // Require at least one shared tag — a forced block of tenuously related
+    // links is worse than no block, so weak matches show fewer/none.
+    .filter((s) => s.overlap >= 1)
     .sort((a, b) => b.overlap - a.overlap) // rows already come recency-ordered
     .slice(0, limit)
     .map((s) => s.r)
@@ -367,6 +381,8 @@ async function refreshRelatedBlock(
   apiVersion: string,
   accessToken: string,
   tenantId: string,
+  newPostId: string,
+  clusters: unknown,
   y: RelatedRow
 ): Promise<void> {
   if (!y.shopify_article_id || gidIsPage(y.shopify_article_id)) return
@@ -376,7 +392,12 @@ async function refreshRelatedBlock(
     { id: y.id, content_type: y.content_type, tags: y.tags },
     3
   )
-  const block = relatedReadingBlock(relatedItemsFrom(rel))
+  // Churn guard: only rewrite this older article if the new post actually makes
+  // its related set (i.e. displaces a weaker entry). Otherwise leave it alone —
+  // avoids rewriting the same popular articles on every publish.
+  if (!rel.some((r) => r.id === newPostId)) return
+  const pinned = clusterMoneyItem(clusters, y.cluster_id)
+  const block = relatedReadingBlock([...(pinned ? [pinned] : []), ...relatedItemsFrom(rel)])
 
   const read = await shopifyGraphql<{ article: { body: string | null } | null }>(
     shopDomain,
@@ -418,7 +439,7 @@ export async function runShopifyPublish(tenantId: string, postId: string): Promi
       db
         .from('tenants')
         .select(
-          'cms_type, name, blog_theme, shopify_shop_domain, shopify_client_id, shopify_client_secret, shopify_access_token, shopify_blog_id, shopify_faq_blog_id, shopify_api_version, shopify_store_url, indexnow_key, indexnow_key_location'
+          'cms_type, name, blog_theme, shopify_shop_domain, shopify_client_id, shopify_client_secret, shopify_access_token, shopify_blog_id, shopify_faq_blog_id, shopify_api_version, shopify_store_url, indexnow_key, indexnow_key_location, content_clusters'
         )
         .eq('id', tenantId)
         .single(),
@@ -511,7 +532,11 @@ export async function runShopifyPublish(tenantId: string, postId: string): Promi
     { id: post.id, content_type: post.content_type, tags: post.tags },
     3
   )
-  const bodyWithRelated = fullBody + relatedReadingBlock(relatedItemsFrom(relatedRows))
+  // Pin the cluster's money page first (hub-and-spoke), then related siblings.
+  const pinnedMoney = clusterMoneyItem(tenant.content_clusters, post.cluster_id)
+  const bodyWithRelated =
+    fullBody +
+    relatedReadingBlock([...(pinnedMoney ? [pinnedMoney] : []), ...relatedItemsFrom(relatedRows)])
 
   // ── 5–7. Create/update the article (FAQ → FAQ blog, else main blog) ──────────
   const base = (tenant.shopify_store_url?.trim().replace(/\/$/, '')) || `https://${shopDomain}`
@@ -607,7 +632,7 @@ export async function runShopifyPublish(tenantId: string, postId: string): Promi
   // this newly published post. Best-effort per post — never blocks the publish.
   for (const y of relatedRows) {
     try {
-      await refreshRelatedBlock(db, shopDomain, apiVersion, accessToken, tenantId, y)
+      await refreshRelatedBlock(db, shopDomain, apiVersion, accessToken, tenantId, postId, tenant.content_clusters, y)
     } catch (e) {
       console.error('[shopify] retroactive related-link update failed for', y.id, e)
     }
