@@ -156,8 +156,10 @@ export async function runFaqDraft(tenantId: string, input: FaqDraftInput): Promi
     })
     .slice(0, maxQuestions)
 
-  if (!finalQuestions.length) {
-    throw new Error('No questions available to build an FAQ page. Add questions or run Scout first.')
+  // Need EITHER sourced questions OR a topic/title to generate from. With a
+  // topic and no questions, Clem invents the questions from scratch.
+  if (!finalQuestions.length && !input.topic && !input.title) {
+    throw new Error('Provide a topic (or some questions) to build an FAQ page.')
   }
 
   const topicLabel = input.topic ?? input.title ?? tenant.name
@@ -199,10 +201,14 @@ Return ONLY valid JSON, no commentary, matching this exact shape:
         role: 'user',
         content: `Build an FAQ page about: "${topicLabel}".
 
-Base it on these real questions (merge near-duplicates, keep the clearest wording, drop anything off-topic or not relevant to ${tenant.name}):
+${
+  finalQuestions.length
+    ? `Base it on these real questions (merge near-duplicates, keep the clearest wording, drop anything off-topic or not relevant to ${tenant.name}):
 ${finalQuestions.map((q) => `- ${q}`).join('\n')}
 
-Aim for 8–12 high-quality Q&A pairs. Prioritise the real questions above; if they yield fewer than 8, add further genuinely common questions that real customers ask about this topic (People-Also-Ask style — phrased the way someone would type or speak them) to reach at least 8. Order them so the most-asked questions come first.`,
+Aim for 8–12 high-quality Q&A pairs. Prioritise the real questions above; if they yield fewer than 8, add further genuinely common questions that real customers ask about this topic (People-Also-Ask style — phrased the way someone would type or speak them) to reach at least 8. Order them so the most-asked questions come first.`
+    : `There are no pre-sourced questions, so generate the FAQ from scratch: write 8–12 genuinely common questions that real customers ask about this topic (People-Also-Ask style — phrased the way someone would type or speak them), specific and relevant to ${tenant.name}, ordered with the most-asked first.`
+}`,
       },
     ],
   })
@@ -293,4 +299,76 @@ Aim for 8–12 high-quality Q&A pairs. Prioritise the real questions above; if t
 
   console.log(`[clem/faq] Created FAQ post "${finalSlug}" (id: ${post.id}) with ${faqItems.length} Q&A`)
   return post.id
+}
+
+/**
+ * Suggest candidate FAQ *questions* (not answers) for a topic and add the new
+ * ones to the question bank (source 'clem', status 'open'), so the user can
+ * curate them when Scout has no PAA to import. Returns the questions added.
+ */
+export async function suggestFaqQuestions(
+  tenantId: string,
+  topic: string,
+  count = 10,
+): Promise<string[]> {
+  const db = createAdminClient()
+  const { data: tenant } = await db
+    .from('tenants')
+    .select('name, domain, target_audience')
+    .eq('id', tenantId)
+    .single()
+  if (!tenant) throw new Error(`Tenant ${tenantId} not found`)
+
+  const response = await anthropic.messages.create({
+    model: CLAUDE_MODEL,
+    max_tokens: 1024,
+    system: `You generate candidate FAQ questions (NOT answers) for ${tenant.name} (${tenant.domain}). Return ONLY a JSON array of question strings — real, specific questions a ${tenant.target_audience ?? 'customer'} would type or ask (People-Also-Ask style). British English, no duplicates, no numbering.`,
+    messages: [
+      {
+        role: 'user',
+        content: `Suggest ${count} FAQ questions about: "${topic}". Return a JSON array of strings only, e.g. ["First question?", "Second question?"].`,
+      },
+    ],
+  })
+
+  const raw = response.content[0]?.type === 'text' ? response.content[0].text : ''
+  let list: string[] = []
+  try {
+    const match = raw.match(/\[[\s\S]*\]/)
+    const parsed = JSON.parse(match?.[0] ?? raw)
+    if (Array.isArray(parsed)) list = parsed.filter((x): x is string => typeof x === 'string')
+  } catch {
+    throw new Error('Could not parse suggested questions from the model')
+  }
+  list = list.map((s) => s.trim()).filter(Boolean)
+  if (!list.length) return []
+
+  // Skip anything already in the bank (any status), and de-dupe the batch.
+  const { data: existing } = await db
+    .from('faq_questions')
+    .select('question')
+    .eq('tenant_id', tenantId)
+  const seen = new Set(
+    ((existing ?? []) as { question: string | null }[]).map((r) => (r.question ?? '').trim().toLowerCase()),
+  )
+  const fresh: string[] = []
+  for (const q of list) {
+    const k = q.toLowerCase()
+    if (seen.has(k)) continue
+    seen.add(k)
+    fresh.push(q)
+  }
+  if (!fresh.length) return []
+
+  const { error } = await db.from('faq_questions').insert(
+    fresh.map((question) => ({
+      tenant_id: tenantId,
+      question,
+      source: 'clem',
+      topic: topic || null,
+      status: 'open',
+    })),
+  )
+  if (error) throw new Error(`Failed to save suggested questions: ${error.message}`)
+  return fresh
 }
