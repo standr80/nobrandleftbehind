@@ -250,13 +250,13 @@ Return ONLY valid JSON, no commentary, matching this exact shape:
 
 ${
   finalQuestions.length
-    ? `Write clear, self-contained answers for these questions (merge near-duplicates, drop anything off-topic or not relevant to ${tenant.name}):
+    ? `Write clear, self-contained answers for EXACTLY these questions — do NOT add, invent, or pad with any extra questions (only merge obvious near-duplicates):
 ${finalQuestions.map((q) => `- ${q}`).join('\n')}
 
-Then add further genuinely common People-Also-Ask-style questions so the whole page (including any already-written Q&As) has 8–12 pairs, most-asked first. Return in "faq_items" ONLY the questions you answer — never the already-written ones.`
+Return in "faq_items" ONLY these questions' answers — never the already-written ones.`
     : preAnswered.length
-      ? `Add genuinely common People-Also-Ask-style questions (with answers) so the whole page (including the ${preAnswered.length} already-written) has at least 8 Q&As. Return in "faq_items" ONLY the questions you add.`
-      : `There are no pre-sourced questions, so generate the FAQ from scratch: write 8–12 genuinely common People-Also-Ask-style questions with answers, specific and relevant to ${tenant.name}, most-asked first.`
+      ? `All Q&As for this page are already written above and will be included verbatim — do NOT add or invent any questions. Return "faq_items": [] and just provide the page metadata (title, slug, description, tags).`
+      : `There are no questions yet, so generate the FAQ from scratch: write 8–12 genuinely common People-Also-Ask-style questions with answers, specific and relevant to ${tenant.name}, most-asked first.`
 }`,
       },
     ],

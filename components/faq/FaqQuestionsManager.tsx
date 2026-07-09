@@ -27,6 +27,9 @@ interface Props {
   tenantId: string
 }
 
+// Recommended minimum questions for a useful FAQ page (advisory warning only).
+const MIN_FAQ = 5
+
 export default function FaqQuestionsManager({ initialQuestions, tenantId }: Props) {
   const [topics, setTopics] = useState<Topic[]>([])
   const [pool, setPool] = useState<FaqQuestion[]>(initialQuestions)
@@ -302,7 +305,10 @@ export default function FaqQuestionsManager({ initialQuestions, tenantId }: Prop
                   <div className="border-t border-slate-100 px-4 py-3 space-y-3">
                     {/* Assigned questions */}
                     {topicQuestions.length === 0 ? (
-                      <p className="text-xs text-slate-400">No questions assigned yet. Suggest, add, or assign from the pool below.</p>
+                      <p className="text-xs text-slate-400">
+                        No questions assigned yet — use <strong>Suggest questions</strong> or assign from the pool below.
+                        {' '}<strong>Generate FAQ page</strong> will create a full set from scratch.
+                      </p>
                     ) : (
                       <ul className="space-y-1">
                         {topicQuestions.map((q) => (
@@ -312,6 +318,12 @@ export default function FaqQuestionsManager({ initialQuestions, tenantId }: Prop
                           </li>
                         ))}
                       </ul>
+                    )}
+
+                    {topicQuestions.length > 0 && topicQuestions.length < MIN_FAQ && (
+                      <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                        This topic has {topicQuestions.length} question{topicQuestions.length === 1 ? '' : 's'}. An FAQ page works best with at least {MIN_FAQ} — use <strong>Suggest questions</strong> to add more before generating.
+                      </p>
                     )}
 
                     {/* Topic-scoped actions */}
