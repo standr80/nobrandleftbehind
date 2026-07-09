@@ -223,6 +223,28 @@ export default function FaqQuestionsManager({ initialQuestions, tenantId }: Prop
     })
   }
 
+  function toggleSelectAll() {
+    const allIds = openPool.map((q) => q.id)
+    const allSelected = allIds.length > 0 && allIds.every((id) => selected.has(id))
+    setSelected(allSelected ? new Set() : new Set(allIds))
+  }
+
+  async function deleteAll() {
+    const ids = openPool.map((q) => q.id)
+    if (!ids.length) return
+    if (!window.confirm(`Permanently delete all ${ids.length} question${ids.length === 1 ? '' : 's'} in the pool? This cannot be undone.`)) return
+    setBusy('deleteAll'); setError(null)
+    try {
+      const res = await fetch('/api/faq/questions', {
+        method: 'DELETE', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tenantId, ids }),
+      })
+      if (!res.ok) return fail((await res.json()).error ?? 'Delete failed')
+      setSelected(new Set())
+      await refreshPool()
+    } catch { fail('Network error') } finally { setBusy(null) }
+  }
+
   const sourceBadge = (s: string | null) => {
     const label = s === 'scout_paa' ? 'SCOUT' : s === 'clem' ? 'CLEM' : 'MANUAL'
     const cls = s === 'scout_paa' ? 'text-emerald-700 bg-emerald-100' : s === 'clem' ? 'text-indigo-700 bg-indigo-100' : 'text-slate-500 bg-slate-100'
@@ -352,6 +374,20 @@ export default function FaqQuestionsManager({ initialQuestions, tenantId }: Prop
         {openPool.length === 0 ? (
           <p className="text-sm text-slate-400">Pool is empty.</p>
         ) : (
+          <>
+          <div className="flex items-center gap-4 mb-2 px-3">
+            <label className="flex items-center gap-2 text-xs text-slate-500 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={openPool.length > 0 && openPool.every((q) => selected.has(q.id))}
+                onChange={toggleSelectAll}
+              />
+              Select all ({openPool.length})
+            </label>
+            <button onClick={deleteAll} disabled={busy !== null} className="text-xs text-slate-400 hover:text-red-600 disabled:opacity-50">
+              {busy === 'deleteAll' ? 'Deleting…' : 'Delete all'}
+            </button>
+          </div>
           <ul className="space-y-1">
             {openPool.map((q) => (
               <li key={q.id} className="flex items-start gap-3 border border-slate-200 rounded-lg px-3 py-2">
@@ -362,6 +398,7 @@ export default function FaqQuestionsManager({ initialQuestions, tenantId }: Prop
               </li>
             ))}
           </ul>
+          </>
         )}
       </section>
     </div>

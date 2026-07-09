@@ -84,3 +84,27 @@ export async function POST(request: Request) {
 
   return NextResponse.json({ ok: true, questions: data ?? [] })
 }
+
+// DELETE — permanently remove questions. Body: { tenantId, ids: string[] }.
+// Requires an explicit id list (no blanket wipe). Topic assignments cascade.
+export async function DELETE(request: Request) {
+  const { userId } = await auth()
+  if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const body = await request.json()
+  const workspace = await resolveMutationWorkspace(userId, body.tenantId)
+  if (!workspace) return NextResponse.json({ error: 'Workspace not found' }, { status: 404 })
+
+  const ids: string[] = Array.isArray(body.ids) ? body.ids.filter((i: unknown) => typeof i === 'string') : []
+  if (!ids.length) return NextResponse.json({ error: 'No question ids provided' }, { status: 400 })
+
+  const db = createAdminClient()
+  const { error } = await db
+    .from('faq_questions')
+    .delete()
+    .eq('tenant_id', workspace.tenantId)
+    .in('id', ids)
+
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  return NextResponse.json({ ok: true })
+}
