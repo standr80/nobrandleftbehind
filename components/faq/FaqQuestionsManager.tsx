@@ -267,7 +267,6 @@ export default function FaqQuestionsManager({ initialQuestions, tenantId }: Prop
   return (
     <div className="space-y-8">
       {error && <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{error}</div>}
-      {notice && <div className="text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">{notice}</div>}
       {generatedPostId && (
         <div className="text-sm text-emerald-800 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2">
           FAQ page drafted.{' '}
@@ -297,10 +296,12 @@ export default function FaqQuestionsManager({ initialQuestions, tenantId }: Prop
           <ul className="space-y-2">
             {topics.map((t) => (
               <li key={t.id} className="border border-slate-200 rounded-xl">
-                <div className="flex items-center gap-3 px-4 py-3">
-                  <button onClick={() => setOpenTopicId(openTopicId === t.id ? null : t.id)} className="flex-1 text-left">
+                <div className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50 transition-colors">
+                  <button onClick={() => setOpenTopicId(openTopicId === t.id ? null : t.id)} className="flex-1 flex items-center gap-2 text-left">
+                    <span className={`text-slate-400 text-[11px] transition-transform ${openTopicId === t.id ? 'rotate-90' : ''}`} aria-hidden>▶</span>
                     <span className="text-sm font-medium text-slate-900">{t.name}</span>
-                    <span className="text-xs text-slate-400 ml-2">{t.questionCount} question{t.questionCount === 1 ? '' : 's'}</span>
+                    <span className="text-xs text-slate-400">{t.questionCount} question{t.questionCount === 1 ? '' : 's'}</span>
+                    <span className="text-xs text-indigo-500 ml-1">{openTopicId === t.id ? 'Close' : 'Manage'}</span>
                   </button>
                   {t.status === 'generated' && t.generated_post_id ? (
                     <Link href={`/author/${t.generated_post_id}`} className="text-xs font-semibold text-emerald-700 bg-emerald-100 rounded px-1.5 py-0.5">GENERATED · view</Link>
@@ -365,6 +366,8 @@ export default function FaqQuestionsManager({ initialQuestions, tenantId }: Prop
       <section>
         <h2 className="text-sm font-semibold text-slate-900 mb-1">Question pool</h2>
         <p className="text-xs text-slate-400 mb-3">Unassigned questions. Import from Scout or add your own, then assign to a topic above.</p>
+
+        {notice && <div className="text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mb-3">{notice}</div>}
 
         <div className="flex flex-wrap gap-2 mb-3">
           <button onClick={importPaa} disabled={busy !== null} className={`${btn} border border-emerald-300 text-emerald-700 hover:bg-emerald-50`}>
