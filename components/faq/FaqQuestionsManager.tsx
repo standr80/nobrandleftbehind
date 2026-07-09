@@ -44,6 +44,7 @@ export default function FaqQuestionsManager({ initialQuestions, tenantId }: Prop
 
   const [busy, setBusy] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [notice, setNotice] = useState<string | null>(null)
   const [generatedPostId, setGeneratedPostId] = useState<string | null>(null)
 
   const openTopic = topics.find((t) => t.id === openTopicId) ?? null
@@ -76,7 +77,7 @@ export default function FaqQuestionsManager({ initialQuestions, tenantId }: Prop
     await Promise.all([refreshTopics(), refreshPool(), openTopicId ? loadTopicQuestions(openTopicId) : Promise.resolve()])
   }
 
-  function fail(msg: string) { setError(msg) }
+  function fail(msg: string) { setError(msg); setNotice(null) }
 
   // ── Topic actions ───────────────────────────────────────────────────────────
   async function createTopic() {
@@ -180,14 +181,21 @@ export default function FaqQuestionsManager({ initialQuestions, tenantId }: Prop
 
   // ── Pool actions ─────────────────────────────────────────────────────────────
   async function importPaa() {
-    setBusy('import'); setError(null)
+    setBusy('import'); setError(null); setNotice(null)
     try {
       const res = await fetch('/api/faq/questions/import-paa', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ tenantId }),
       })
-      if (!res.ok) return fail((await res.json()).error ?? 'Import failed')
-      await refreshPool()
+      const data = await res.json()
+      if (!res.ok) return fail(data.error ?? 'Import failed')
+      const imported = data.imported ?? 0
+      if (imported === 0) {
+        setNotice("No new People-Also-Ask questions to import — Scout hasn't found any for this site yet, or they're already in your pool. Try 'Suggest questions' on a topic instead.")
+      } else {
+        setNotice(`Imported ${imported} question${imported === 1 ? '' : 's'} from Scout.`)
+        await refreshPool()
+      }
     } catch { fail('Network error') } finally { setBusy(null) }
   }
 
@@ -259,6 +267,7 @@ export default function FaqQuestionsManager({ initialQuestions, tenantId }: Prop
   return (
     <div className="space-y-8">
       {error && <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{error}</div>}
+      {notice && <div className="text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">{notice}</div>}
       {generatedPostId && (
         <div className="text-sm text-emerald-800 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2">
           FAQ page drafted.{' '}
