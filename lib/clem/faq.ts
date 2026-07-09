@@ -39,6 +39,8 @@ export interface FaqDraftInput {
   questions?: string[]
   /** Ids from faq_questions to include (marked 'used' on success). */
   questionIds?: string[]
+  /** Build from a saved FAQ topic's assigned questions (verbatim answers bypass the model). */
+  topicId?: string
   /** Pull PAA/gap questions from Scout opportunities (default true). */
   includeScoutPaa?: boolean
   /** Cap on total questions sent to the model (default 12). */
@@ -115,6 +117,8 @@ export async function runFaqDraft(tenantId: string, input: FaqDraftInput): Promi
   // ── Gather candidate questions from all sources ──────────────────────────
   const questions: string[] = []
   const usedQuestionIds: string[] = []
+  const preAnswered: FaqItem[] = []
+  let topicRecord: { id: string; name: string } | null = null
 
   if (input.questions?.length) questions.push(...input.questions)
 
@@ -132,7 +136,47 @@ export async function runFaqDraft(tenantId: string, input: FaqDraftInput): Promi
     }
   }
 
-  if (input.includeScoutPaa ?? true) {
+  // A saved topic: use its assigned questions in order. Questions with a
+  // verbatim answer bypass the model; unanswered ones are sent to Clem to write.
+  if (input.topicId) {
+    const { data: topic } = await db
+      .from('faq_topics')
+      .select('id, name')
+      .eq('id', input.topicId)
+      .eq('tenant_id', tenantId)
+      .maybeSingle()
+    if (topic) {
+      topicRecord = topic
+      const { data: links } = await db
+        .from('faq_topic_questions')
+        .select('question_id, position')
+        .eq('topic_id', input.topicId)
+      const posById = new Map<string, number>(
+        (links ?? []).map(
+          (l: { question_id: string; position: number | null }) =>
+            [l.question_id, l.position ?? 0] as [string, number],
+        ),
+      )
+      const qids = [...posById.keys()]
+      if (qids.length) {
+        const { data: rows } = await db
+          .from('faq_questions')
+          .select('id, question, answer')
+          .in('id', qids)
+        const ordered = ((rows ?? []) as { id: string; question: string; answer: string | null }[])
+          .slice()
+          .sort((a, b) => (posById.get(a.id) ?? 0) - (posById.get(b.id) ?? 0))
+        for (const r of ordered) {
+          usedQuestionIds.push(r.id)
+          if (r.answer && r.answer.trim()) preAnswered.push({ q: r.question, a: r.answer.trim() })
+          else if (r.question) questions.push(r.question)
+        }
+      }
+    }
+  }
+
+  // Scout PAA is a fallback source — never when building a specific topic.
+  if ((input.includeScoutPaa ?? true) && !input.topicId) {
     let q = db
       .from('scout_keyword_opportunities')
       .select('keyword')
@@ -156,13 +200,12 @@ export async function runFaqDraft(tenantId: string, input: FaqDraftInput): Promi
     })
     .slice(0, maxQuestions)
 
-  // Need EITHER sourced questions OR a topic/title to generate from. With a
-  // topic and no questions, Clem invents the questions from scratch.
-  if (!finalQuestions.length && !input.topic && !input.title) {
+  // Need EITHER sourced questions/answers OR a topic/title to generate from.
+  if (!finalQuestions.length && !preAnswered.length && !input.topic && !input.title && !topicRecord) {
     throw new Error('Provide a topic (or some questions) to build an FAQ page.')
   }
 
-  const topicLabel = input.topic ?? input.title ?? tenant.name
+  const topicLabel = topicRecord?.name ?? input.topic ?? input.title ?? tenant.name
   const today = new Date().toISOString().split('T')[0]
 
   // ── Generate the FAQ as JSON ─────────────────────────────────────────────
@@ -199,15 +242,21 @@ Return ONLY valid JSON, no commentary, matching this exact shape:
     messages: [
       {
         role: 'user',
-        content: `Build an FAQ page about: "${topicLabel}".
+        content: `Build an FAQ page about: "${topicLabel}".${
+          preAnswered.length
+            ? `\n\n${preAnswered.length} Q&A(s) are ALREADY WRITTEN and will be included verbatim — do NOT rewrite, repeat, or re-answer these questions:\n${preAnswered.map((p) => `- ${p.q}`).join('\n')}`
+            : ''
+        }
 
 ${
   finalQuestions.length
-    ? `Base it on these real questions (merge near-duplicates, keep the clearest wording, drop anything off-topic or not relevant to ${tenant.name}):
+    ? `Write clear, self-contained answers for these questions (merge near-duplicates, drop anything off-topic or not relevant to ${tenant.name}):
 ${finalQuestions.map((q) => `- ${q}`).join('\n')}
 
-Aim for 8–12 high-quality Q&A pairs. Prioritise the real questions above; if they yield fewer than 8, add further genuinely common questions that real customers ask about this topic (People-Also-Ask style — phrased the way someone would type or speak them) to reach at least 8. Order them so the most-asked questions come first.`
-    : `There are no pre-sourced questions, so generate the FAQ from scratch: write 8–12 genuinely common questions that real customers ask about this topic (People-Also-Ask style — phrased the way someone would type or speak them), specific and relevant to ${tenant.name}, ordered with the most-asked first.`
+Then add further genuinely common People-Also-Ask-style questions so the whole page (including any already-written Q&As) has 8–12 pairs, most-asked first. Return in "faq_items" ONLY the questions you answer — never the already-written ones.`
+    : preAnswered.length
+      ? `Add genuinely common People-Also-Ask-style questions (with answers) so the whole page (including the ${preAnswered.length} already-written) has at least 8 Q&As. Return in "faq_items" ONLY the questions you add.`
+      : `There are no pre-sourced questions, so generate the FAQ from scratch: write 8–12 genuinely common People-Also-Ask-style questions with answers, specific and relevant to ${tenant.name}, most-asked first.`
 }`,
       },
     ],
@@ -224,9 +273,18 @@ Aim for 8–12 high-quality Q&A pairs. Prioritise the real questions above; if t
     throw new Error('Could not parse FAQ JSON from model output')
   }
 
-  const faqItems: FaqItem[] = (gen.faq_items ?? [])
+  const generatedItems: FaqItem[] = (gen.faq_items ?? [])
     .filter((it) => it && typeof it.q === 'string' && typeof it.a === 'string' && it.q.trim() && it.a.trim())
     .map((it) => ({ q: it.q.trim(), a: it.a.trim() }))
+  // Verbatim (pre-written) answers first, then Clem's, de-duped by question.
+  const faqItems: FaqItem[] = []
+  const seenQ = new Set<string>()
+  for (const it of [...preAnswered, ...generatedItems]) {
+    const k = it.q.toLowerCase()
+    if (seenQ.has(k)) continue
+    seenQ.add(k)
+    faqItems.push(it)
+  }
   if (!faqItems.length) throw new Error('FAQ generation produced no valid Q&A pairs')
 
   const title = (gen.title || `${topicLabel} — Frequently Asked Questions`).trim()
@@ -297,6 +355,22 @@ Aim for 8–12 high-quality Q&A pairs. Prioritise the real questions above; if t
       .in('id', usedQuestionIds)
   }
 
+  // Topic: link it to the generated page + converge — remove its questions from
+  // any OTHER topic so a question only ever lives on one FAQ page.
+  if (topicRecord) {
+    await db
+      .from('faq_topics')
+      .update({ generated_post_id: post.id, status: 'generated' })
+      .eq('id', topicRecord.id)
+    if (usedQuestionIds.length) {
+      await db
+        .from('faq_topic_questions')
+        .delete()
+        .neq('topic_id', topicRecord.id)
+        .in('question_id', usedQuestionIds)
+    }
+  }
+
   console.log(`[clem/faq] Created FAQ post "${finalSlug}" (id: ${post.id}) with ${faqItems.length} Q&A`)
   return post.id
 }
@@ -309,6 +383,7 @@ Aim for 8–12 high-quality Q&A pairs. Prioritise the real questions above; if t
 export async function suggestFaqQuestions(
   tenantId: string,
   topic: string,
+  topicId?: string,
   count = 10,
 ): Promise<string[]> {
   const db = createAdminClient()
@@ -360,15 +435,33 @@ export async function suggestFaqQuestions(
   }
   if (!fresh.length) return []
 
-  const { error } = await db.from('faq_questions').insert(
-    fresh.map((question) => ({
-      tenant_id: tenantId,
-      question,
-      source: 'clem',
-      topic: topic || null,
-      status: 'open',
-    })),
-  )
+  const { data: inserted, error } = await db
+    .from('faq_questions')
+    .insert(
+      fresh.map((question) => ({
+        tenant_id: tenantId,
+        question,
+        source: 'clem',
+        topic: topic || null,
+        status: 'open',
+      })),
+    )
+    .select('id')
   if (error) throw new Error(`Failed to save suggested questions: ${error.message}`)
+
+  // If suggesting for a specific topic, assign the new questions to it.
+  if (topicId && inserted?.length) {
+    const { data: existingLinks } = await db
+      .from('faq_topic_questions')
+      .select('position')
+      .eq('topic_id', topicId)
+    let pos = ((existingLinks ?? []) as { position: number | null }[]).reduce(
+      (m, r) => Math.max(m, r.position ?? 0),
+      0,
+    )
+    await db.from('faq_topic_questions').insert(
+      (inserted as { id: string }[]).map((r) => ({ topic_id: topicId, question_id: r.id, position: ++pos })),
+    )
+  }
   return fresh
 }

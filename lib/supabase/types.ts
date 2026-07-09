@@ -679,6 +679,7 @@ export type Database = {
       }
       faq_questions: {
         Row: {
+          answer: string | null
           created_at: string | null
           id: string
           question: string
@@ -689,6 +690,7 @@ export type Database = {
           used_in_post_id: string | null
         }
         Insert: {
+          answer?: string | null
           created_at?: string | null
           id?: string
           question: string
@@ -699,6 +701,7 @@ export type Database = {
           used_in_post_id?: string | null
         }
         Update: {
+          answer?: string | null
           created_at?: string | null
           id?: string
           question?: string
@@ -707,6 +710,54 @@ export type Database = {
           tenant_id?: string
           topic?: string | null
           used_in_post_id?: string | null
+        }
+        Relationships: []
+      }
+      faq_topics: {
+        Row: {
+          cluster_id: string | null
+          created_at: string | null
+          generated_post_id: string | null
+          id: string
+          name: string
+          status: string | null
+          tenant_id: string
+        }
+        Insert: {
+          cluster_id?: string | null
+          created_at?: string | null
+          generated_post_id?: string | null
+          id?: string
+          name: string
+          status?: string | null
+          tenant_id: string
+        }
+        Update: {
+          cluster_id?: string | null
+          created_at?: string | null
+          generated_post_id?: string | null
+          id?: string
+          name?: string
+          status?: string | null
+          tenant_id?: string
+        }
+        Relationships: []
+      }
+      faq_topic_questions: {
+        Row: {
+          position: number | null
+          question_id: string
+          topic_id: string
+        }
+        Insert: {
+          position?: number | null
+          question_id: string
+          topic_id: string
+        }
+        Update: {
+          position?: number | null
+          question_id?: string
+          topic_id?: string
         }
         Relationships: []
       }

@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getActiveWorkspace, resolveMutationWorkspace } from '@/lib/workspace/active'
 
-const QUESTION_COLUMNS = 'id, question, source, topic, status, used_in_post_id, created_at'
+const QUESTION_COLUMNS = 'id, question, answer, source, topic, status, used_in_post_id, created_at'
 
 // GET — list FAQ questions for the active workspace.
 export async function GET() {
@@ -33,25 +33,31 @@ export async function POST(request: Request) {
   const workspace = await resolveMutationWorkspace(userId, body.tenantId)
   if (!workspace) return NextResponse.json({ error: 'Workspace not found' }, { status: 404 })
 
-  const raw: unknown[] = Array.isArray(body.questions) ? body.questions : [body.question]
   const topic = body.topic ? String(body.topic).trim() : null
+  const topicId = body.topicId ? String(body.topicId) : null
 
-  const questions = Array.from(
-    new Set(
-      raw
-        .map((q) => String(q ?? '').trim())
-        .filter((q) => q.length > 3),
-    ),
-  )
-  if (!questions.length) return NextResponse.json({ error: 'No valid questions provided' }, { status: 400 })
+  // Two shapes: plain strings, or {question, answer} pairs (manual Q&A / import).
+  type Incoming = { question: string; answer?: string | null }
+  let incoming: Incoming[]
+  if (Array.isArray(body.pairs)) {
+    incoming = (body.pairs as { question?: unknown; answer?: unknown }[])
+      .map((p) => ({ question: String(p.question ?? '').trim(), answer: p.answer ? String(p.answer).trim() : null }))
+  } else {
+    const raw: unknown[] = Array.isArray(body.questions) ? body.questions : [body.question]
+    const answer = body.answer ? String(body.answer).trim() : null
+    incoming = raw.map((q) => ({ question: String(q ?? '').trim(), answer }))
+  }
+  incoming = incoming.filter((p) => p.question.length > 3)
+  if (!incoming.length) return NextResponse.json({ error: 'No valid questions provided' }, { status: 400 })
 
   const db = createAdminClient()
   const { data, error } = await db
     .from('faq_questions')
     .insert(
-      questions.map((question) => ({
+      incoming.map((p) => ({
         tenant_id: workspace.tenantId,
-        question,
+        question: p.question,
+        answer: p.answer,
         topic,
         source: 'manual',
         status: 'open',
@@ -60,5 +66,21 @@ export async function POST(request: Request) {
     .select(QUESTION_COLUMNS)
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+  // Optionally assign the new questions straight to a topic.
+  if (topicId && data?.length) {
+    const { data: existing } = await db
+      .from('faq_topic_questions')
+      .select('position')
+      .eq('topic_id', topicId)
+    let pos = ((existing ?? []) as { position: number | null }[]).reduce(
+      (m, r) => Math.max(m, r.position ?? 0),
+      0,
+    )
+    await db.from('faq_topic_questions').insert(
+      (data as { id: string }[]).map((r) => ({ topic_id: topicId, question_id: r.id, position: ++pos })),
+    )
+  }
+
   return NextResponse.json({ ok: true, questions: data ?? [] })
 }

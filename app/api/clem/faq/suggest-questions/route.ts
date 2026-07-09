@@ -12,7 +12,7 @@ export async function POST(request: Request) {
   const { userId } = await auth()
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const body = (await request.json()) as { tenantId?: string; topic?: string }
+  const body = (await request.json()) as { tenantId?: string; topic?: string; topicId?: string }
   const workspace = await resolveMutationWorkspace(userId, body.tenantId)
   if (!workspace) return NextResponse.json({ error: 'Workspace not found' }, { status: 404 })
 
@@ -20,7 +20,7 @@ export async function POST(request: Request) {
   if (!topic) return NextResponse.json({ error: 'A topic is required' }, { status: 400 })
 
   try {
-    const added = await suggestFaqQuestions(workspace.tenantId, topic)
+    const added = await suggestFaqQuestions(workspace.tenantId, topic, body.topicId)
     return NextResponse.json({ ok: true, added: added.length, questions: added })
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)

@@ -14,7 +14,7 @@ export default async function FaqPage() {
   const db = createAdminClient()
   const { data: questions } = await db
     .from('faq_questions')
-    .select('id, question, source, topic, status, used_in_post_id, created_at')
+    .select('id, question, answer, source, topic, status, used_in_post_id, created_at')
     .eq('tenant_id', workspace.tenantId)
     .order('created_at', { ascending: false })
 
