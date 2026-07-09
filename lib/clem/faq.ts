@@ -119,6 +119,7 @@ export async function runFaqDraft(tenantId: string, input: FaqDraftInput): Promi
   const usedQuestionIds: string[] = []
   const preAnswered: FaqItem[] = []
   let topicRecord: { id: string; name: string } | null = null
+  const assignedTexts = new Set<string>() // lowercased text of a topic's already-assigned questions
 
   if (input.questions?.length) questions.push(...input.questions)
 
@@ -168,6 +169,7 @@ export async function runFaqDraft(tenantId: string, input: FaqDraftInput): Promi
           .sort((a, b) => (posById.get(a.id) ?? 0) - (posById.get(b.id) ?? 0))
         for (const r of ordered) {
           usedQuestionIds.push(r.id)
+          assignedTexts.add(r.question.toLowerCase())
           if (r.answer && r.answer.trim()) preAnswered.push({ q: r.question, a: r.answer.trim() })
           else if (r.question) questions.push(r.question)
         }
@@ -355,18 +357,54 @@ Return in "faq_items" ONLY these questions' answers — never the already-writte
       .in('id', usedQuestionIds)
   }
 
-  // Topic: link it to the generated page + converge — remove its questions from
-  // any OTHER topic so a question only ever lives on one FAQ page.
+  // Topic: link it to the generated page, persist any invented questions, and
+  // converge (a question lives on only one FAQ page).
   if (topicRecord) {
+    const topicId = topicRecord.id
     await db
       .from('faq_topics')
       .update({ generated_post_id: post.id, status: 'generated' })
-      .eq('id', topicRecord.id)
+      .eq('id', topicId)
+
+    // Questions Clem invented (from-scratch topics) weren't in the bank — save
+    // them so the topic reflects the page: store the answer, assign, mark used.
+    const newItems = faqItems.filter((it) => !assignedTexts.has(it.q.toLowerCase()))
+    if (newItems.length) {
+      const { data: inserted } = await db
+        .from('faq_questions')
+        .insert(
+          newItems.map((it) => ({
+            tenant_id: tenantId,
+            question: it.q,
+            answer: it.a,
+            source: 'clem',
+            status: 'used',
+            used_in_post_id: post.id,
+            topic: topicLabel,
+          })),
+        )
+        .select('id')
+      if (inserted?.length) {
+        const { data: links } = await db
+          .from('faq_topic_questions')
+          .select('position')
+          .eq('topic_id', topicId)
+        let pos = ((links ?? []) as { position: number | null }[]).reduce(
+          (m, r) => Math.max(m, r.position ?? 0),
+          0,
+        )
+        await db.from('faq_topic_questions').insert(
+          (inserted as { id: string }[]).map((r) => ({ topic_id: topicId, question_id: r.id, position: ++pos })),
+        )
+      }
+    }
+
+    // Converge: remove the pre-existing used questions from any OTHER topic.
     if (usedQuestionIds.length) {
       await db
         .from('faq_topic_questions')
         .delete()
-        .neq('topic_id', topicRecord.id)
+        .neq('topic_id', topicId)
         .in('question_id', usedQuestionIds)
     }
   }
