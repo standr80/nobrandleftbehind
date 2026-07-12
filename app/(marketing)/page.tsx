@@ -165,16 +165,18 @@ export default function LandingPage() {
                       </svg>
                       View CV
                     </Link>
-                    {agent.href && agent.cta && (
-                      <Link
-                        href={agent.href}
+                    {agent.status === 'live' && agent.cta && (
+                      <a
+                        href={BOOKING_URL}
+                        target="_blank"
+                        rel="noopener noreferrer"
                         className="inline-flex items-center gap-1.5 text-sm font-medium text-indigo-600 hover:text-indigo-700 transition-all group-hover:gap-2.5"
                       >
                         {agent.cta}
                         <svg className="w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                           <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
                         </svg>
-                      </Link>
+                      </a>
                     )}
                   </div>
                 </div>
