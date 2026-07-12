@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { auth } from '@clerk/nextjs/server'
+import { BOOKING_URL } from '@/lib/marketing/config'
 
 export default async function MarketingNav() {
   const { userId } = await auth()
@@ -39,12 +40,14 @@ export default async function MarketingNav() {
             <Link href="/sign-in" className="text-sm text-slate-500 hover:text-slate-900 transition-colors">
               Sign in
             </Link>
-            <Link
-              href="/sign-up"
+            <a
+              href={BOOKING_URL}
+              target="_blank"
+              rel="noopener noreferrer"
               className="text-sm bg-slate-900 hover:bg-slate-700 text-white px-4 py-2 rounded-lg transition-colors font-medium"
             >
-              Get started
-            </Link>
+              Arrange interview
+            </a>
           </>
         )}
       </div>

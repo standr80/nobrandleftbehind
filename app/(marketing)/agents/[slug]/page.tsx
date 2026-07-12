@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation'
 import MarketingNav from '@/components/marketing/MarketingNav'
 import MarketingFooter from '@/components/marketing/MarketingFooter'
 import { agents, getAgent } from '@/lib/marketing/agents'
+import { BOOKING_URL } from '@/lib/marketing/config'
 
 const SITE_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://nobrandleftbehind.com'
 
@@ -149,13 +150,18 @@ export default async function AgentCvPage({ params }: { params: Promise<{ slug: 
 
             {/* CTA */}
             <footer className="mt-8 pt-6 border-t border-slate-100">
-              {agent.status === 'live' && agent.href && agent.cta ? (
-                <Link
-                  href={agent.href}
-                  className="inline-flex items-center gap-2 text-sm bg-indigo-600 hover:bg-indigo-500 text-white px-5 py-2.5 rounded-lg transition-colors font-medium"
-                >
-                  {agent.cta} →
-                </Link>
+              {agent.status === 'live' ? (
+                <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                  <a
+                    href={BOOKING_URL}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 text-sm bg-indigo-600 hover:bg-indigo-500 text-white px-5 py-2.5 rounded-lg transition-colors font-medium"
+                  >
+                    Arrange an interview →
+                  </a>
+                  <span className="text-xs text-slate-400">Ready to hire {agent.name}? Book a quick call.</span>
+                </div>
               ) : (
                 <div className="flex items-center gap-4">
                   <span className="text-sm text-slate-400">{agent.name} is joining the team soon.</span>

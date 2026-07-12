@@ -3,6 +3,7 @@ import Link from 'next/link'
 import MarketingNav from '@/components/marketing/MarketingNav'
 import MarketingFooter from '@/components/marketing/MarketingFooter'
 import { agents } from '@/lib/marketing/agents'
+import { BOOKING_URL } from '@/lib/marketing/config'
 
 const SITE_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://nobrandleftbehind.com'
 const TITLE = 'No Brand Left Behind — AI agents that grow your brand'
@@ -67,10 +68,21 @@ export default function LandingPage() {
           <h1 className="text-5xl sm:text-6xl font-bold tracking-tight mb-6 text-slate-900 leading-tight">
             No brand left behind.
           </h1>
-          <p className="text-lg text-slate-500 mb-14 max-w-2xl mx-auto leading-relaxed">
+          <p className="text-lg text-slate-500 mb-8 max-w-2xl mx-auto leading-relaxed">
             A suite of intelligent agents that handle the time-consuming work of growing your
             brand — from blog writing to sales prospecting — so you can focus on what matters.
           </p>
+          <div className="mb-14">
+            <a
+              href={BOOKING_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 text-sm bg-indigo-600 hover:bg-indigo-500 text-white px-6 py-3 rounded-lg transition-colors font-medium"
+            >
+              Arrange an interview →
+            </a>
+            <p className="text-xs text-slate-400 mt-3">A quick call to see which agents are right for your brand.</p>
+          </div>
 
           {/* Agent cards */}
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-12 text-left">
@@ -255,16 +267,18 @@ export default function LandingPage() {
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
             <a
-              href="mailto:hello@nobrandleftbehind.com?subject=Book a demo"
-              className="w-full sm:w-auto text-sm bg-white hover:bg-slate-100 text-slate-900 px-6 py-3 rounded-lg transition-colors font-medium"
-            >
-              Book a demo
-            </a>
-            <Link
-              href="/sign-up"
+              href={BOOKING_URL}
+              target="_blank"
+              rel="noopener noreferrer"
               className="w-full sm:w-auto text-sm bg-indigo-600 hover:bg-indigo-500 text-white px-6 py-3 rounded-lg transition-colors font-medium"
             >
-              Get started free →
+              Arrange an interview →
+            </a>
+            <Link
+              href="/sign-in"
+              className="w-full sm:w-auto text-sm bg-white/10 hover:bg-white/20 text-white border border-white/20 px-6 py-3 rounded-lg transition-colors font-medium"
+            >
+              Client sign in
             </Link>
           </div>
         </div>
