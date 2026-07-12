@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import MarketingNav from '@/components/marketing/MarketingNav'
 import MarketingFooter from '@/components/marketing/MarketingFooter'
+import { agents } from '@/lib/marketing/agents'
 
 const SITE_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://nobrandleftbehind.com'
 const TITLE = 'No Brand Left Behind — AI agents that grow your brand'
@@ -26,71 +27,6 @@ export const metadata: Metadata = {
   },
 }
 
-// ── Agent roster ──────────────────────────────────────────────────────────────
-// Drop a 800×800 JPEG into /public/agents/ and set the photo property.
-// Leave photo as null to show the placeholder initial tile.
-const agents = [
-  {
-    id: 'clem',
-    name: 'Clem',
-    role: 'Blog & FAQ content agent',
-    description:
-      'Researches, writes, and queues SEO-ready blog posts and FAQ pages for your website — on a schedule you control.',
-    status: 'live' as const,
-    href: '/dashboard',
-    cta: 'Hire Clem',
-    photo: '/agents/clem.jpg' as string | null,
-    accent: '#4f46e5', // indigo
-  },
-  {
-    id: 'scout',
-    name: 'Scout',
-    role: 'SEO & market intelligence agent',
-    description:
-      'Tracks your rankings, watches competitors, and surfaces keyword opportunities — then briefs Clem in one click.',
-    status: 'live' as const,
-    href: '/dashboard/scout',
-    cta: 'Meet Scout',
-    photo: '/agents/scout.jpg' as string | null,
-    accent: '#0d9488', // teal
-  },
-  {
-    id: 'hank',
-    name: 'Hank',
-    role: 'Sales prospecting agent',
-    description:
-      'Finds, qualifies, and nurtures sales prospects — automating the top of your sales funnel.',
-    status: 'soon' as const,
-    href: null,
-    cta: null,
-    photo: '/agents/hank.jpg' as string | null,
-    accent: '#64748b', // slate
-  },
-  {
-    id: 'bailey',
-    name: 'Bailey',
-    role: 'Image & gallery agent',
-    description:
-      'Turns your unsorted event photos into optimised, captioned gallery pages built to rank in image and AI search.',
-    status: 'soon' as const,
-    href: null,
-    cta: null,
-    photo: null as string | null,
-    accent: '#f59e0b', // amber
-  },
-  {
-    id: 'pam',
-    name: 'Pam',
-    role: 'Personal assistant agent',
-    description:
-      'Watches your content calendar and freshness and tells you exactly what to publish next — and when.',
-    status: 'soon' as const,
-    href: null,
-    cta: null,
-    photo: null as string | null,
-    accent: '#8b5cf6', // violet
-  },
-]
 
 const jsonLd = {
   '@context': 'https://schema.org',
@@ -207,17 +143,28 @@ export default function LandingPage() {
                     {agent.description}
                   </p>
 
-                  {agent.href && agent.cta && (
+                  <div className="flex items-center gap-4">
                     <Link
-                      href={agent.href}
-                      className="inline-flex items-center gap-1.5 text-sm font-medium text-indigo-600 hover:text-indigo-700 transition-all group-hover:gap-2.5"
+                      href={`/agents/${agent.id}`}
+                      className="inline-flex items-center gap-1.5 text-sm font-medium text-slate-500 hover:text-slate-900 transition-colors"
                     >
-                      {agent.cta}
-                      <svg className="w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
+                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 17.25v3.375c0 .621-.504 1.125-1.125 1.125h-9.75a1.125 1.125 0 01-1.125-1.125V7.875c0-.621.504-1.125 1.125-1.125H6.75a9.06 9.06 0 011.5.124m7.5 10.376h3.375c.621 0 1.125-.504 1.125-1.125V11.25c0-4.46-3.243-8.161-7.5-8.876a9.06 9.06 0 00-1.5-.124H9.375c-.621 0-1.125.504-1.125 1.125v3.5m7.5 10.375H9.375a1.125 1.125 0 01-1.125-1.125v-9.25m12 6.625v-1.875a3.375 3.375 0 00-3.375-3.375h-1.5a1.125 1.125 0 01-1.125-1.125v-1.5a3.375 3.375 0 00-3.375-3.375H9.75" />
                       </svg>
+                      View CV
                     </Link>
-                  )}
+                    {agent.href && agent.cta && (
+                      <Link
+                        href={agent.href}
+                        className="inline-flex items-center gap-1.5 text-sm font-medium text-indigo-600 hover:text-indigo-700 transition-all group-hover:gap-2.5"
+                      >
+                        {agent.cta}
+                        <svg className="w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
+                        </svg>
+                      </Link>
+                    )}
+                  </div>
                 </div>
               </div>
             ))}
