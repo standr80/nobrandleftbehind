@@ -150,29 +150,21 @@ export default async function AgentCvPage({ params }: { params: Promise<{ slug: 
 
             {/* CTA */}
             <footer className="mt-8 pt-6 border-t border-slate-100">
-              {agent.status === 'live' ? (
-                <div className="flex flex-col sm:flex-row sm:items-center gap-3">
-                  <a
-                    href={BOOKING_URL}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-2 text-sm bg-indigo-600 hover:bg-indigo-500 text-white px-5 py-2.5 rounded-lg transition-colors font-medium"
-                  >
-                    Arrange an interview →
-                  </a>
-                  <span className="text-xs text-slate-400">Ready to hire {agent.name}? Book a quick call.</span>
-                </div>
-              ) : (
-                <div className="flex items-center gap-4">
-                  <span className="text-sm text-slate-400">{agent.name} is joining the team soon.</span>
-                  <a
-                    href={`mailto:hello@nobrandleftbehind.com?subject=Notify me when ${agent.name} launches`}
-                    className="text-sm font-medium text-indigo-600 hover:text-indigo-700"
-                  >
-                    Get notified →
-                  </a>
-                </div>
-              )}
+              <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                <a
+                  href={BOOKING_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 text-sm bg-indigo-600 hover:bg-indigo-500 text-white px-5 py-2.5 rounded-lg transition-colors font-medium"
+                >
+                  Arrange an interview →
+                </a>
+                <span className="text-xs text-slate-400">
+                  {agent.status === 'live'
+                    ? `Ready to hire ${agent.name}? Book a quick call.`
+                    : `${agent.name} is joining the team soon — book a call to talk through the roadmap.`}
+                </span>
+              </div>
             </footer>
           </article>
         </div>

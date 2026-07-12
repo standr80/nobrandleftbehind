@@ -5,6 +5,10 @@ import { ACTIVE_WORKSPACE_COOKIE, PENDING_INVITE_COOKIE } from '@/lib/workspace/
 
 const isPublicRoute = createRouteMatcher([
   '/',               // marketing landing page
+  '/agents(.*)',     // public agent CV pages
+  '/academy(.*)',    // public academy page
+  '/sitemap.xml',    // marketing sitemap (crawlers)
+  '/robots.txt',     // marketing robots (crawlers)
   '/sign-in(.*)',
   '/sign-up(.*)',
   '/invite(.*)',     // workspace invite acceptance page

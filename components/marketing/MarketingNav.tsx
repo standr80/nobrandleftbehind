@@ -1,10 +1,7 @@
 import Link from 'next/link'
-import { auth } from '@clerk/nextjs/server'
 import { BOOKING_URL } from '@/lib/marketing/config'
 
-export default async function MarketingNav() {
-  const { userId } = await auth()
-
+export default function MarketingNav() {
   return (
     <nav className="border-b border-slate-100 px-6 py-4 flex items-center justify-between max-w-7xl mx-auto w-full">
       <div className="flex items-center gap-2">
@@ -28,28 +25,17 @@ export default async function MarketingNav() {
         <a href="https://blog.nobrandleftbehind.com" className="text-sm text-slate-500 hover:text-slate-900 transition-colors">
           Blog
         </a>
-        {userId ? (
-          <Link
-            href="/dashboard"
-            className="text-sm bg-slate-900 hover:bg-slate-700 text-white px-4 py-2 rounded-lg transition-colors font-medium"
-          >
-            Dashboard →
-          </Link>
-        ) : (
-          <>
-            <Link href="/sign-in" className="text-sm text-slate-500 hover:text-slate-900 transition-colors">
-              Sign in
-            </Link>
-            <a
-              href={BOOKING_URL}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-sm bg-slate-900 hover:bg-slate-700 text-white px-4 py-2 rounded-lg transition-colors font-medium"
-            >
-              Arrange interview
-            </a>
-          </>
-        )}
+        <Link href="/sign-in" className="text-sm text-slate-500 hover:text-slate-900 transition-colors">
+          Sign in
+        </Link>
+        <a
+          href={BOOKING_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-sm bg-slate-900 hover:bg-slate-700 text-white px-4 py-2 rounded-lg transition-colors font-medium"
+        >
+          Arrange interview
+        </a>
       </div>
     </nav>
   )
