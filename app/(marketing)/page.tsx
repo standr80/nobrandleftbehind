@@ -33,14 +33,26 @@ const agents = [
   {
     id: 'clem',
     name: 'Clem',
-    role: 'Blog content agent',
+    role: 'Blog & FAQ content agent',
     description:
-      'Researches, writes, and queues SEO-ready blog posts for your website — on a schedule you control.',
+      'Researches, writes, and queues SEO-ready blog posts and FAQ pages for your website — on a schedule you control.',
     status: 'live' as const,
     href: '/dashboard',
     cta: 'Hire Clem',
     photo: '/agents/clem.jpg' as string | null,
     accent: '#4f46e5', // indigo
+  },
+  {
+    id: 'scout',
+    name: 'Scout',
+    role: 'SEO & market intelligence agent',
+    description:
+      'Tracks your rankings, watches competitors, and surfaces keyword opportunities — then briefs Clem in one click.',
+    status: 'live' as const,
+    href: '/dashboard/scout',
+    cta: 'Meet Scout',
+    photo: '/agents/scout.jpg' as string | null,
+    accent: '#0d9488', // teal
   },
   {
     id: 'hank',
@@ -54,11 +66,60 @@ const agents = [
     photo: '/agents/hank.jpg' as string | null,
     accent: '#64748b', // slate
   },
+  {
+    id: 'bailey',
+    name: 'Bailey',
+    role: 'Image & gallery agent',
+    description:
+      'Turns your unsorted event photos into optimised, captioned gallery pages built to rank in image and AI search.',
+    status: 'soon' as const,
+    href: null,
+    cta: null,
+    photo: null as string | null,
+    accent: '#f59e0b', // amber
+  },
+  {
+    id: 'pam',
+    name: 'Pam',
+    role: 'Personal assistant agent',
+    description:
+      'Watches your content calendar and freshness and tells you exactly what to publish next — and when.',
+    status: 'soon' as const,
+    href: null,
+    cta: null,
+    photo: null as string | null,
+    accent: '#8b5cf6', // violet
+  },
 ]
+
+const jsonLd = {
+  '@context': 'https://schema.org',
+  '@graph': [
+    {
+      '@type': 'Organization',
+      name: 'No Brand Left Behind',
+      url: SITE_URL,
+      description: DESCRIPTION,
+    },
+    {
+      '@type': 'SoftwareApplication',
+      name: 'No Brand Left Behind',
+      applicationCategory: 'BusinessApplication',
+      operatingSystem: 'Web',
+      description: DESCRIPTION,
+      url: SITE_URL,
+      offers: { '@type': 'Offer', price: '0', priceCurrency: 'GBP' },
+    },
+  ],
+}
 
 export default function LandingPage() {
   return (
     <main className="min-h-screen bg-white text-slate-900 flex flex-col">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
       <MarketingNav />
 
       {/* Hero */}
@@ -76,7 +137,7 @@ export default function LandingPage() {
           </p>
 
           {/* Agent cards */}
-          <div className="grid sm:grid-cols-2 gap-6 mb-12 text-left">
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-12 text-left">
             {agents.map((agent) => (
               <div
                 key={agent.id}
@@ -220,11 +281,11 @@ export default function LandingPage() {
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {[
               { icon: '✍️', title: 'SEO blog writing', body: 'Clem researches search intent and drafts publish-ready posts in your brand voice.' },
-              { icon: '🗓️', title: 'Scheduled publishing', body: 'Queue posts to go live automatically on the days and times you choose.' },
-              { icon: '🔭', title: 'Market intelligence', body: 'Scout monitors competitors for new content, pricing moves, and backlink gains.' },
-              { icon: '📈', title: 'Rank tracking', body: 'Weekly keyword position snapshots with movement alerts and trend sparklines.' },
-              { icon: '💡', title: 'Keyword opportunities', body: 'Surface gaps, featured-snippet targets, and rising trends — then brief Clem in one click.' },
-              { icon: '📬', title: 'Weekly briefings', body: 'A concise, RAG-coded summary of what changed and what to do about it, in your inbox.' },
+              { icon: '❓', title: 'FAQ pages with schema', body: 'Build FAQ pages with FAQPage structured data — the kind that earn rich results and get cited by AI answer engines.' },
+              { icon: '🛒', title: 'Native Shopify publishing', body: 'Posts and FAQs publish straight into your Shopify blog — properly indexable, no fragile embed widgets.' },
+              { icon: '🤖', title: 'AI-search visibility', body: 'Answer-first writing, structured data, and instant IndexNow pings so ChatGPT, Perplexity and Bing surface your content in hours.' },
+              { icon: '🔗', title: 'Automatic internal linking', body: 'Every post links to related content and funnels authority to your key pages — built and kept current for you.' },
+              { icon: '🔭', title: 'Rank tracking & opportunities', body: 'Scout monitors positions and competitors and surfaces keyword gaps — briefed to Clem in a click.' },
             ].map((f) => (
               <div key={f.title} className="rounded-2xl border border-slate-200 p-6 hover:border-indigo-200 hover:shadow-sm transition-all">
                 <div className="text-2xl mb-3">{f.icon}</div>
