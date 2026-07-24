@@ -510,12 +510,40 @@ export default function GalleryUploader({
           onClick={() => setPreviewIndex(null)}
         >
           <div className="max-w-5xl w-full" onClick={(e) => e.stopPropagation()}>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={images[previewIndex].url ?? images[previewIndex].preview_url}
-              alt={images[previewIndex].alt ?? ''}
-              className="mx-auto max-h-[75vh] w-auto object-contain rounded-lg"
-            />
+            <div className="relative">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={images[previewIndex].url ?? images[previewIndex].preview_url}
+                alt={images[previewIndex].alt ?? ''}
+                className="mx-auto max-h-[60vh] w-auto object-contain rounded-lg"
+              />
+              <button
+                type="button"
+                onClick={() => setPreviewIndex((i) => (i === null ? i : Math.max(i - 1, 0)))}
+                disabled={previewIndex === 0}
+                title="Previous image (←)"
+                className="absolute left-2 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-black/50 text-white text-2xl leading-none flex items-center justify-center hover:bg-black/70 disabled:opacity-20"
+              >
+                ‹
+              </button>
+              <button
+                type="button"
+                onClick={() => setPreviewIndex((i) => (i === null ? i : Math.min(i + 1, images.length - 1)))}
+                disabled={previewIndex === images.length - 1}
+                title="Next image (→)"
+                className="absolute right-2 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-black/50 text-white text-2xl leading-none flex items-center justify-center hover:bg-black/70 disabled:opacity-20"
+              >
+                ›
+              </button>
+              <button
+                type="button"
+                onClick={() => setPreviewIndex(null)}
+                title="Close (Esc)"
+                className="absolute top-2 right-2 w-8 h-8 rounded-full bg-black/50 text-white text-sm flex items-center justify-center hover:bg-black/70"
+              >
+                ✕
+              </button>
+            </div>
             <div className="mt-3 max-w-2xl mx-auto space-y-2">
               <label className="block">
                 <span className="text-white/50 text-xs">Caption (shown on the page)</span>
@@ -644,13 +672,18 @@ export default function GalleryUploader({
               Intro copy will be written by Clem at the next step.
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {images.map((img) => (
+              {images.map((img, idx) => (
                 <figure key={img.id} className="m-0">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={img.url ?? img.preview_url}
                     alt={img.alt ?? ''}
-                    className="w-full rounded-lg"
+                    title="Click to edit this image"
+                    onClick={() => {
+                      setGalleryPreview(false)
+                      setPreviewIndex(idx)
+                    }}
+                    className="w-full rounded-lg cursor-pointer hover:opacity-90 hover:ring-2 hover:ring-amber-400 transition"
                     loading="lazy"
                   />
                   {img.caption && (
