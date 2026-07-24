@@ -31,7 +31,8 @@ export default function DashboardNav({
   // ── Active-route helpers ────────────────────────────────────────────────────
   const scoutActive = pathname.startsWith('/dashboard/scout')
   const faqActive = pathname.startsWith('/dashboard/faq')
-  const dashboardActive = pathname === '/dashboard' || (pathname.startsWith('/dashboard/') && !scoutActive && !faqActive)
+  const baileyActive = pathname.startsWith('/dashboard/bailey')
+  const dashboardActive = pathname === '/dashboard' || (pathname.startsWith('/dashboard/') && !scoutActive && !faqActive && !baileyActive)
   const authorActive = pathname.startsWith('/author')
   const clemActive = dashboardActive || authorActive || faqActive
   const settingsActive = pathname.startsWith('/settings')
@@ -129,6 +130,18 @@ export default function DashboardNav({
           <span className="w-2 h-2 rounded-full bg-emerald-400" />
         </span>
         Scout
+      </Link>
+
+      {/* Bailey — image gallery agent */}
+      <Link
+        href="/dashboard/bailey"
+        onClick={() => setDrawerOpen(false)}
+        className={`${itemBase} ${baileyActive ? 'bg-amber-600/20 text-amber-300 font-medium' : inactive}`}
+      >
+        <span className="w-4 flex justify-center">
+          <span className="w-2 h-2 rounded-full bg-amber-400" />
+        </span>
+        Bailey
       </Link>
 
       <div className="pt-3 mt-3 border-t border-white/10" />

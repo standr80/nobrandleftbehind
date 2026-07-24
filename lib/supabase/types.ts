@@ -74,6 +74,10 @@ export type Database = {
           created_by: string | null
           deleted_at: string | null
           faq_items: Json | null
+          gallery_images: Json | null
+          gallery_context: string | null
+          consent_attested_by: string | null
+          consent_attested_at: string | null
           last_refreshed_at: string | null
           origin: string | null
           drafted_at: string | null
@@ -115,6 +119,10 @@ export type Database = {
           created_by?: string | null
           deleted_at?: string | null
           faq_items?: Json | null
+          gallery_images?: Json | null
+          gallery_context?: string | null
+          consent_attested_by?: string | null
+          consent_attested_at?: string | null
           last_refreshed_at?: string | null
           origin?: string | null
           drafted_at?: string | null
@@ -156,6 +164,10 @@ export type Database = {
           created_by?: string | null
           deleted_at?: string | null
           faq_items?: Json | null
+          gallery_images?: Json | null
+          gallery_context?: string | null
+          consent_attested_by?: string | null
+          consent_attested_at?: string | null
           last_refreshed_at?: string | null
           origin?: string | null
           drafted_at?: string | null
