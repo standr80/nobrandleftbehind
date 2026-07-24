@@ -39,17 +39,55 @@ const STATUS_STYLES: Record<string, string> = {
   failed: 'bg-red-100 text-red-700',
   importing: 'bg-slate-100 text-slate-600',
   uploading: 'bg-amber-100 text-amber-700',
+  processing: 'bg-amber-100 text-amber-700',
 }
 
 export default function GalleryUploader({ tenantId, galleryId, initialImages }: Props) {
   const [images, setImages] = useState<UploadedImage[]>(initialImages)
   const [pending, setPending] = useState<PendingUpload[]>([])
+  const [processingIds, setProcessingIds] = useState<Set<string>>(new Set())
   const [dragOver, setDragOver] = useState(false)
   const [notice, setNotice] = useState<string | null>(null)
+  const [retrying, setRetrying] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
   // Registration is a read-modify-write on the gallery row — serialise it.
   const registerChain = useRef<Promise<void>>(Promise.resolve())
   const countRef = useRef(initialImages.length)
+
+  const patchImage = useCallback((id: string, patch: Partial<UploadedImage>) => {
+    setImages((imgs) => imgs.map((i) => (i.id === id ? { ...i, ...patch } : i)))
+  }, [])
+
+  const processOne = useCallback(
+    async (imageId: string) => {
+      setProcessingIds((s) => new Set(s).add(imageId))
+      try {
+        const res = await fetch(`/api/galleries/${galleryId}/images/${imageId}/process`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ tenantId }),
+        })
+        const data = await res.json().catch(() => ({}))
+        if (data.image) {
+          patchImage(imageId, {
+            ...data.image,
+            preview_url: data.image.thumb_url ?? data.image.url ?? undefined,
+          })
+        } else if (!res.ok) {
+          patchImage(imageId, { status: 'failed', error: data.error ?? 'Processing failed' })
+        }
+      } catch {
+        patchImage(imageId, { status: 'failed', error: 'Processing failed — retry below' })
+      } finally {
+        setProcessingIds((s) => {
+          const next = new Set(s)
+          next.delete(imageId)
+          return next
+        })
+      }
+    },
+    [galleryId, tenantId, patchImage],
+  )
 
   const uploadOne = useCallback(
     async (item: PendingUpload) => {
@@ -72,8 +110,8 @@ export default function GalleryUploader({ tenantId, galleryId, initialImages }: 
           .uploadToSignedUrl(urlData.path, urlData.token, item.file)
         if (upErr) throw new Error(upErr.message)
 
-        // 3. register (serialised)
-        await (registerChain.current = registerChain.current.then(async () => {
+        // 3. register (serialised; one failure must not poison the chain)
+        const link = registerChain.current.then(async () => {
           const regRes = await fetch(`/api/galleries/${galleryId}/images`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -81,15 +119,22 @@ export default function GalleryUploader({ tenantId, galleryId, initialImages }: 
           })
           const regData = await regRes.json()
           if (!regRes.ok) throw new Error(regData.error ?? 'Could not register image')
-          setImages((imgs) => [...imgs, { ...regData.image, preview_url: regData.preview_url }])
-          setPending((p) => p.filter((u) => u.key !== item.key))
-          URL.revokeObjectURL(item.previewUrl)
-        }))
+          return regData as { image: GalleryImage; preview_url: string }
+        })
+        registerChain.current = link.then(() => undefined, () => undefined)
+        const registered = await link
+
+        setImages((imgs) => [...imgs, { ...registered.image, preview_url: registered.preview_url }])
+        setPending((p) => p.filter((u) => u.key !== item.key))
+        URL.revokeObjectURL(item.previewUrl)
+
+        // 4. sharp processing (still inside this worker → concurrency ≤3)
+        await processOne(registered.image.id)
       } catch (err) {
         fail(err instanceof Error ? err.message : 'Upload failed')
       }
     },
-    [galleryId, tenantId],
+    [galleryId, tenantId, processOne],
   )
 
   const enqueueFiles = useCallback(
@@ -142,16 +187,36 @@ export default function GalleryUploader({ tenantId, galleryId, initialImages }: 
     [uploadOne],
   )
 
-  function retryFailed() {
-    const failed = pending.filter((u) => u.status === 'failed')
-    if (!failed.length) return
-    setPending((p) => p.filter((u) => u.status !== 'failed'))
-    countRef.current -= failed.length // enqueueFiles re-counts them
-    enqueueFiles(failed.map((f) => f.file))
-  }
+  const pendingFailed = pending.filter((u) => u.status === 'failed')
+  const dbFailed = images.filter((i) => i.status === 'failed')
+  const failedCount = pendingFailed.length + dbFailed.length
+  const uploadingCount = pending.length - pendingFailed.length
 
-  const failedCount = pending.filter((u) => u.status === 'failed').length
-  const uploadingCount = pending.length - failedCount
+  async function retryFailed() {
+    if (retrying) return
+    setRetrying(true)
+    try {
+      // Re-upload files that never made it up…
+      if (pendingFailed.length) {
+        setPending((p) => p.filter((u) => u.status !== 'failed'))
+        countRef.current -= pendingFailed.length // enqueueFiles re-counts them
+        enqueueFiles(pendingFailed.map((f) => f.file))
+      }
+      // …and sweep server-side failures (stuck/failed processing).
+      if (dbFailed.length) {
+        await fetch(`/api/galleries/${galleryId}/reconcile`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ tenantId }),
+        })
+        const res = await fetch(`/api/galleries/${galleryId}`)
+        const data = await res.json().catch(() => ({}))
+        if (res.ok && data.gallery) setImages(data.gallery.images)
+      }
+    } finally {
+      setRetrying(false)
+    }
+  }
 
   return (
     <div className="space-y-4">
@@ -188,14 +253,20 @@ export default function GalleryUploader({ tenantId, galleryId, initialImages }: 
 
       {notice && <p className="text-sm text-red-600">{notice}</p>}
 
-      {(uploadingCount > 0 || failedCount > 0) && (
+      {(uploadingCount > 0 || processingIds.size > 0 || failedCount > 0) && (
         <div className="flex items-center gap-3 text-sm">
           {uploadingCount > 0 && <span className="text-slate-600">Uploading {uploadingCount}…</span>}
+          {processingIds.size > 0 && <span className="text-slate-600">Processing {processingIds.size}…</span>}
           {failedCount > 0 && (
             <>
               <span className="text-red-600">{failedCount} failed</span>
-              <button type="button" onClick={retryFailed} className="text-amber-700 font-medium hover:underline">
-                Retry failed
+              <button
+                type="button"
+                onClick={() => void retryFailed()}
+                disabled={retrying}
+                className="text-amber-700 font-medium hover:underline disabled:opacity-50"
+              >
+                {retrying ? 'Retrying…' : 'Retry failed'}
               </button>
             </>
           )}
@@ -205,15 +276,21 @@ export default function GalleryUploader({ tenantId, galleryId, initialImages }: 
       {/* Image grid */}
       {(images.length > 0 || pending.length > 0) && (
         <ul className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
-          {images.map((img) => (
-            <li key={img.id} className="relative rounded-lg overflow-hidden border border-slate-200 bg-slate-50 aspect-square">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={img.preview_url} alt={img.alt ?? ''} className="w-full h-full object-cover" loading="lazy" />
-              <span className={`absolute bottom-1.5 left-1.5 text-[10px] px-1.5 py-0.5 rounded-full font-medium ${STATUS_STYLES[img.status] ?? STATUS_STYLES.uploaded}`}>
-                {img.status}
-              </span>
-            </li>
-          ))}
+          {images.map((img) => {
+            const label = processingIds.has(img.id) && img.status === 'uploaded' ? 'processing' : img.status
+            return (
+              <li key={img.id} className="relative rounded-lg overflow-hidden border border-slate-200 bg-slate-50 aspect-square">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={img.preview_url} alt={img.alt ?? ''} className="w-full h-full object-cover" loading="lazy" />
+                <span
+                  className={`absolute bottom-1.5 left-1.5 text-[10px] px-1.5 py-0.5 rounded-full font-medium ${STATUS_STYLES[label] ?? STATUS_STYLES.uploaded}`}
+                  title={img.error ?? undefined}
+                >
+                  {label === 'processing' ? 'processing…' : label}
+                </span>
+              </li>
+            )
+          })}
           {pending.map((u) => (
             <li key={u.key} className="relative rounded-lg overflow-hidden border border-slate-200 bg-slate-50 aspect-square">
               {/* eslint-disable-next-line @next/next/no-img-element */}

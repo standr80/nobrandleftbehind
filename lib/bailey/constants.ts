@@ -22,6 +22,36 @@ export const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp'] as c
 export const HEIC_REJECT_MESSAGE =
   "HEIC isn't supported yet — set your iPhone camera to 'Most Compatible' or export as JPEG first."
 
+// ── Processing (stage 3) ────────────────────────────────────────────────────
+
+/** Spike #1 switch. true = Supabase render/transform URLs serve thumbs +
+ *  srcset off the single master (preferred — no stored variants, free
+ *  resizing later). false = sharp writes thumb + responsive variants at
+ *  process time. Flip after running /api/galleries/spike on the deployed
+ *  app: keep true only if the transform check returns ok. */
+export const USE_TRANSFORM_URLS = true
+
+/** Web master: max long edge + WebP quality. */
+export const MASTER_MAX_EDGE = 2000
+export const MASTER_WEBP_QUALITY = 82
+
+/** Stored-variant fallback sizes (spike #1 = no). */
+export const THUMB_WIDTH = 400
+export const VARIANT_WIDTHS = [800, 1400] as const
+
+/** Thumb width when using transform URLs. */
+export const TRANSFORM_THUMB_WIDTH = 400
+
+/** Supabase image transformation URL for a public object. */
+export function galleryTransformUrl(
+  supabaseUrl: string,
+  path: string,
+  width: number,
+  quality = 75,
+): string {
+  return `${supabaseUrl.replace(/\/$/, '')}/storage/v1/render/image/public/${GALLERY_BUCKET}/${path}?width=${width}&quality=${quality}`
+}
+
 export type GalleryImageStatus =
   | 'importing'
   | 'uploaded'
@@ -47,6 +77,9 @@ export interface GalleryImage {
   source_ref: string | null // e.g. Drive file ID (Phase 1.5)
   status: GalleryImageStatus
   error: string | null
+  /** Stored responsive variants — only populated in the spike-#1 fallback
+   *  (USE_TRANSFORM_URLS = false); srcset comes from transform URLs otherwise. */
+  variants?: { width: number; path: string; url: string }[] | null
 }
 
 /** Extract a lowercased extension ('' when none). */
