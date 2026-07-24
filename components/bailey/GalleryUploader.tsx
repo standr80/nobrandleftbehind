@@ -50,6 +50,8 @@ export default function GalleryUploader({ tenantId, galleryId, initialImages }: 
   const [dragOver, setDragOver] = useState(false)
   const [notice, setNotice] = useState<string | null>(null)
   const [retrying, setRetrying] = useState(false)
+  const [selected, setSelected] = useState<Set<string>>(new Set())
+  const [deleting, setDeleting] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
   // Registration is a read-modify-write on the gallery row — serialise it.
   const registerChain = useRef<Promise<void>>(Promise.resolve())
@@ -197,6 +199,43 @@ export default function GalleryUploader({ tenantId, galleryId, initialImages }: 
     [uploadOne],
   )
 
+  function toggleSelect(id: string) {
+    setSelected((s) => {
+      const next = new Set(s)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  async function deleteImages(ids: string[]) {
+    if (deleting || !ids.length) return
+    const label = ids.length === 1 ? 'this image' : `these ${ids.length} images`
+    if (!window.confirm(`Delete ${label}? This also removes the files from storage.`)) return
+    setDeleting(true)
+    try {
+      const res = await fetch(`/api/galleries/${galleryId}/images`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tenantId, imageIds: ids }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        setNotice(data.error ?? 'Could not delete images')
+        return
+      }
+      setImages((imgs) => imgs.filter((i) => !ids.includes(i.id)))
+      setSelected((s) => {
+        const next = new Set(s)
+        for (const id of ids) next.delete(id)
+        return next
+      })
+      countRef.current -= ids.length
+    } finally {
+      setDeleting(false)
+    }
+  }
+
   const pendingFailed = pending.filter((u) => u.status === 'failed')
   const dbFailed = images.filter((i) => i.status === 'failed')
   const failedCount = pendingFailed.length + dbFailed.length
@@ -285,15 +324,71 @@ export default function GalleryUploader({ tenantId, galleryId, initialImages }: 
         </div>
       )}
 
+      {/* Selection toolbar */}
+      {images.length > 0 && (
+        <div className="flex items-center gap-3 text-sm">
+          <span className="text-slate-500">
+            {selected.size > 0 ? `${selected.size} selected` : `${images.length} image${images.length === 1 ? '' : 's'}`}
+          </span>
+          <button
+            type="button"
+            onClick={() =>
+              setSelected(selected.size === images.length ? new Set() : new Set(images.map((i) => i.id)))
+            }
+            className="text-slate-600 hover:text-slate-900 font-medium"
+          >
+            {selected.size === images.length ? 'Clear selection' : 'Select all'}
+          </button>
+          {selected.size > 0 && (
+            <button
+              type="button"
+              onClick={() => void deleteImages([...selected])}
+              disabled={deleting}
+              className="text-red-600 hover:text-red-700 font-medium disabled:opacity-50"
+            >
+              {deleting ? 'Deleting…' : `Delete selected (${selected.size})`}
+            </button>
+          )}
+        </div>
+      )}
+
       {/* Image grid */}
       {(images.length > 0 || pending.length > 0) && (
         <ul className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
           {images.map((img) => {
             const label = activeSteps[img.id] ?? img.status
+            const busy = Boolean(activeSteps[img.id])
+            const isSelected = selected.has(img.id)
             return (
-              <li key={img.id} className="relative rounded-lg overflow-hidden border border-slate-200 bg-slate-50 aspect-square">
+              <li
+                key={img.id}
+                onClick={() => toggleSelect(img.id)}
+                className={`group relative rounded-lg overflow-hidden border bg-slate-50 aspect-square cursor-pointer ${
+                  isSelected ? 'border-amber-500 ring-2 ring-amber-400' : 'border-slate-200'
+                }`}
+              >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={img.preview_url} alt={img.alt ?? ''} className="w-full h-full object-contain" loading="lazy" />
+                {/* Select checkbox */}
+                <span
+                  className={`absolute top-1.5 left-1.5 w-5 h-5 rounded border flex items-center justify-center text-[11px] font-bold transition-opacity ${
+                    isSelected
+                      ? 'bg-amber-500 border-amber-500 text-white opacity-100'
+                      : 'bg-white/80 border-slate-300 text-transparent opacity-0 group-hover:opacity-100'
+                  }`}
+                >
+                  ✓
+                </span>
+                {/* Delete */}
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); void deleteImages([img.id]) }}
+                  disabled={deleting || busy}
+                  title={busy ? 'Wait for processing to finish' : 'Delete image'}
+                  className="absolute top-1.5 right-1.5 w-5 h-5 rounded bg-white/80 text-slate-500 hover:bg-red-600 hover:text-white text-[11px] leading-none items-center justify-center hidden group-hover:flex disabled:opacity-40"
+                >
+                  ✕
+                </button>
                 <span
                   className={`absolute bottom-1.5 left-1.5 text-[10px] px-1.5 py-0.5 rounded-full font-medium ${STATUS_STYLES[label] ?? STATUS_STYLES.uploaded}`}
                   title={img.error ?? undefined}

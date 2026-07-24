@@ -94,3 +94,46 @@ export async function POST(request: Request, { params }: Params) {
     preview_url: galleryPublicUrl(process.env.NEXT_PUBLIC_SUPABASE_URL!, path),
   })
 }
+
+// DELETE — remove one or more images from the gallery, including their
+// storage objects (source, master, any stored variants). Remaining images
+// are re-ordered to close the gaps. Body: { tenantId, imageIds: string[] }.
+export async function DELETE(request: Request, { params }: Params) {
+  const { userId } = await auth()
+  if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const { id } = await params
+  const body = await request.json().catch(() => ({}))
+  const workspace = await resolveMutationWorkspace(userId, body.tenantId)
+  if (!workspace) return NextResponse.json({ error: 'Workspace not found' }, { status: 404 })
+
+  const gallery = await getGallery(id, workspace.tenantId)
+  if (!gallery) return NextResponse.json({ error: 'Gallery not found' }, { status: 404 })
+
+  const imageIds: string[] = Array.isArray(body.imageIds) ? body.imageIds.map(String) : []
+  if (!imageIds.length) return NextResponse.json({ error: 'imageIds is required' }, { status: 400 })
+
+  const images = galleryImages(gallery)
+  const toDelete = images.filter((i) => imageIds.includes(i.id))
+  if (!toDelete.length) return NextResponse.json({ ok: true, deleted: 0 })
+
+  const remaining = images
+    .filter((i) => !imageIds.includes(i.id))
+    .map((img, idx) => ({ ...img, order: idx }))
+
+  const saveError = await saveGalleryImages(gallery.id, remaining)
+  if (saveError) return NextResponse.json({ error: saveError }, { status: 500 })
+
+  // Best-effort storage cleanup — the DB row is already consistent.
+  const paths = toDelete.flatMap((i) =>
+    [i.storage_path, i.master_path, ...(i.variants?.map((v) => v.path) ?? [])].filter(
+      (p): p is string => Boolean(p),
+    ),
+  )
+  if (paths.length) {
+    const db = createAdminClient()
+    await db.storage.from(GALLERY_BUCKET).remove(paths).catch(() => {})
+  }
+
+  return NextResponse.json({ ok: true, deleted: toDelete.length })
+}
