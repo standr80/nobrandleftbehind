@@ -10,10 +10,12 @@
 // slug-named object (copy + remove old) — variants are transform URLs on the
 // new path, so nothing else needs rewriting.
 
+import sharp from 'sharp'
 import { anthropic } from '@/lib/anthropic'
 import { createAdminClient } from '@/lib/supabase/admin'
 import {
   GALLERY_BUCKET,
+  MASTER_WEBP_QUALITY,
   TRANSFORM_THUMB_WIDTH,
   USE_TRANSFORM_URLS,
   galleryPublicUrl,
@@ -63,6 +65,7 @@ interface EnrichmentResult {
   alt: string
   caption: string
   filename_slug: string
+  rotation?: number
 }
 
 function buildPrompt(gallery: GalleryRow, ctx: TenantEnrichContext): string {
@@ -77,6 +80,7 @@ function buildPrompt(gallery: GalleryRow, ctx: TenantEnrichContext): string {
     '- "alt": ONE sentence, a literal, accessibility-first description of what is visibly IN the image, weaving in relevant entities (brand, product, occasion, location) naturally. No "image of"/"photo of" prefix.',
     '- "caption": ONE short line adding context NOT visible in the image (occasion, product name, venue, location). It must not duplicate the alt — they do different jobs.',
     '- "filename_slug": a 4-8 word kebab-case descriptive slug for the image file (lowercase, hyphens, no dates).',
+    '- "rotation": the CLOCKWISE rotation in degrees (0, 90, 180, or 270) needed to make the image upright and correctly oriented. Use 0 if it is already correct. Judge from content: people, horizons, text, buildings.',
   ]
   return lines.filter((l) => l !== null).join('\n')
 }
@@ -136,19 +140,50 @@ export async function enrichImage(
       error: null,
     }
 
-    // Descriptive filename: the slug-named master is a NEW write (copy),
-    // then the anonymous one is removed. Source objects keep random keys.
-    if (slug && !image.master_path.includes(`-${slug}.`)) {
-      const dir = image.master_path.slice(0, image.master_path.lastIndexOf('/'))
-      const sourceKey = image.storage_path.split('/').pop()!.replace(/\.[^.]+$/, '')
-      const namedPath = `${dir}/${sourceKey}-${slug}.webp`
+    // Vision orientation backstop: EXIF auto-orient (processing) covers
+    // phone photos, but pixel-rotated images with no EXIF can only be
+    // caught by looking. If the model says the image isn't upright,
+    // physically rotate the master.
+    const rotation = [90, 180, 270].includes(Number(parsed.rotation)) ? Number(parsed.rotation) : 0
+
+    // Descriptive filename: the slug-named master is a NEW write, then the
+    // anonymous one is removed. Source objects keep random keys.
+    const dir = image.master_path.slice(0, image.master_path.lastIndexOf('/'))
+    const sourceKey = image.storage_path.split('/').pop()!.replace(/\.[^.]+$/, '')
+    const namedPath =
+      slug && !image.master_path.includes(`-${slug}.`)
+        ? `${dir}/${sourceKey}-${slug}.webp`
+        : image.master_path
+
+    if (rotation !== 0) {
+      // Rotate + (re)name in one write.
+      const { data: blob, error: dlErr } = await db.storage
+        .from(GALLERY_BUCKET)
+        .download(image.master_path)
+      if (dlErr || !blob) throw new Error(dlErr?.message ?? 'Could not download master for rotation')
+      const rotated = await sharp(Buffer.from(await blob.arrayBuffer()))
+        .rotate(rotation)
+        .webp({ quality: MASTER_WEBP_QUALITY })
+        .toBuffer({ resolveWithObject: true })
+      const { error: upErr } = await db.storage
+        .from(GALLERY_BUCKET)
+        .upload(namedPath, rotated.data, { contentType: 'image/webp', upsert: true })
+      if (upErr) throw new Error(`Could not write rotated master: ${upErr.message}`)
+      patch.width = rotated.info.width
+      patch.height = rotated.info.height
+    } else if (namedPath !== image.master_path) {
       const { error: copyErr } = await db.storage
         .from(GALLERY_BUCKET)
         .copy(image.master_path, namedPath)
       if (copyErr && !/already exists/i.test(copyErr.message)) {
         throw new Error(`Could not write named master: ${copyErr.message}`)
       }
+    }
+
+    if (namedPath !== image.master_path) {
       await db.storage.from(GALLERY_BUCKET).remove([image.master_path]).catch(() => {})
+    }
+    if (namedPath !== image.master_path || rotation !== 0) {
       patch.master_path = namedPath
       patch.url = galleryPublicUrl(supabaseUrl, namedPath)
       patch.thumb_url = USE_TRANSFORM_URLS

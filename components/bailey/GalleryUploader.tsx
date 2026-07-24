@@ -293,7 +293,7 @@ export default function GalleryUploader({ tenantId, galleryId, initialImages }: 
             return (
               <li key={img.id} className="relative rounded-lg overflow-hidden border border-slate-200 bg-slate-50 aspect-square">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={img.preview_url} alt={img.alt ?? ''} className="w-full h-full object-cover" loading="lazy" />
+                <img src={img.preview_url} alt={img.alt ?? ''} className="w-full h-full object-contain" loading="lazy" />
                 <span
                   className={`absolute bottom-1.5 left-1.5 text-[10px] px-1.5 py-0.5 rounded-full font-medium ${STATUS_STYLES[label] ?? STATUS_STYLES.uploaded}`}
                   title={img.error ?? undefined}
@@ -306,7 +306,7 @@ export default function GalleryUploader({ tenantId, galleryId, initialImages }: 
           {pending.map((u) => (
             <li key={u.key} className="relative rounded-lg overflow-hidden border border-slate-200 bg-slate-50 aspect-square">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={u.previewUrl} alt="" className={`w-full h-full object-cover ${u.status === 'uploading' ? 'opacity-50' : 'opacity-30'}`} />
+              <img src={u.previewUrl} alt="" className={`w-full h-full object-contain ${u.status === 'uploading' ? 'opacity-50' : 'opacity-30'}`} />
               <span
                 className={`absolute bottom-1.5 left-1.5 text-[10px] px-1.5 py-0.5 rounded-full font-medium ${STATUS_STYLES[u.status]}`}
                 title={u.error}
