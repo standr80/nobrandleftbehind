@@ -80,7 +80,7 @@ function buildPrompt(gallery: GalleryRow, ctx: TenantEnrichContext): string {
     '- "alt": ONE sentence, a literal, accessibility-first description of what is visibly IN the image, weaving in relevant entities (brand, product, occasion, location) naturally. No "image of"/"photo of" prefix.',
     '- "caption": ONE short line adding context NOT visible in the image (occasion, product name, venue, location). It must not duplicate the alt — they do different jobs.',
     '- "filename_slug": a 4-8 word kebab-case descriptive slug for the image file (lowercase, hyphens, no dates).',
-    '- "rotation": the CLOCKWISE rotation in degrees (0, 90, 180, or 270) needed to make the image upright and correctly oriented. Use 0 if it is already correct. Judge from content: people, horizons, text, buildings.',
+    '- "rotation": the CLOCKWISE rotation in degrees (0, 90, 180, or 270) needed to make the image upright and correctly oriented. Use 0 only if it is already correct. Judge from content: people, horizons, text, buildings. Check the 180 case deliberately — an upside-down image has the correct aspect ratio, so ask yourself: are faces/heads at the bottom, is the sky or ceiling at the bottom, is any text inverted? If so, answer 180.',
   ]
   return lines.filter((l) => l !== null).join('\n')
 }

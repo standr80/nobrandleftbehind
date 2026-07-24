@@ -63,6 +63,8 @@ export default async function GalleryPage({ params }: Props) {
         key={gallery.id}
         tenantId={workspace.tenantId}
         galleryId={gallery.id}
+        galleryTitle={gallery.title}
+        galleryContext={gallery.gallery_context}
         initialImages={images}
       />
     </div>

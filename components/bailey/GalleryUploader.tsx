@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import {
   ALLOWED_EXTENSIONS,
@@ -26,6 +26,8 @@ interface PendingUpload {
 interface Props {
   tenantId: string
   galleryId: string
+  galleryTitle?: string
+  galleryContext?: string | null
   initialImages: UploadedImage[]
 }
 
@@ -43,7 +45,13 @@ const STATUS_STYLES: Record<string, string> = {
   enriching: 'bg-violet-100 text-violet-700',
 }
 
-export default function GalleryUploader({ tenantId, galleryId, initialImages }: Props) {
+export default function GalleryUploader({
+  tenantId,
+  galleryId,
+  galleryTitle,
+  galleryContext,
+  initialImages,
+}: Props) {
   const [images, setImages] = useState<UploadedImage[]>(initialImages)
   const [pending, setPending] = useState<PendingUpload[]>([])
   const [activeSteps, setActiveSteps] = useState<Record<string, 'processing' | 'enriching'>>({})
@@ -52,6 +60,8 @@ export default function GalleryUploader({ tenantId, galleryId, initialImages }: 
   const [retrying, setRetrying] = useState(false)
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [deleting, setDeleting] = useState(false)
+  const [previewIndex, setPreviewIndex] = useState<number | null>(null)
+  const [galleryPreview, setGalleryPreview] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
   // Registration is a read-modify-write on the gallery row — serialise it.
   const registerChain = useRef<Promise<void>>(Promise.resolve())
@@ -198,6 +208,23 @@ export default function GalleryUploader({ tenantId, galleryId, initialImages }: 
     },
     [uploadOne],
   )
+
+  // Keyboard nav for the single-image preview: Esc closes, arrows move.
+  useEffect(() => {
+    if (previewIndex === null && !galleryPreview) return
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') {
+        setPreviewIndex(null)
+        setGalleryPreview(false)
+      } else if (previewIndex !== null && e.key === 'ArrowRight') {
+        setPreviewIndex((i) => (i === null ? i : Math.min(i + 1, images.length - 1)))
+      } else if (previewIndex !== null && e.key === 'ArrowLeft') {
+        setPreviewIndex((i) => (i === null ? i : Math.max(i - 1, 0)))
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [previewIndex, galleryPreview, images.length])
 
   function toggleSelect(id: string) {
     setSelected((s) => {
@@ -349,36 +376,46 @@ export default function GalleryUploader({ tenantId, galleryId, initialImages }: 
               {deleting ? 'Deleting…' : `Delete selected (${selected.size})`}
             </button>
           )}
+          <button
+            type="button"
+            onClick={() => setGalleryPreview(true)}
+            className="ml-auto px-3 py-1.5 rounded-lg border border-amber-600 text-amber-700 font-medium hover:bg-amber-50"
+          >
+            Preview gallery
+          </button>
         </div>
       )}
 
       {/* Image grid */}
       {(images.length > 0 || pending.length > 0) && (
         <ul className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
-          {images.map((img) => {
+          {images.map((img, idx) => {
             const label = activeSteps[img.id] ?? img.status
             const busy = Boolean(activeSteps[img.id])
             const isSelected = selected.has(img.id)
             return (
               <li
                 key={img.id}
-                onClick={() => toggleSelect(img.id)}
+                onClick={() => setPreviewIndex(idx)}
                 className={`group relative rounded-lg overflow-hidden border bg-slate-50 aspect-square cursor-pointer ${
                   isSelected ? 'border-amber-500 ring-2 ring-amber-400' : 'border-slate-200'
                 }`}
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={img.preview_url} alt={img.alt ?? ''} className="w-full h-full object-contain" loading="lazy" />
+                <img src={img.preview_url} alt={img.alt ?? ''} className="w-full h-full object-cover" loading="lazy" />
                 {/* Select checkbox */}
-                <span
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); toggleSelect(img.id) }}
+                  title={isSelected ? 'Deselect' : 'Select'}
                   className={`absolute top-1.5 left-1.5 w-5 h-5 rounded border flex items-center justify-center text-[11px] font-bold transition-opacity ${
                     isSelected
                       ? 'bg-amber-500 border-amber-500 text-white opacity-100'
-                      : 'bg-white/80 border-slate-300 text-transparent opacity-0 group-hover:opacity-100'
+                      : 'bg-white/80 border-slate-300 text-transparent opacity-0 group-hover:opacity-100 hover:text-slate-400'
                   }`}
                 >
                   ✓
-                </span>
+                </button>
                 {/* Delete */}
                 <button
                   type="button"
@@ -411,6 +448,108 @@ export default function GalleryUploader({ tenantId, galleryId, initialImages }: 
             </li>
           ))}
         </ul>
+      )}
+
+      {/* Single-image preview (lightbox) */}
+      {previewIndex !== null && images[previewIndex] && (
+        <div
+          className="fixed inset-0 z-50 bg-black/85 flex items-center justify-center p-4"
+          onClick={() => setPreviewIndex(null)}
+        >
+          <div className="max-w-5xl w-full" onClick={(e) => e.stopPropagation()}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={images[previewIndex].url ?? images[previewIndex].preview_url}
+              alt={images[previewIndex].alt ?? ''}
+              className="mx-auto max-h-[75vh] w-auto object-contain rounded-lg"
+            />
+            <div className="mt-3 text-center">
+              {images[previewIndex].caption && (
+                <p className="text-white text-sm">{images[previewIndex].caption}</p>
+              )}
+              {images[previewIndex].alt && (
+                <p className="text-white/50 text-xs mt-1">Alt: {images[previewIndex].alt}</p>
+              )}
+              <p className="text-white/40 text-xs mt-2">
+                {previewIndex + 1} of {images.length} · {images[previewIndex].status}
+              </p>
+            </div>
+            <div className="mt-3 flex items-center justify-center gap-4">
+              <button
+                type="button"
+                onClick={() => setPreviewIndex((i) => (i === null ? i : Math.max(i - 1, 0)))}
+                disabled={previewIndex === 0}
+                className="px-3 py-1.5 rounded-lg bg-white/10 text-white text-sm hover:bg-white/20 disabled:opacity-30"
+              >
+                ← Prev
+              </button>
+              <button
+                type="button"
+                onClick={() => setPreviewIndex(null)}
+                className="px-3 py-1.5 rounded-lg bg-white/10 text-white text-sm hover:bg-white/20"
+              >
+                Close
+              </button>
+              <button
+                type="button"
+                onClick={() => setPreviewIndex((i) => (i === null ? i : Math.min(i + 1, images.length - 1)))}
+                disabled={previewIndex === images.length - 1}
+                className="px-3 py-1.5 rounded-lg bg-white/10 text-white text-sm hover:bg-white/20 disabled:opacity-30"
+              >
+                Next →
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Gallery preview — approximates the published page layout */}
+      {galleryPreview && (
+        <div
+          className="fixed inset-0 z-50 bg-black/70 overflow-y-auto p-4 md:p-8"
+          onClick={() => setGalleryPreview(false)}
+        >
+          <div
+            className="max-w-3xl mx-auto bg-white rounded-xl p-6 md:p-10"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-start justify-between gap-4 mb-6">
+              <div>
+                <p className="text-xs uppercase tracking-wide text-amber-600 font-semibold mb-1">
+                  Preview — how the published gallery will read
+                </p>
+                <h2 className="text-2xl font-bold text-slate-900">{galleryTitle ?? 'Gallery'}</h2>
+                {galleryContext && <p className="text-sm text-slate-500 mt-1">{galleryContext}</p>}
+              </div>
+              <button
+                type="button"
+                onClick={() => setGalleryPreview(false)}
+                className="text-slate-400 hover:text-slate-700 text-xl leading-none shrink-0"
+              >
+                ✕
+              </button>
+            </div>
+            <p className="text-sm text-slate-400 italic mb-6">
+              Intro copy will be written by Clem at the next step.
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {images.map((img) => (
+                <figure key={img.id} className="m-0">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={img.url ?? img.preview_url}
+                    alt={img.alt ?? ''}
+                    className="w-full rounded-lg"
+                    loading="lazy"
+                  />
+                  {img.caption && (
+                    <figcaption className="text-xs text-slate-500 mt-1.5">{img.caption}</figcaption>
+                  )}
+                </figure>
+              ))}
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )
