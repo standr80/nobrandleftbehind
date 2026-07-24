@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server'
 import sharp from 'sharp'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getActiveWorkspace } from '@/lib/workspace/active'
-import { GALLERY_BUCKET, galleryTransformUrl } from '@/lib/bailey/constants'
+import { galleryTransformUrl } from '@/lib/bailey/constants'
 import type { GalleryImage } from '@/lib/bailey/constants'
 
 export const maxDuration = 60
