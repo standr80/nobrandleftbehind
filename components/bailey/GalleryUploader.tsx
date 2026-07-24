@@ -40,12 +40,13 @@ const STATUS_STYLES: Record<string, string> = {
   importing: 'bg-slate-100 text-slate-600',
   uploading: 'bg-amber-100 text-amber-700',
   processing: 'bg-amber-100 text-amber-700',
+  enriching: 'bg-violet-100 text-violet-700',
 }
 
 export default function GalleryUploader({ tenantId, galleryId, initialImages }: Props) {
   const [images, setImages] = useState<UploadedImage[]>(initialImages)
   const [pending, setPending] = useState<PendingUpload[]>([])
-  const [processingIds, setProcessingIds] = useState<Set<string>>(new Set())
+  const [activeSteps, setActiveSteps] = useState<Record<string, 'processing' | 'enriching'>>({})
   const [dragOver, setDragOver] = useState(false)
   const [notice, setNotice] = useState<string | null>(null)
   const [retrying, setRetrying] = useState(false)
@@ -58,11 +59,12 @@ export default function GalleryUploader({ tenantId, galleryId, initialImages }: 
     setImages((imgs) => imgs.map((i) => (i.id === id ? { ...i, ...patch } : i)))
   }, [])
 
-  const processOne = useCallback(
-    async (imageId: string) => {
-      setProcessingIds((s) => new Set(s).add(imageId))
+  const runStep = useCallback(
+    async (imageId: string, step: 'process' | 'enrich'): Promise<GalleryImage | null> => {
+      const label = step === 'process' ? 'processing' : 'enriching'
+      setActiveSteps((s) => ({ ...s, [imageId]: label }))
       try {
-        const res = await fetch(`/api/galleries/${galleryId}/images/${imageId}/process`, {
+        const res = await fetch(`/api/galleries/${galleryId}/images/${imageId}/${step}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ tenantId }),
@@ -73,15 +75,19 @@ export default function GalleryUploader({ tenantId, galleryId, initialImages }: 
             ...data.image,
             preview_url: data.image.thumb_url ?? data.image.url ?? undefined,
           })
-        } else if (!res.ok) {
-          patchImage(imageId, { status: 'failed', error: data.error ?? 'Processing failed' })
+          return data.image as GalleryImage
         }
+        if (!res.ok) {
+          patchImage(imageId, { status: 'failed', error: data.error ?? `${label} failed` })
+        }
+        return null
       } catch {
-        patchImage(imageId, { status: 'failed', error: 'Processing failed — retry below' })
+        patchImage(imageId, { status: 'failed', error: `${label} failed — retry below` })
+        return null
       } finally {
-        setProcessingIds((s) => {
-          const next = new Set(s)
-          next.delete(imageId)
+        setActiveSteps((s) => {
+          const next = { ...s }
+          delete next[imageId]
           return next
         })
       }
@@ -128,13 +134,17 @@ export default function GalleryUploader({ tenantId, galleryId, initialImages }: 
         setPending((p) => p.filter((u) => u.key !== item.key))
         URL.revokeObjectURL(item.previewUrl)
 
-        // 4. sharp processing (still inside this worker → concurrency ≤3)
-        await processOne(registered.image.id)
+        // 4. sharp processing, then vision enrichment (still inside this
+        // worker → concurrency ≤3 for the whole per-image pipeline)
+        const processed = await runStep(registered.image.id, 'process')
+        if (processed?.status === 'processed') {
+          await runStep(registered.image.id, 'enrich')
+        }
       } catch (err) {
         fail(err instanceof Error ? err.message : 'Upload failed')
       }
     },
-    [galleryId, tenantId, processOne],
+    [galleryId, tenantId, runStep],
   )
 
   const enqueueFiles = useCallback(
@@ -253,10 +263,12 @@ export default function GalleryUploader({ tenantId, galleryId, initialImages }: 
 
       {notice && <p className="text-sm text-red-600">{notice}</p>}
 
-      {(uploadingCount > 0 || processingIds.size > 0 || failedCount > 0) && (
+      {(uploadingCount > 0 || Object.keys(activeSteps).length > 0 || failedCount > 0) && (
         <div className="flex items-center gap-3 text-sm">
           {uploadingCount > 0 && <span className="text-slate-600">Uploading {uploadingCount}…</span>}
-          {processingIds.size > 0 && <span className="text-slate-600">Processing {processingIds.size}…</span>}
+          {Object.keys(activeSteps).length > 0 && (
+            <span className="text-slate-600">Enhancing {Object.keys(activeSteps).length}…</span>
+          )}
           {failedCount > 0 && (
             <>
               <span className="text-red-600">{failedCount} failed</span>
@@ -277,7 +289,7 @@ export default function GalleryUploader({ tenantId, galleryId, initialImages }: 
       {(images.length > 0 || pending.length > 0) && (
         <ul className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
           {images.map((img) => {
-            const label = processingIds.has(img.id) && img.status === 'uploaded' ? 'processing' : img.status
+            const label = activeSteps[img.id] ?? img.status
             return (
               <li key={img.id} className="relative rounded-lg overflow-hidden border border-slate-200 bg-slate-50 aspect-square">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -286,7 +298,7 @@ export default function GalleryUploader({ tenantId, galleryId, initialImages }: 
                   className={`absolute bottom-1.5 left-1.5 text-[10px] px-1.5 py-0.5 rounded-full font-medium ${STATUS_STYLES[label] ?? STATUS_STYLES.uploaded}`}
                   title={img.error ?? undefined}
                 >
-                  {label === 'processing' ? 'processing…' : label}
+                  {label === 'processing' || label === 'enriching' ? `${label}…` : label}
                 </span>
               </li>
             )

@@ -12,9 +12,10 @@ export const MAX_SOURCE_BYTES = 10 * 1024 * 1024
 /** Max images per gallery. */
 export const MAX_IMAGES_PER_GALLERY = 50
 
-/** Extension allowlist. HEIC is pending spike #3 (Vercel sharp decode) —
- *  until that passes we reject it with a clear message rather than failing
- *  silently mid-pipeline. */
+/** Extension allowlist. Spike #3 RESOLVED 2026-07-24: the deployed sharp/
+ *  libvips build decodes AVIF only (aom, no libde265/x265), and iPhone HEIC
+ *  is HEVC — so real HEICs would fail. HEIC stays rejected at upload with a
+ *  clear message rather than failing silently mid-pipeline. */
 export const ALLOWED_EXTENSIONS = ['jpg', 'jpeg', 'png', 'webp'] as const
 
 export const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp'] as const
@@ -24,11 +25,11 @@ export const HEIC_REJECT_MESSAGE =
 
 // ── Processing (stage 3) ────────────────────────────────────────────────────
 
-/** Spike #1 switch. true = Supabase render/transform URLs serve thumbs +
- *  srcset off the single master (preferred — no stored variants, free
- *  resizing later). false = sharp writes thumb + responsive variants at
- *  process time. Flip after running /api/galleries/spike on the deployed
- *  app: keep true only if the transform check returns ok. */
+/** Spike #1 RESOLVED 2026-07-24 on production: Supabase render/transform
+ *  URLs work on this plan (200, image/jpeg, auto-format). Thumbs + srcset
+ *  are transform URLs off the single master — no stored variants, free
+ *  resizing later. The `false` branch (stored variants) remains implemented
+ *  as an escape hatch if plan/pricing ever changes. */
 export const USE_TRANSFORM_URLS = true
 
 /** Web master: max long edge + WebP quality. */
