@@ -62,6 +62,10 @@ export default function GalleryUploader({
   const [deleting, setDeleting] = useState(false)
   const [previewIndex, setPreviewIndex] = useState<number | null>(null)
   const [galleryPreview, setGalleryPreview] = useState(false)
+  const [editAlt, setEditAlt] = useState('')
+  const [editCaption, setEditCaption] = useState('')
+  const [savingMeta, setSavingMeta] = useState(false)
+  const [rotating, setRotating] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
   // Registration is a read-modify-write on the gallery row — serialise it.
   const registerChain = useRef<Promise<void>>(Promise.resolve())
@@ -225,6 +229,55 @@ export default function GalleryUploader({
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [previewIndex, galleryPreview, images.length])
+
+  // Seed the edit fields whenever the previewed image changes.
+  useEffect(() => {
+    if (previewIndex === null) return
+    const img = images[previewIndex]
+    setEditAlt(img?.alt ?? '')
+    setEditCaption(img?.caption ?? '')
+  }, [previewIndex, images])
+
+  async function saveMeta() {
+    if (previewIndex === null || savingMeta) return
+    const img = images[previewIndex]
+    if (!img) return
+    setSavingMeta(true)
+    try {
+      const res = await fetch(`/api/galleries/${galleryId}/images/${img.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tenantId, alt: editAlt, caption: editCaption }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (res.ok && data.image) patchImage(img.id, data.image)
+      else setNotice(data.error ?? 'Could not save changes')
+    } finally {
+      setSavingMeta(false)
+    }
+  }
+
+  async function rotatePreviewed(degrees: 90 | 180 | 270) {
+    if (previewIndex === null || rotating) return
+    const img = images[previewIndex]
+    if (!img?.master_path) return
+    setRotating(true)
+    try {
+      const res = await fetch(`/api/galleries/${galleryId}/images/${img.id}/rotate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tenantId, degrees }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (res.ok && data.image) {
+        patchImage(img.id, { ...data.image, preview_url: data.image.thumb_url ?? data.image.url })
+      } else {
+        setNotice(data.error ?? 'Could not rotate image')
+      }
+    } finally {
+      setRotating(false)
+    }
+  }
 
   function toggleSelect(id: string) {
     setSelected((s) => {
@@ -463,16 +516,74 @@ export default function GalleryUploader({
               alt={images[previewIndex].alt ?? ''}
               className="mx-auto max-h-[75vh] w-auto object-contain rounded-lg"
             />
-            <div className="mt-3 text-center">
-              {images[previewIndex].caption && (
-                <p className="text-white text-sm">{images[previewIndex].caption}</p>
-              )}
-              {images[previewIndex].alt && (
-                <p className="text-white/50 text-xs mt-1">Alt: {images[previewIndex].alt}</p>
-              )}
-              <p className="text-white/40 text-xs mt-2">
-                {previewIndex + 1} of {images.length} · {images[previewIndex].status}
-              </p>
+            <div className="mt-3 max-w-2xl mx-auto space-y-2">
+              <label className="block">
+                <span className="text-white/50 text-xs">Caption (shown on the page)</span>
+                <textarea
+                  value={editCaption}
+                  onChange={(e) => setEditCaption(e.target.value)}
+                  rows={2}
+                  className="mt-1 w-full rounded-lg bg-white/10 text-white text-sm px-3 py-2 border border-white/20 focus:outline-none focus:ring-2 focus:ring-amber-500 resize-none"
+                />
+              </label>
+              <label className="block">
+                <span className="text-white/50 text-xs">Alt text (screen readers &amp; SEO)</span>
+                <textarea
+                  value={editAlt}
+                  onChange={(e) => setEditAlt(e.target.value)}
+                  rows={2}
+                  className="mt-1 w-full rounded-lg bg-white/10 text-white text-sm px-3 py-2 border border-white/20 focus:outline-none focus:ring-2 focus:ring-amber-500 resize-none"
+                />
+              </label>
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => void rotatePreviewed(270)}
+                    disabled={rotating || !images[previewIndex].master_path}
+                    title="Rotate left 90°"
+                    className="px-2.5 py-1.5 rounded-lg bg-white/10 text-white text-sm hover:bg-white/20 disabled:opacity-30"
+                  >
+                    ⟲ 90°
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void rotatePreviewed(180)}
+                    disabled={rotating || !images[previewIndex].master_path}
+                    title="Rotate 180°"
+                    className="px-2.5 py-1.5 rounded-lg bg-white/10 text-white text-sm hover:bg-white/20 disabled:opacity-30"
+                  >
+                    180°
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void rotatePreviewed(90)}
+                    disabled={rotating || !images[previewIndex].master_path}
+                    title="Rotate right 90°"
+                    className="px-2.5 py-1.5 rounded-lg bg-white/10 text-white text-sm hover:bg-white/20 disabled:opacity-30"
+                  >
+                    ⟳ 90°
+                  </button>
+                  {rotating && <span className="text-white/50 text-xs">Rotating…</span>}
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className="text-white/40 text-xs">
+                    {previewIndex + 1} of {images.length} · {images[previewIndex].status}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => void saveMeta()}
+                    disabled={
+                      savingMeta ||
+                      (editAlt === (images[previewIndex].alt ?? '') &&
+                        editCaption === (images[previewIndex].caption ?? ''))
+                    }
+                    className="px-3 py-1.5 rounded-lg bg-amber-600 text-white text-sm font-medium hover:bg-amber-700 disabled:opacity-40"
+                  >
+                    {savingMeta ? 'Saving…' : 'Save text'}
+                  </button>
+                </div>
+              </div>
             </div>
             <div className="mt-3 flex items-center justify-center gap-4">
               <button

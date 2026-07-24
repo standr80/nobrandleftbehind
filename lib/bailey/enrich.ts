@@ -29,6 +29,58 @@ import { patchGalleryImage } from './process'
  *  warrants at scale (mirrors lib/clem/faq.ts). */
 const BAILEY_VISION_MODEL = 'claude-sonnet-4-6'
 
+/** Cheap model for the binary upside-down check. */
+const ORIENTATION_MODEL = 'claude-haiku-4-5'
+
+/** 180° backstop. Open-ended "what rotation?" prompting is unreliable for
+ *  upside-down images (correct aspect ratio, plausible composition), but an
+ *  A/B comparison against the flipped twin is a much easier judgement. Only
+ *  called when the main pass answered 0. Fails safe: any error → false. */
+async function looksUpsideDown(masterBuffer: Buffer): Promise<boolean> {
+  try {
+    const small = await sharp(masterBuffer)
+      .resize(512, 512, { fit: 'inside', withoutEnlargement: true })
+      .jpeg({ quality: 70 })
+      .toBuffer()
+    const flipped = await sharp(small).rotate(180).jpeg({ quality: 70 }).toBuffer()
+
+    const response = await anthropic.messages.create({
+      model: ORIENTATION_MODEL,
+      max_tokens: 10,
+      messages: [
+        {
+          role: 'user',
+          content: [
+            { type: 'text', text: 'Image A:' },
+            {
+              type: 'image',
+              source: { type: 'base64', media_type: 'image/jpeg', data: small.toString('base64') },
+            },
+            { type: 'text', text: 'Image B:' },
+            {
+              type: 'image',
+              source: { type: 'base64', media_type: 'image/jpeg', data: flipped.toString('base64') },
+            },
+            {
+              type: 'text',
+              text: 'Image B is Image A rotated 180 degrees, so exactly one of them is upright. Judge by gravity: heads above bodies, sky/ceiling at the top, objects resting on surfaces, readable text. Reply with ONLY the single letter A or B — whichever image is correctly oriented.',
+            },
+          ],
+        },
+      ],
+    })
+    const answer = response.content
+      .filter((b) => b.type === 'text')
+      .map((b) => ('text' in b ? b.text : ''))
+      .join('')
+      .trim()
+      .toUpperCase()
+    return answer.startsWith('B')
+  } catch {
+    return false
+  }
+}
+
 export interface TenantEnrichContext {
   brandName: string
   domain: string | null
@@ -144,7 +196,15 @@ export async function enrichImage(
     // phone photos, but pixel-rotated images with no EXIF can only be
     // caught by looking. If the model says the image isn't upright,
     // physically rotate the master.
-    const rotation = [90, 180, 270].includes(Number(parsed.rotation)) ? Number(parsed.rotation) : 0
+    let rotation = [90, 180, 270].includes(Number(parsed.rotation)) ? Number(parsed.rotation) : 0
+    if (rotation === 0) {
+      const { data: masterBlob } = await db.storage
+        .from(GALLERY_BUCKET)
+        .download(image.master_path)
+      if (masterBlob && (await looksUpsideDown(Buffer.from(await masterBlob.arrayBuffer())))) {
+        rotation = 180
+      }
+    }
 
     // Descriptive filename: the slug-named master is a NEW write, then the
     // anonymous one is removed. Source objects keep random keys.

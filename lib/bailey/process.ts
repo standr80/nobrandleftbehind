@@ -37,6 +37,55 @@ export async function patchGalleryImage(
   return error ? error.message : null
 }
 
+/** Physically rotate an image's master by 90/180/270 (clockwise) and
+ *  persist. Writes a NEW object (cache-safe: Supabase CDN caches public
+ *  URLs, so overwriting in place would serve stale pixels), removes the old
+ *  one, and updates paths/dimensions. */
+export async function rotateMaster(
+  galleryId: string,
+  image: GalleryImage,
+  degrees: 90 | 180 | 270,
+): Promise<Partial<GalleryImage> | { error: string }> {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+  const db = createAdminClient()
+  try {
+    if (!image.master_path) return { error: 'Image has no processed master yet' }
+    const { data: blob, error: dlErr } = await db.storage
+      .from(GALLERY_BUCKET)
+      .download(image.master_path)
+    if (dlErr || !blob) throw new Error(dlErr?.message ?? 'Could not download master')
+
+    const rotated = await sharp(Buffer.from(await blob.arrayBuffer()))
+      .rotate(degrees)
+      .webp({ quality: MASTER_WEBP_QUALITY })
+      .toBuffer({ resolveWithObject: true })
+
+    const base = image.master_path.replace(/\.webp$/, '').replace(/-r\d+$/, '')
+    const newPath = `${base}-r${Date.now() % 100000}.webp`
+
+    const { error: upErr } = await db.storage
+      .from(GALLERY_BUCKET)
+      .upload(newPath, rotated.data, { contentType: 'image/webp', upsert: true })
+    if (upErr) throw new Error(upErr.message)
+    await db.storage.from(GALLERY_BUCKET).remove([image.master_path]).catch(() => {})
+
+    const patch: Partial<GalleryImage> = {
+      master_path: newPath,
+      url: galleryPublicUrl(supabaseUrl, newPath),
+      thumb_url: USE_TRANSFORM_URLS
+        ? galleryTransformUrl(supabaseUrl, newPath, TRANSFORM_THUMB_WIDTH)
+        : image.thumb_url,
+      width: rotated.info.width,
+      height: rotated.info.height,
+    }
+    const saveError = await patchGalleryImage(galleryId, image.id, patch)
+    if (saveError) throw new Error(saveError)
+    return patch
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : 'Rotation failed' }
+  }
+}
+
 /** Run the sharp pass for one image and persist the result (status:
  *  processed on success, failed + error on any exception). Returns the
  *  patch applied. */
