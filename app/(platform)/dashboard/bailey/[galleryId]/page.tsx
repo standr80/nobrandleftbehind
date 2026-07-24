@@ -1,5 +1,5 @@
 import { auth } from '@clerk/nextjs/server'
-import { notFound, redirect } from 'next/navigation'
+import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { getActiveWorkspace } from '@/lib/workspace/active'
 import { getGallery, galleryImages } from '@/lib/bailey/galleries'
@@ -19,7 +19,27 @@ export default async function GalleryPage({ params }: Props) {
 
   const { galleryId } = await params
   const gallery = await getGallery(galleryId, workspace.tenantId)
-  if (!gallery) notFound()
+
+  // Graceful miss: the gallery doesn't exist, was deleted, or belongs to a
+  // different workspace (e.g. the user switched workspace while viewing it).
+  if (!gallery) {
+    return (
+      <div className="max-w-md">
+        <h1 className="text-xl font-bold text-slate-900 mb-2">Gallery not available</h1>
+        <p className="text-sm text-slate-500 mb-6">
+          This gallery isn&apos;t part of the <span className="font-medium text-slate-700">{workspace.tenant.name}</span> workspace
+          — it may belong to a different workspace, or it&apos;s been deleted. If you just switched
+          workspace, switch back to see it again.
+        </p>
+        <Link
+          href="/dashboard/bailey"
+          className="inline-block px-4 py-2 rounded-lg bg-amber-600 text-white text-sm font-medium hover:bg-amber-700 transition-colors"
+        >
+          View this workspace&apos;s galleries
+        </Link>
+      </div>
+    )
+  }
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
   const images = galleryImages(gallery).map((img) => ({
