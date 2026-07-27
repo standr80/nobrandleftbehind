@@ -65,6 +65,9 @@ export default async function GalleryPage({ params }: Props) {
         galleryId={gallery.id}
         galleryTitle={gallery.title}
         galleryContext={gallery.gallery_context}
+        galleryStatus={gallery.status}
+        publishedUrl={gallery.shopify_article_url}
+        consentAttested={Boolean(gallery.consent_attested_at)}
         initialImages={images}
       />
     </div>

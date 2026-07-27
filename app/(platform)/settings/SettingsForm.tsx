@@ -50,6 +50,7 @@ interface Tenant {
   shopify_access_token: string | null
   shopify_blog_id: string | null
   shopify_faq_blog_id: string | null
+  shopify_gallery_blog_id: string | null
   shopify_api_version: string | null
   shopify_store_url: string | null
   indexnow_key: string | null
@@ -198,6 +199,7 @@ export default function SettingsForm({
   const [shopifyAccessToken, setShopifyAccessToken] = useState(tenant.shopify_access_token ?? '')
   const [shopifyBlogId, setShopifyBlogId] = useState(tenant.shopify_blog_id ?? '')
   const [shopifyFaqBlogId, setShopifyFaqBlogId] = useState(tenant.shopify_faq_blog_id ?? '')
+  const [shopifyGalleryBlogId, setShopifyGalleryBlogId] = useState(tenant.shopify_gallery_blog_id ?? '')
   const [shopifyApiVersion, setShopifyApiVersion] = useState(tenant.shopify_api_version ?? '')
   const [shopifyStoreUrl, setShopifyStoreUrl] = useState(tenant.shopify_store_url ?? '')
   const [indexnowKey, setIndexnowKey] = useState(tenant.indexnow_key ?? '')
@@ -252,6 +254,7 @@ export default function SettingsForm({
           shopify_access_token: shopifyAccessToken.trim() || null,
           shopify_blog_id: shopifyBlogId.trim() || null,
           shopify_faq_blog_id: shopifyFaqBlogId.trim() || null,
+          shopify_gallery_blog_id: shopifyGalleryBlogId.trim() || null,
           shopify_api_version: shopifyApiVersion.trim() || null,
           shopify_store_url: shopifyStoreUrl.trim().replace(/\/$/, '') || null,
           indexnow_key: indexnowKey.trim() || null,
@@ -1204,6 +1207,11 @@ export default function SettingsForm({
                     <label className={labelClass}>FAQ Blog ID</label>
                     <input className={inputClass} value={shopifyFaqBlogId} onChange={(e) => setShopifyFaqBlogId(e.target.value)} placeholder="e.g. 389767599" />
                     <p className="text-xs text-slate-400 mt-1">Separate blog for FAQ posts (e.g. a blog with handle <code>faqs</code> → <code>/blogs/faqs</code>). Numeric ID or <code>gid://</code>.</p>
+                  </div>
+                  <div>
+                    <label className={labelClass}>Gallery Blog ID</label>
+                    <input className={inputClass} value={shopifyGalleryBlogId} onChange={(e) => setShopifyGalleryBlogId(e.target.value)} placeholder="e.g. 389767612" />
+                    <p className="text-xs text-slate-400 mt-1">Separate blog for Bailey galleries (e.g. handle <code>galleries</code> → <code>/blogs/galleries</code>). Numeric ID or <code>gid://</code>.</p>
                   </div>
                   <div>
                     <label className={labelClass}>API version (optional)</label>

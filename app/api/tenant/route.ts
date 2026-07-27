@@ -64,7 +64,7 @@ export async function PATCH(request: Request) {
     'white_label_domain', 'blog_theme', 'theme_extract_url', 'blog_footer',
     'ideogram_api_key', 'image_gen_enabled', 'deploy_hook_url', 'internal_links',
     'shopify_shop_domain', 'shopify_client_id', 'shopify_client_secret',
-    'shopify_access_token', 'shopify_blog_id', 'shopify_faq_blog_id',
+    'shopify_access_token', 'shopify_blog_id', 'shopify_faq_blog_id', 'shopify_gallery_blog_id',
     'shopify_api_version', 'shopify_store_url',
     'indexnow_key', 'indexnow_key_location', 'content_clusters',
   ] as const

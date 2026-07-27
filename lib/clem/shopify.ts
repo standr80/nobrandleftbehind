@@ -2,6 +2,8 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { toHtml } from '@/lib/mdx/toHtml'
 import { parseFaqItems, faqPageSchema } from '@/lib/content/api'
 import { pingIndexNow } from '@/lib/clem/indexNow'
+import { buildGalleryGridHtml, galleryJsonLd, leadImage } from '@/lib/bailey/render'
+import type { GalleryImage } from '@/lib/bailey/constants'
 
 /**
  * Publishes a Clem blog post into a Shopify store's NATIVE blog via the
@@ -439,7 +441,7 @@ export async function runShopifyPublish(tenantId: string, postId: string): Promi
       db
         .from('tenants')
         .select(
-          'cms_type, name, blog_theme, shopify_shop_domain, shopify_client_id, shopify_client_secret, shopify_access_token, shopify_blog_id, shopify_faq_blog_id, shopify_api_version, shopify_store_url, indexnow_key, indexnow_key_location, content_clusters'
+          'cms_type, name, blog_theme, shopify_shop_domain, shopify_client_id, shopify_client_secret, shopify_access_token, shopify_blog_id, shopify_faq_blog_id, shopify_gallery_blog_id, shopify_api_version, shopify_store_url, indexnow_key, indexnow_key_location, content_clusters'
         )
         .eq('id', tenantId)
         .single(),
@@ -452,17 +454,28 @@ export async function runShopifyPublish(tenantId: string, postId: string): Promi
   if (tenant.cms_type !== 'shopify') {
     throw new Error(`[shopify] Tenant cms_type is '${tenant.cms_type}', expected 'shopify'`)
   }
-  // FAQ posts publish into a dedicated FAQ blog (/blogs/faqs); everything else
-  // into the main blog. Same store + scope — just a different blog id.
+  // FAQ posts publish into a dedicated FAQ blog (/blogs/faqs) and galleries
+  // into a dedicated galleries blog (/blogs/galleries); everything else into
+  // the main blog. Same store + scope — just a different blog id.
   const isFaq = post.content_type === 'faq'
+  const isGallery = post.content_type === 'gallery'
   const shopDomainRaw = tenant.shopify_shop_domain
-  const blogIdRaw = isFaq ? tenant.shopify_faq_blog_id : tenant.shopify_blog_id
+  const blogIdRaw = isGallery
+    ? tenant.shopify_gallery_blog_id
+    : isFaq
+      ? tenant.shopify_faq_blog_id
+      : tenant.shopify_blog_id
+  const blogIdColumn = isGallery
+    ? 'shopify_gallery_blog_id'
+    : isFaq
+      ? 'shopify_faq_blog_id'
+      : 'shopify_blog_id'
   const hasCreds =
     (tenant.shopify_client_id && tenant.shopify_client_secret) || tenant.shopify_access_token
   if (!shopDomainRaw || !hasCreds || !blogIdRaw) {
     throw new Error(
       `[shopify] Tenant ${tenantId} has incomplete Shopify config. Set shopify_shop_domain, ` +
-        `${isFaq ? 'shopify_faq_blog_id' : 'shopify_blog_id'} and either shopify_client_id + shopify_client_secret or shopify_access_token.`
+        `${blogIdColumn} and either shopify_client_id + shopify_client_secret or shopify_access_token.`
     )
   }
 
@@ -504,11 +517,25 @@ export async function runShopifyPublish(tenantId: string, postId: string): Promi
   // published_at is only stamped in step 8, so on a first publish it's still
   // null here — fall back to now so BlogPosting always has a datePublished.
   const publishedAt = post.published_at ?? new Date().toISOString()
-  const fullBody = isFaq
-    ? bodyHtml + jsonLdScript(faqPageSchema(parseFaqItems(post.faq_items)))
-    : bodyHtml +
-      buildAuthorBioHtml(author) +
-      buildAuthorJsonLd(author, tenant.name ?? authorName, post.title, post.meta_description, publishedAt)
+  // Gallery: ready images (in order) → figure grid + ImageGallery JSON-LD.
+  // The intro (bodyHtml from body_mdx) is Clem's copy once generated.
+  const galleryImagesAll =
+    isGallery && Array.isArray(post.gallery_images)
+      ? (post.gallery_images as unknown as GalleryImage[])
+      : []
+  const galleryReady = galleryImagesAll
+    .filter((i) => i.status === 'ready' && i.url)
+    .sort((a, b) => a.order - b.order)
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+  const fullBody = isGallery
+    ? bodyHtml +
+      buildGalleryGridHtml(galleryReady, supabaseUrl) +
+      jsonLdScript(galleryJsonLd(post.title, post.meta_description, galleryReady))
+    : isFaq
+      ? bodyHtml + jsonLdScript(faqPageSchema(parseFaqItems(post.faq_items)))
+      : bodyHtml +
+        buildAuthorBioHtml(author) +
+        buildAuthorJsonLd(author, tenant.name ?? authorName, post.title, post.meta_description, publishedAt)
 
   // Shopify SEO meta description (global.description_tag). Without this Shopify
   // auto-generates the meta description from the body — usually far too long and
@@ -557,7 +584,12 @@ export async function runShopifyPublish(tenantId: string, postId: string): Promi
   if (seoMetafields.length) article.metafields = seoMetafields
   if (Array.isArray(post.tags) && post.tags.length) article.tags = post.tags
   // Shopify needs a publicly reachable image URL; skip repo-relative paths.
-  if (post.hero_image_url && /^https?:\/\//i.test(post.hero_image_url)) {
+  // Gallery: the lead (first ready) image becomes the article featured image —
+  // this feeds Shopify's auto image sitemap and og:image.
+  if (isGallery) {
+    const lead = leadImage(galleryReady)
+    if (lead?.url) article.image = { url: lead.url, altText: lead.alt ?? post.title }
+  } else if (post.hero_image_url && /^https?:\/\//i.test(post.hero_image_url)) {
     article.image = { url: post.hero_image_url, altText: post.hero_image_alt ?? post.title }
   }
 
@@ -592,7 +624,7 @@ export async function runShopifyPublish(tenantId: string, postId: string): Promi
   }
   const created = result.article
   if (!created) throw new Error('[shopify] Mutation returned no article')
-  const blogHandle = created.blog?.handle ?? (isFaq ? 'faqs' : 'blog')
+  const blogHandle = created.blog?.handle ?? (isGallery ? 'galleries' : isFaq ? 'faqs' : 'blog')
   const articleUrl = `${base}/blogs/${blogHandle}/${created.handle}`
 
   // ── 8. Update the post ──────────────────────────────────────────────────────
@@ -617,10 +649,10 @@ export async function runShopifyPublish(tenantId: string, postId: string): Promi
   await db.from('publish_log').insert({
     tenant_id: tenantId,
     post_id: postId,
-    action: `shopify_${isFaq ? 'faq' : 'article'}_${alreadyPushed ? 'updated' : 'created'}`,
+    action: `shopify_${isGallery ? 'gallery' : isFaq ? 'faq' : 'article'}_${alreadyPushed ? 'updated' : 'created'}`,
     success: true,
     response_data: {
-      resource: isFaq ? 'faq' : 'article',
+      resource: isGallery ? 'gallery' : isFaq ? 'faq' : 'article',
       resource_id: created.id,
       url: articleUrl,
     },

@@ -68,6 +68,7 @@ export default async function SettingsPage() {
           shopify_access_token: (tenant as unknown as { shopify_access_token: string | null }).shopify_access_token ?? null,
           shopify_blog_id: (tenant as unknown as { shopify_blog_id: string | null }).shopify_blog_id ?? null,
           shopify_faq_blog_id: (tenant as unknown as { shopify_faq_blog_id: string | null }).shopify_faq_blog_id ?? null,
+          shopify_gallery_blog_id: (tenant as unknown as { shopify_gallery_blog_id: string | null }).shopify_gallery_blog_id ?? null,
           shopify_api_version: (tenant as unknown as { shopify_api_version: string | null }).shopify_api_version ?? null,
           indexnow_key: (tenant as unknown as { indexnow_key: string | null }).indexnow_key ?? null,
           indexnow_key_location: (tenant as unknown as { indexnow_key_location: string | null }).indexnow_key_location ?? null,

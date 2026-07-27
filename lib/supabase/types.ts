@@ -912,6 +912,7 @@ export type Database = {
           shopify_access_token: string | null
           shopify_blog_id: string | null
           shopify_faq_blog_id: string | null
+          shopify_gallery_blog_id: string | null
           shopify_api_version: string | null
           shopify_store_url: string | null
           indexnow_key: string | null
@@ -961,6 +962,7 @@ export type Database = {
           shopify_access_token?: string | null
           shopify_blog_id?: string | null
           shopify_faq_blog_id?: string | null
+          shopify_gallery_blog_id?: string | null
           shopify_api_version?: string | null
           shopify_store_url?: string | null
           indexnow_key?: string | null
@@ -1010,6 +1012,7 @@ export type Database = {
           shopify_access_token?: string | null
           shopify_blog_id?: string | null
           shopify_faq_blog_id?: string | null
+          shopify_gallery_blog_id?: string | null
           shopify_api_version?: string | null
           shopify_store_url?: string | null
           indexnow_key?: string | null

@@ -28,6 +28,9 @@ interface Props {
   galleryId: string
   galleryTitle?: string
   galleryContext?: string | null
+  galleryStatus?: string | null
+  publishedUrl?: string | null
+  consentAttested?: boolean
   initialImages: UploadedImage[]
 }
 
@@ -50,6 +53,9 @@ export default function GalleryUploader({
   galleryId,
   galleryTitle,
   galleryContext,
+  galleryStatus,
+  publishedUrl,
+  consentAttested,
   initialImages,
 }: Props) {
   const [images, setImages] = useState<UploadedImage[]>(initialImages)
@@ -66,6 +72,12 @@ export default function GalleryUploader({
   const [editCaption, setEditCaption] = useState('')
   const [savingMeta, setSavingMeta] = useState(false)
   const [rotating, setRotating] = useState(false)
+  const [attested, setAttested] = useState(Boolean(consentAttested))
+  const [attestChecked, setAttestChecked] = useState(false)
+  const [publishing, setPublishing] = useState(false)
+  const [liveUrl, setLiveUrl] = useState<string | null>(publishedUrl ?? null)
+  const [status, setStatus] = useState<string | null>(galleryStatus ?? null)
+  const [publishError, setPublishError] = useState<string | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   // Registration is a read-modify-write on the gallery row — serialise it.
   const registerChain = useRef<Promise<void>>(Promise.resolve())
@@ -316,6 +328,29 @@ export default function GalleryUploader({
     }
   }
 
+  async function publishGallery() {
+    if (publishing) return
+    setPublishing(true)
+    setPublishError(null)
+    try {
+      const res = await fetch(`/api/galleries/${galleryId}/publish`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tenantId, attest: attested || attestChecked }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        setPublishError(data.error ?? 'Publish failed')
+        return
+      }
+      setAttested(true)
+      setStatus(data.status ?? 'published')
+      setLiveUrl(data.url ?? null)
+    } finally {
+      setPublishing(false)
+    }
+  }
+
   const pendingFailed = pending.filter((u) => u.status === 'failed')
   const dbFailed = images.filter((i) => i.status === 'failed')
   const failedCount = pendingFailed.length + dbFailed.length
@@ -501,6 +536,68 @@ export default function GalleryUploader({
             </li>
           ))}
         </ul>
+      )}
+
+      {/* Publish panel */}
+      {images.length > 0 && (
+        <div className="bg-white border border-slate-200 rounded-xl p-4 space-y-3">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <h2 className="text-sm font-semibold text-slate-900">Publish to your site</h2>
+              <p className="text-xs text-slate-500 mt-0.5">
+                {images.filter((i) => i.status === 'ready').length} of {images.length} images ready
+                {status === 'published' && ' · published'}
+              </p>
+            </div>
+            {liveUrl && (
+              <a
+                href={liveUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-sm text-amber-700 font-medium hover:underline shrink-0"
+              >
+                View live page ↗
+              </a>
+            )}
+          </div>
+          {!attested && (
+            <label className="flex items-start gap-2 text-sm text-slate-600 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={attestChecked}
+                onChange={(e) => setAttestChecked(e.target.checked)}
+                className="mt-0.5 accent-amber-600"
+              />
+              <span>
+                I confirm I have the right to publish these images, including any identifiable
+                people in them.
+              </span>
+            </label>
+          )}
+          {publishError && <p className="text-sm text-red-600">{publishError}</p>}
+          <button
+            type="button"
+            onClick={() => void publishGallery()}
+            disabled={
+              publishing ||
+              images.length === 0 ||
+              images.some((i) => i.status !== 'ready') ||
+              (!attested && !attestChecked)
+            }
+            className="px-4 py-2 rounded-lg bg-amber-600 text-white text-sm font-medium hover:bg-amber-700 disabled:opacity-50 transition-colors"
+          >
+            {publishing
+              ? 'Publishing…'
+              : status === 'published'
+                ? 'Republish changes'
+                : 'Publish gallery'}
+          </button>
+          {images.some((i) => i.status !== 'ready') && (
+            <p className="text-xs text-slate-400">
+              Publishing unlocks when every image is ready — retry or delete any failed ones.
+            </p>
+          )}
+        </div>
       )}
 
       {/* Single-image preview (lightbox) */}
