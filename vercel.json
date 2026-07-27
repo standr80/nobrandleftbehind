@@ -11,6 +11,10 @@
     {
       "path": "/api/scout/weekly",
       "schedule": "0 6 * * 1"
+    },
+    {
+      "path": "/api/cron/pam",
+      "schedule": "0 6 * * 2"
     }
   ]
 }

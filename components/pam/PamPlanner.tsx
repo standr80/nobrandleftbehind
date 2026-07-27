@@ -137,6 +137,59 @@ export default function PamPlanner({ tenantId, initialPosts, initialItems }: Pro
     }
   }
 
+  const [runningPam, setRunningPam] = useState(false)
+  const [runSummary, setRunSummary] = useState<string | null>(null)
+
+  async function runPam() {
+    if (runningPam) return
+    setRunningPam(true)
+    setRunSummary(null)
+    setError(null)
+    try {
+      const res = await fetch('/api/pam/run', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tenantId }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.error ?? 'Pam run failed')
+      if (Array.isArray(data.items)) setItems(data.items)
+      setRunSummary(
+        data.created > 0
+          ? `Pam added ${data.created} recommendation${data.created === 1 ? '' : 's'}`
+          : 'Pam found nothing new to recommend right now',
+      )
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Pam run failed')
+    } finally {
+      setRunningPam(false)
+    }
+  }
+
+  async function acceptItem(id: string) {
+    if (busyId) return
+    setBusyId(id)
+    setError(null)
+    try {
+      const res = await fetch(`/api/pam/items/${id}/accept`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tenantId }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (res.ok && data.item) setItems((xs) => xs.map((x) => (x.id === id ? data.item : x)))
+      else setError(data.error ?? 'Could not send to Clem')
+    } finally {
+      setBusyId(null)
+    }
+  }
+
+  function snoozeDate(days: number): string {
+    const d = new Date()
+    d.setDate(d.getDate() + days)
+    return dayKey(d)
+  }
+
   async function deleteItem(id: string) {
     if (busyId) return
     setBusyId(id)
@@ -247,11 +300,22 @@ export default function PamPlanner({ tenantId, initialPosts, initialItems }: Pro
       <div className="space-y-4">
         {/* Pam's desk */}
         <div className="bg-white border border-slate-200 rounded-xl p-4">
-          <h2 className="text-sm font-semibold text-slate-900 mb-1">Pam&apos;s desk</h2>
+          <div className="flex items-center justify-between mb-2">
+            <h2 className="text-sm font-semibold text-slate-900">Pam&apos;s desk</h2>
+            <button
+              type="button"
+              onClick={() => void runPam()}
+              disabled={runningPam}
+              className="px-3 py-1.5 rounded-lg bg-rose-600 text-white text-xs font-medium hover:bg-rose-700 disabled:opacity-50"
+            >
+              {runningPam ? 'Thinking…' : 'Run Pam'}
+            </button>
+          </div>
+          {runSummary && <p className="text-xs text-slate-500 mb-2">{runSummary}</p>}
           {recommendations.length === 0 ? (
             <p className="text-xs text-slate-400">
-              No recommendations yet — Pam&apos;s engine arrives in the next stage. Your ideas below
-              already work.
+              Nothing on the desk. Run Pam to scan this workspace — she also runs automatically
+              every week.
             </p>
           ) : (
             <ul className="space-y-2">
@@ -264,15 +328,50 @@ export default function PamPlanner({ tenantId, initialPosts, initialItems }: Pro
                     <span className="text-sm text-slate-800">{r.title}</span>
                   </div>
                   {r.reason && <p className="text-xs text-slate-500 mt-1">{r.reason}</p>}
-                  <div className="flex items-center gap-3 mt-2 text-xs">
+                  <div className="flex flex-wrap items-center gap-2 mt-2">
+                    <input
+                      type="date"
+                      value={r.scheduled_for ?? ''}
+                      onChange={(e) => void patchItem(r.id, { scheduled_for: e.target.value || null })}
+                      disabled={busyId === r.id}
+                      className="text-xs border border-slate-300 rounded-md px-1.5 py-1 text-slate-600"
+                    />
+                    {r.suggestion_id ? (
+                      <span className="text-xs text-emerald-600 font-medium">✓ Sent to Clem</span>
+                    ) : r.item_type === 'gallery' ? (
+                      <a href="/dashboard/bailey" className="text-xs text-amber-700 font-medium hover:underline">
+                        Open Bailey →
+                      </a>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => void acceptItem(r.id)}
+                        disabled={busyId === r.id}
+                        className="text-xs text-rose-700 font-medium hover:underline disabled:opacity-50"
+                      >
+                        Accept → Clem
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => void patchItem(r.id, { snoozed_until: snoozeDate(30) })}
+                      disabled={busyId === r.id}
+                      className="text-xs text-slate-400 hover:text-slate-700 ml-auto"
+                    >
+                      Snooze 30d
+                    </button>
                     <button
                       type="button"
                       onClick={() => void patchItem(r.id, { status: 'dismissed' })}
-                      className="text-slate-400 hover:text-red-600"
+                      disabled={busyId === r.id}
+                      className="text-xs text-slate-400 hover:text-red-600"
                     >
                       Dismiss
                     </button>
                   </div>
+                  {r.status === 'snoozed' && r.snoozed_until && (
+                    <p className="text-[11px] text-slate-400 mt-1">Snoozed until {r.snoozed_until}</p>
+                  )}
                 </li>
               ))}
             </ul>
