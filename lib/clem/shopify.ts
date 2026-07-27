@@ -600,29 +600,53 @@ export async function runShopifyPublish(tenantId: string, postId: string): Promi
     article.image = { url: post.hero_image_url, altText: post.hero_image_alt ?? post.title }
   }
 
-  let result: { article: ArticleResult | null; userErrors: ShopifyUserError[] }
-  if (alreadyPushed) {
-    // articleUpdate can't move blogs; drop blogId from the update input.
-    const updateInput = { ...article }
-    delete updateInput.blogId
-    const data = await shopifyGraphql<{ articleUpdate: typeof result }>(
-      shopDomain,
-      apiVersion,
-      accessToken,
-      UPDATE_MUTATION,
-      { id: post.shopify_article_id, article: updateInput }
-    )
-    result = data.articleUpdate
-  } else {
-    const data = await shopifyGraphql<{ articleCreate: typeof result }>(
+  type MutationResult = { article: ArticleResult | null; userErrors: ShopifyUserError[] }
+  const runArticleMutation = async (input: Record<string, unknown>): Promise<MutationResult> => {
+    if (alreadyPushed) {
+      // articleUpdate can't move blogs; drop blogId from the update input.
+      const updateInput = { ...input }
+      delete updateInput.blogId
+      const data = await shopifyGraphql<{ articleUpdate: MutationResult }>(
+        shopDomain,
+        apiVersion,
+        accessToken,
+        UPDATE_MUTATION,
+        { id: post.shopify_article_id, article: updateInput }
+      )
+      return data.articleUpdate
+    }
+    const data = await shopifyGraphql<{ articleCreate: MutationResult }>(
       shopDomain,
       apiVersion,
       accessToken,
       CREATE_MUTATION,
-      { article }
+      { article: input }
     )
-    result = data.articleCreate
+    return data.articleCreate
   }
+
+  let result = await runArticleMutation(article)
+
+  // Featured-image rejections must never sink the publish: Shopify's image
+  // ingestion is opaque (rejects WebP, sometimes others). Log the exact URL
+  // it refused, drop the image, retry once. The page still publishes; the
+  // featured image becomes a warning to investigate, not a blocker.
+  if (result.userErrors?.length && article.image) {
+    const imageError = result.userErrors.some(
+      (e) => (e.field ?? []).join('.').includes('image') || /image/i.test(e.message)
+    )
+    if (imageError) {
+      console.error(
+        '[shopify] featured image rejected — publishing without it. URL:',
+        (article.image as { url?: string }).url,
+        'errors:',
+        JSON.stringify(result.userErrors)
+      )
+      delete article.image
+      result = await runArticleMutation(article)
+    }
+  }
+
   if (result.userErrors?.length) {
     throw new Error(
       `[shopify] article${alreadyPushed ? 'Update' : 'Create'} failed: ` +
