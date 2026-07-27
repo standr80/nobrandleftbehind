@@ -67,7 +67,7 @@ export default function PamPlanner({ tenantId, initialPosts, initialItems }: Pro
       else if (p.scheduled_for) ensure(p.scheduled_for.slice(0, 10)).scheduled.push(p)
     }
     for (const i of items) {
-      if (i.scheduled_for && i.status !== 'done') ensure(i.scheduled_for.slice(0, 10)).pam.push(i)
+      if (i.scheduled_for) ensure(i.scheduled_for.slice(0, 10)).pam.push(i)
     }
     return map
   }, [initialPosts, items])
@@ -120,6 +120,7 @@ export default function PamPlanner({ tenantId, initialPosts, initialItems }: Pro
   async function patchItem(id: string, patch: Record<string, unknown>) {
     if (busyId) return
     setBusyId(id)
+    setError(null)
     try {
       const res = await fetch(`/api/pam/items/${id}`, {
         method: 'PATCH',
@@ -128,6 +129,9 @@ export default function PamPlanner({ tenantId, initialPosts, initialItems }: Pro
       })
       const data = await res.json().catch(() => ({}))
       if (res.ok && data.item) setItems((xs) => xs.map((x) => (x.id === id ? data.item : x)))
+      else setError(data.error ?? 'Could not save the change — try again')
+    } catch {
+      setError('Could not save the change — try again')
     } finally {
       setBusyId(null)
     }
@@ -149,6 +153,7 @@ export default function PamPlanner({ tenantId, initialPosts, initialItems }: Pro
   }
 
   const backlog = items.filter((i) => i.kind === 'idea' && (i.status === 'open' || i.status === 'scheduled'))
+  const doneIdeas = items.filter((i) => i.kind === 'idea' && i.status === 'done')
   const recommendations = items.filter((i) => i.kind === 'recommendation' && i.status !== 'done')
 
   return (
@@ -217,8 +222,12 @@ export default function PamPlanner({ tenantId, initialPosts, initialItems }: Pro
                       </div>
                     ))}
                     {cell?.pam.map((i) => (
-                      <div key={i.id} className="truncate text-rose-600" title={`${i.item_type}: ${i.title}`}>
-                        ◆ {i.title}
+                      <div
+                        key={i.id}
+                        className={`truncate ${i.status === 'done' ? 'text-slate-400 line-through' : 'text-rose-600'}`}
+                        title={`${i.item_type}: ${i.title}${i.status === 'done' ? ' (done)' : ''}`}
+                      >
+                        {i.status === 'done' ? '✓' : '◆'} {i.title}
                       </div>
                     ))}
                   </div>
@@ -335,6 +344,33 @@ export default function PamPlanner({ tenantId, initialPosts, initialItems }: Pro
                 </li>
               ))}
             </ul>
+          )}
+
+          {/* Completed ideas stay visible — a planner ticks things off, it
+              doesn't disappear them. */}
+          {doneIdeas.length > 0 && (
+            <div className="mt-3 pt-3 border-t border-slate-100">
+              <p className="text-xs font-medium text-slate-400 mb-1.5">Done</p>
+              <ul className="space-y-1.5">
+                {doneIdeas.map((i) => (
+                  <li key={i.id} className="flex items-center gap-2 text-sm">
+                    <span className="text-emerald-600">✓</span>
+                    <span className="text-slate-400 line-through truncate flex-1">{i.title}</span>
+                    {i.scheduled_for && (
+                      <span className="text-[11px] text-slate-300 shrink-0">{i.scheduled_for}</span>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => void patchItem(i.id, { status: i.scheduled_for ? 'scheduled' : 'open' })}
+                      disabled={busyId === i.id}
+                      className="text-xs text-slate-400 hover:text-slate-700 shrink-0"
+                    >
+                      Reopen
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
           )}
         </div>
       </div>
