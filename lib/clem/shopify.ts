@@ -3,6 +3,7 @@ import { toHtml } from '@/lib/mdx/toHtml'
 import { parseFaqItems, faqPageSchema } from '@/lib/content/api'
 import { pingIndexNow } from '@/lib/clem/indexNow'
 import { buildGalleryGridHtml, galleryJsonLd, leadImage } from '@/lib/bailey/render'
+import { ensureFeaturedJpeg } from '@/lib/bailey/process'
 import type { GalleryImage } from '@/lib/bailey/constants'
 
 /**
@@ -585,10 +586,16 @@ export async function runShopifyPublish(tenantId: string, postId: string): Promi
   if (Array.isArray(post.tags) && post.tags.length) article.tags = post.tags
   // Shopify needs a publicly reachable image URL; skip repo-relative paths.
   // Gallery: the lead (first ready) image becomes the article featured image —
-  // this feeds Shopify's auto image sitemap and og:image.
+  // this feeds Shopify's auto image sitemap and og:image. Shopify's image
+  // ingestion rejects WebP, so a JPEG copy is written and used. Best-effort:
+  // a missing featured image must never block the publish.
   if (isGallery) {
     const lead = leadImage(galleryReady)
-    if (lead?.url) article.image = { url: lead.url, altText: lead.alt ?? post.title }
+    if (lead?.url) {
+      const jpegUrl = await ensureFeaturedJpeg(lead).catch(() => null)
+      if (jpegUrl) article.image = { url: jpegUrl, altText: lead.alt ?? post.title }
+      else console.error('[shopify] gallery featured-image JPEG generation failed — publishing without one')
+    }
   } else if (post.hero_image_url && /^https?:\/\//i.test(post.hero_image_url)) {
     article.image = { url: post.hero_image_url, altText: post.hero_image_alt ?? post.title }
   }

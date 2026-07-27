@@ -86,6 +86,30 @@ export async function rotateMaster(
   }
 }
 
+/** Shopify's featured-image ingestion rejects WebP ("Image is invalid"), so
+ *  the article featured image needs a JPEG. Writes a JPEG copy of the
+ *  master alongside it (idempotent upsert — cheap, one image per gallery)
+ *  and returns its public URL. */
+export async function ensureFeaturedJpeg(image: GalleryImage): Promise<string | null> {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+  const db = createAdminClient()
+  if (!image.master_path) return null
+  const { data: blob, error: dlErr } = await db.storage
+    .from(GALLERY_BUCKET)
+    .download(image.master_path)
+  if (dlErr || !blob) return null
+
+  const jpeg = await sharp(Buffer.from(await blob.arrayBuffer()))
+    .jpeg({ quality: 85 })
+    .toBuffer()
+  const jpegPath = image.master_path.replace(/\.webp$/, '') + '-fi.jpg'
+  const { error: upErr } = await db.storage
+    .from(GALLERY_BUCKET)
+    .upload(jpegPath, jpeg, { contentType: 'image/jpeg', upsert: true })
+  if (upErr) return null
+  return galleryPublicUrl(supabaseUrl, jpegPath)
+}
+
 /** Run the sharp pass for one image and persist the result (status:
  *  processed on success, failed + error on any exception). Returns the
  *  patch applied. */
