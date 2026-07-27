@@ -30,14 +30,19 @@ export async function POST(request: Request, { params }: Params) {
   const gallery = await getGallery(id, workspace.tenantId)
   if (!gallery) return NextResponse.json({ error: 'Gallery not found' }, { status: 404 })
 
-  const images = galleryImages(gallery)
-  if (!images.length) {
-    return NextResponse.json({ error: 'Add some images before publishing' }, { status: 400 })
+  // Hidden images are parked: excluded from the page AND from the readiness
+  // gate, so a questionable image never blocks publishing the rest.
+  const visible = galleryImages(gallery).filter((i) => !i.hidden)
+  if (!visible.length) {
+    return NextResponse.json(
+      { error: 'Nothing to publish — every image is hidden or the gallery is empty' },
+      { status: 400 },
+    )
   }
-  const notReady = images.filter((i) => i.status !== 'ready')
+  const notReady = visible.filter((i) => i.status !== 'ready')
   if (notReady.length) {
     return NextResponse.json(
-      { error: `${notReady.length} image${notReady.length === 1 ? ' is' : 's are'} not ready — retry or delete failed images first` },
+      { error: `${notReady.length} visible image${notReady.length === 1 ? ' is' : 's are'} not ready — retry, hide or delete them first` },
       { status: 400 },
     )
   }

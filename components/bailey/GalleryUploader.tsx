@@ -328,6 +328,22 @@ export default function GalleryUploader({
     }
   }
 
+  async function setHidden(ids: string[], hidden: boolean) {
+    for (const imgId of ids) {
+      try {
+        const res = await fetch(`/api/galleries/${galleryId}/images/${imgId}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ tenantId, hidden }),
+        })
+        const data = await res.json().catch(() => ({}))
+        if (res.ok && data.image) patchImage(imgId, { hidden: data.image.hidden })
+      } catch {
+        // leave as-is; user can retry the toggle
+      }
+    }
+  }
+
   async function publishGallery() {
     if (publishing) return
     setPublishing(true)
@@ -455,14 +471,29 @@ export default function GalleryUploader({
             {selected.size === images.length ? 'Clear selection' : 'Select all'}
           </button>
           {selected.size > 0 && (
-            <button
-              type="button"
-              onClick={() => void deleteImages([...selected])}
-              disabled={deleting}
-              className="text-red-600 hover:text-red-700 font-medium disabled:opacity-50"
-            >
-              {deleting ? 'Deleting…' : `Delete selected (${selected.size})`}
-            </button>
+            <>
+              <button
+                type="button"
+                onClick={() => {
+                  const ids = [...selected]
+                  const allHidden = ids.every((id) => images.find((i) => i.id === id)?.hidden)
+                  void setHidden(ids, !allHidden)
+                }}
+                className="text-slate-600 hover:text-slate-900 font-medium"
+              >
+                {[...selected].every((id) => images.find((i) => i.id === id)?.hidden)
+                  ? `Show selected (${selected.size})`
+                  : `Hide selected (${selected.size})`}
+              </button>
+              <button
+                type="button"
+                onClick={() => void deleteImages([...selected])}
+                disabled={deleting}
+                className="text-red-600 hover:text-red-700 font-medium disabled:opacity-50"
+              >
+                {deleting ? 'Deleting…' : `Delete selected (${selected.size})`}
+              </button>
+            </>
           )}
           <button
             type="button"
@@ -490,7 +521,12 @@ export default function GalleryUploader({
                 }`}
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={img.preview_url} alt={img.alt ?? ''} className="w-full h-full object-cover" loading="lazy" />
+                <img
+                  src={img.preview_url}
+                  alt={img.alt ?? ''}
+                  className={`w-full h-full object-cover ${img.hidden ? 'opacity-30 grayscale' : ''}`}
+                  loading="lazy"
+                />
                 {/* Select checkbox */}
                 <button
                   type="button"
@@ -520,6 +556,20 @@ export default function GalleryUploader({
                 >
                   {label === 'processing' || label === 'enriching' ? `${label}…` : label}
                 </span>
+                {img.hidden && (
+                  <span className="absolute bottom-1.5 right-1.5 text-[10px] px-1.5 py-0.5 rounded-full font-medium bg-slate-800/80 text-white">
+                    hidden
+                  </span>
+                )}
+                {/* Hide/show toggle */}
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); void setHidden([img.id], !img.hidden) }}
+                  title={img.hidden ? 'Show on published page' : 'Hide from published page'}
+                  className="absolute top-1.5 right-8 w-5 h-5 rounded bg-white/80 text-slate-500 hover:bg-slate-700 hover:text-white text-[11px] leading-none items-center justify-center hidden group-hover:flex"
+                >
+                  {img.hidden ? '◌' : '👁'}
+                </button>
               </li>
             )
           })}
@@ -545,7 +595,10 @@ export default function GalleryUploader({
             <div>
               <h2 className="text-sm font-semibold text-slate-900">Publish to your site</h2>
               <p className="text-xs text-slate-500 mt-0.5">
-                {images.filter((i) => i.status === 'ready').length} of {images.length} images ready
+                {images.filter((i) => !i.hidden && i.status === 'ready').length} of{' '}
+                {images.filter((i) => !i.hidden).length} visible images ready
+                {images.some((i) => i.hidden) &&
+                  ` · ${images.filter((i) => i.hidden).length} hidden`}
                 {status === 'published' && ' · published'}
               </p>
             </div>
@@ -580,8 +633,8 @@ export default function GalleryUploader({
             onClick={() => void publishGallery()}
             disabled={
               publishing ||
-              images.length === 0 ||
-              images.some((i) => i.status !== 'ready') ||
+              images.filter((i) => !i.hidden).length === 0 ||
+              images.some((i) => !i.hidden && i.status !== 'ready') ||
               (!attested && !attestChecked)
             }
             className="px-4 py-2 rounded-lg bg-amber-600 text-white text-sm font-medium hover:bg-amber-700 disabled:opacity-50 transition-colors"
@@ -592,9 +645,10 @@ export default function GalleryUploader({
                 ? 'Republish changes'
                 : 'Publish gallery'}
           </button>
-          {images.some((i) => i.status !== 'ready') && (
+          {images.some((i) => !i.hidden && i.status !== 'ready') && (
             <p className="text-xs text-slate-400">
-              Publishing unlocks when every image is ready — retry or delete any failed ones.
+              Publishing unlocks when every visible image is ready — retry, hide or delete any
+              failed ones.
             </p>
           )}
         </div>
@@ -690,6 +744,13 @@ export default function GalleryUploader({
                     ⟳ 90°
                   </button>
                   {rotating && <span className="text-white/50 text-xs">Rotating…</span>}
+                  <button
+                    type="button"
+                    onClick={() => void setHidden([images[previewIndex].id], !images[previewIndex].hidden)}
+                    className="px-2.5 py-1.5 rounded-lg bg-white/10 text-white text-sm hover:bg-white/20"
+                  >
+                    {images[previewIndex].hidden ? 'Show on page' : 'Hide from page'}
+                  </button>
                 </div>
                 <div className="flex items-center gap-3">
                   <span className="text-white/40 text-xs">
@@ -769,7 +830,7 @@ export default function GalleryUploader({
               Intro copy will be written by Clem at the next step.
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {images.map((img, idx) => (
+              {images.map((img, idx) => img.hidden ? null : (
                 <figure key={img.id} className="m-0">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img

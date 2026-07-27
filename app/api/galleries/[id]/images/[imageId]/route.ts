@@ -29,8 +29,9 @@ export async function PATCH(request: Request, { params }: Params) {
   const patch: Partial<GalleryImage> = {}
   if (typeof body.alt === 'string') patch.alt = body.alt.trim() || null
   if (typeof body.caption === 'string') patch.caption = body.caption.trim() || null
+  if (typeof body.hidden === 'boolean') patch.hidden = body.hidden
   if (!Object.keys(patch).length) {
-    return NextResponse.json({ error: 'Nothing to update — send alt and/or caption' }, { status: 400 })
+    return NextResponse.json({ error: 'Nothing to update — send alt, caption and/or hidden' }, { status: 400 })
   }
 
   const saveError = await patchGalleryImage(gallery.id, imageId, patch)

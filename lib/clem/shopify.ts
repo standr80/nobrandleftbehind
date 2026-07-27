@@ -588,7 +588,7 @@ export async function runShopifyPublish(tenantId: string, postId: string): Promi
       ? (post.gallery_images as unknown as GalleryImage[])
       : []
   const galleryReady = galleryImagesAll
-    .filter((i) => i.status === 'ready' && i.url)
+    .filter((i) => i.status === 'ready' && i.url && !i.hidden)
     .sort((a, b) => a.order - b.order)
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
   const fullBody = isGallery
