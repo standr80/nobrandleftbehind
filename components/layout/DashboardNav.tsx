@@ -32,7 +32,8 @@ export default function DashboardNav({
   const scoutActive = pathname.startsWith('/dashboard/scout')
   const faqActive = pathname.startsWith('/dashboard/faq')
   const baileyActive = pathname.startsWith('/dashboard/bailey')
-  const dashboardActive = pathname === '/dashboard' || (pathname.startsWith('/dashboard/') && !scoutActive && !faqActive && !baileyActive)
+  const pamActive = pathname.startsWith('/dashboard/pam')
+  const dashboardActive = pathname === '/dashboard' || (pathname.startsWith('/dashboard/') && !scoutActive && !faqActive && !baileyActive && !pamActive)
   const authorActive = pathname.startsWith('/author')
   const clemActive = dashboardActive || authorActive || faqActive
   const settingsActive = pathname.startsWith('/settings')
@@ -142,6 +143,18 @@ export default function DashboardNav({
           <span className="w-2 h-2 rounded-full bg-amber-400" />
         </span>
         Bailey
+      </Link>
+
+      {/* Pam — content planner agent */}
+      <Link
+        href="/dashboard/pam"
+        onClick={() => setDrawerOpen(false)}
+        className={`${itemBase} ${pamActive ? 'bg-rose-600/20 text-rose-300 font-medium' : inactive}`}
+      >
+        <span className="w-4 flex justify-center">
+          <span className="w-2 h-2 rounded-full bg-rose-400" />
+        </span>
+        Pam
       </Link>
 
       <div className="pt-3 mt-3 border-t border-white/10" />

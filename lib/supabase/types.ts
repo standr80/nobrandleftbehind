@@ -228,6 +228,72 @@ export type Database = {
           },
         ]
       }
+      pam_items: {
+        Row: {
+          id: string
+          tenant_id: string
+          kind: string
+          item_type: string
+          title: string
+          note: string | null
+          reason: string | null
+          evidence: Json | null
+          status: string
+          scheduled_for: string | null
+          snoozed_until: string | null
+          source: string
+          target_post_id: string | null
+          suggestion_id: string | null
+          created_by: string | null
+          created_at: string | null
+          updated_at: string | null
+          dismissed_at: string | null
+          done_at: string | null
+        }
+        Insert: {
+          id?: string
+          tenant_id: string
+          kind?: string
+          item_type?: string
+          title: string
+          note?: string | null
+          reason?: string | null
+          evidence?: Json | null
+          status?: string
+          scheduled_for?: string | null
+          snoozed_until?: string | null
+          source?: string
+          target_post_id?: string | null
+          suggestion_id?: string | null
+          created_by?: string | null
+          created_at?: string | null
+          updated_at?: string | null
+          dismissed_at?: string | null
+          done_at?: string | null
+        }
+        Update: {
+          id?: string
+          tenant_id?: string
+          kind?: string
+          item_type?: string
+          title?: string
+          note?: string | null
+          reason?: string | null
+          evidence?: Json | null
+          status?: string
+          scheduled_for?: string | null
+          snoozed_until?: string | null
+          source?: string
+          target_post_id?: string | null
+          suggestion_id?: string | null
+          created_by?: string | null
+          created_at?: string | null
+          updated_at?: string | null
+          dismissed_at?: string | null
+          done_at?: string | null
+        }
+        Relationships: []
+      }
       publish_log: {
         Row: {
           action: string | null
