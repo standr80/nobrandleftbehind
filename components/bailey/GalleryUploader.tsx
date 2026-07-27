@@ -5,7 +5,6 @@ import { createClient } from '@/lib/supabase/client'
 import {
   ALLOWED_EXTENSIONS,
   GALLERY_BUCKET,
-  HEIC_REJECT_MESSAGE,
   MAX_IMAGES_PER_GALLERY,
   MAX_SOURCE_BYTES,
   fileExtension,
@@ -17,10 +16,24 @@ export type UploadedImage = GalleryImage & { preview_url: string }
 interface PendingUpload {
   key: string
   name: string
-  previewUrl: string
-  status: 'uploading' | 'failed'
+  previewUrl: string // '' for HEIC until converted (browsers can't render HEIC)
+  status: 'converting' | 'uploading' | 'failed'
   error?: string
   file: File
+}
+
+/** iPhone HEIC → JPEG in the browser (WASM), so the server never sees HEIC
+ *  and staff never touch camera settings. ~1-2s per photo. */
+async function convertHeicToJpeg(file: File): Promise<File> {
+  const heic2any = (await import('heic2any')).default
+  const out = await heic2any({ blob: file, toType: 'image/jpeg', quality: 0.9 })
+  const blob = Array.isArray(out) ? out[0] : out
+  return new File([blob], file.name.replace(/\.(heic|heif)$/i, '.jpg'), { type: 'image/jpeg' })
+}
+
+function isHeic(name: string): boolean {
+  const ext = fileExtension(name)
+  return ext === 'heic' || ext === 'heif'
 }
 
 interface Props {
@@ -44,6 +57,7 @@ const STATUS_STYLES: Record<string, string> = {
   failed: 'bg-red-100 text-red-700',
   importing: 'bg-slate-100 text-slate-600',
   uploading: 'bg-amber-100 text-amber-700',
+  converting: 'bg-amber-100 text-amber-700',
   processing: 'bg-amber-100 text-amber-700',
   enriching: 'bg-violet-100 text-violet-700',
 }
@@ -128,11 +142,30 @@ export default function GalleryUploader({
       const fail = (message: string) =>
         setPending((p) => p.map((u) => (u.key === item.key ? { ...u, status: 'failed', error: message } : u)))
       try {
+        // 0. HEIC → JPEG in-browser first (server allowlist stays jpg/png/webp)
+        let file = item.file
+        if (isHeic(file.name)) {
+          try {
+            file = await convertHeicToJpeg(file)
+          } catch {
+            fail(`${item.name}: HEIC conversion failed — export as JPEG and retry`)
+            return
+          }
+          if (file.size > MAX_SOURCE_BYTES) {
+            fail(`${item.name}: converted JPEG is over the 10MB limit`)
+            return
+          }
+          const newPreview = URL.createObjectURL(file)
+          setPending((p) =>
+            p.map((u) => (u.key === item.key ? { ...u, status: 'uploading', previewUrl: newPreview, file } : u)),
+          )
+        }
+
         // 1. signed URL (server enforces allowlist + caps at issuance)
         const urlRes = await fetch(`/api/galleries/${galleryId}/upload-url`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ tenantId, filename: item.file.name, size: item.file.size }),
+          body: JSON.stringify({ tenantId, filename: file.name, size: file.size }),
         })
         const urlData = await urlRes.json()
         if (!urlRes.ok) throw new Error(urlData.error ?? 'Could not get upload URL')
@@ -141,7 +174,7 @@ export default function GalleryUploader({
         const supabase = createClient()
         const { error: upErr } = await supabase.storage
           .from(GALLERY_BUCKET)
-          .uploadToSignedUrl(urlData.path, urlData.token, item.file)
+          .uploadToSignedUrl(urlData.path, urlData.token, file)
         if (upErr) throw new Error(upErr.message)
 
         // 3. register (serialised; one failure must not poison the chain)
@@ -183,14 +216,12 @@ export default function GalleryUploader({
 
       for (const file of files) {
         const ext = fileExtension(file.name)
-        if (ext === 'heic' || ext === 'heif') {
-          rejected.push(`${file.name}: ${HEIC_REJECT_MESSAGE}`)
+        const heic = isHeic(file.name)
+        if (!heic && !(ALLOWED_EXTENSIONS as readonly string[]).includes(ext)) {
+          rejected.push(`${file.name}: unsupported type (use ${ALLOWED_EXTENSIONS.join(', ')}, heic)`)
           continue
         }
-        if (!(ALLOWED_EXTENSIONS as readonly string[]).includes(ext)) {
-          rejected.push(`${file.name}: unsupported type (use ${ALLOWED_EXTENSIONS.join(', ')})`)
-          continue
-        }
+        // HEIC converts to a LARGER JPEG, so a 10MB HEIC can't make the cap.
         if (file.size > MAX_SOURCE_BYTES) {
           rejected.push(`${file.name}: over the 10MB limit`)
           continue
@@ -203,8 +234,9 @@ export default function GalleryUploader({
         accepted.push({
           key: `up_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
           name: file.name,
-          previewUrl: URL.createObjectURL(file),
-          status: 'uploading',
+          // Browsers can't render HEIC — no preview until converted.
+          previewUrl: heic ? '' : URL.createObjectURL(file),
+          status: heic ? 'converting' : 'uploading',
           file,
         })
       }
@@ -416,13 +448,13 @@ export default function GalleryUploader({
       >
         <p className="text-sm font-medium text-slate-700">Drag photos here, or click to choose</p>
         <p className="text-xs text-slate-400 mt-1">
-          jpg, png, webp · up to 10MB each · {MAX_IMAGES_PER_GALLERY - images.length - uploadingCount} slots left
+          jpg, png, webp, heic · up to 10MB each · {MAX_IMAGES_PER_GALLERY - images.length - uploadingCount} slots left
         </p>
         <input
           ref={inputRef}
           type="file"
           multiple
-          accept=".jpg,.jpeg,.png,.webp"
+          accept=".jpg,.jpeg,.png,.webp,.heic,.heif"
           className="hidden"
           onChange={(e) => {
             enqueueFiles(Array.from(e.target.files ?? []))
@@ -575,13 +607,19 @@ export default function GalleryUploader({
           })}
           {pending.map((u) => (
             <li key={u.key} className="relative rounded-lg overflow-hidden border border-slate-200 bg-slate-50 aspect-square">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={u.previewUrl} alt="" className={`w-full h-full object-contain ${u.status === 'uploading' ? 'opacity-50' : 'opacity-30'}`} />
+              {u.previewUrl ? (
+                /* eslint-disable-next-line @next/next/no-img-element */
+                <img src={u.previewUrl} alt="" className={`w-full h-full object-contain ${u.status === 'failed' ? 'opacity-30' : 'opacity-50'}`} />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-xs text-slate-400 font-medium">
+                  HEIC
+                </div>
+              )}
               <span
                 className={`absolute bottom-1.5 left-1.5 text-[10px] px-1.5 py-0.5 rounded-full font-medium ${STATUS_STYLES[u.status]}`}
                 title={u.error}
               >
-                {u.status === 'uploading' ? 'uploading…' : 'failed'}
+                {u.status === 'failed' ? 'failed' : `${u.status}…`}
               </span>
             </li>
           ))}
