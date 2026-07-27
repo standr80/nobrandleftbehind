@@ -40,7 +40,7 @@ export async function ensureGalleryBucket(): Promise<void> {
 }
 
 const GALLERY_COLUMNS =
-  'id, tenant_id, title, slug, status, content_type, cluster_id, gallery_images, gallery_context, consent_attested_by, consent_attested_at, shopify_article_url, created_at, updated_at'
+  'id, tenant_id, title, slug, status, content_type, cluster_id, body_mdx, meta_description, tags, gallery_images, gallery_context, consent_attested_by, consent_attested_at, shopify_article_url, created_at, updated_at'
 
 export interface GalleryRow {
   id: string
@@ -50,6 +50,9 @@ export interface GalleryRow {
   status: string | null
   content_type: string
   cluster_id: string | null
+  body_mdx: string | null
+  meta_description: string | null
+  tags: string[] | null
   gallery_images: GalleryImage[] | null
   gallery_context: string | null
   consent_attested_by: string | null

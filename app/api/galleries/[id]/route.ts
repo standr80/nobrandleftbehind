@@ -37,6 +37,33 @@ export async function GET(_request: Request, { params }: Params) {
   })
 }
 
+// PATCH — edit gallery page copy. Body: { tenantId, body_mdx?, meta_description? }.
+export async function PATCH(request: Request, { params }: Params) {
+  const { userId } = await auth()
+  if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const { id } = await params
+  const body = await request.json().catch(() => ({}))
+  const workspace = await resolveMutationWorkspace(userId, body.tenantId)
+  if (!workspace) return NextResponse.json({ error: 'Workspace not found' }, { status: 404 })
+
+  const gallery = await getGallery(id, workspace.tenantId)
+  if (!gallery) return NextResponse.json({ error: 'Gallery not found' }, { status: 404 })
+
+  const patch: { body_mdx?: string | null; meta_description?: string | null; updated_at?: string } = {}
+  if (typeof body.body_mdx === 'string') patch.body_mdx = body.body_mdx.trim() || null
+  if (typeof body.meta_description === 'string') patch.meta_description = body.meta_description.trim() || null
+  if (!Object.keys(patch).length) {
+    return NextResponse.json({ error: 'Nothing to update' }, { status: 400 })
+  }
+  patch.updated_at = new Date().toISOString()
+
+  const db = createAdminClient()
+  const { error } = await db.from('blog_posts').update(patch).eq('id', gallery.id)
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  return NextResponse.json({ ok: true })
+}
+
 // DELETE — soft-delete a gallery (deleted_at tombstone, consistent with the
 // Content API's soft-delete columns). Storage objects are left in place for
 // now; a cleanup sweep can reap orphaned folders later.
