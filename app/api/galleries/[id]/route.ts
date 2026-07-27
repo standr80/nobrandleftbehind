@@ -4,6 +4,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { getActiveWorkspace, resolveMutationWorkspace } from '@/lib/workspace/active'
 import { getGallery, galleryImages } from '@/lib/bailey/galleries'
 import { galleryPublicUrl } from '@/lib/bailey/constants'
+import { runShopifyDelete } from '@/lib/clem/shopify'
 
 interface Params {
   params: Promise<{ id: string }>
@@ -64,9 +65,11 @@ export async function PATCH(request: Request, { params }: Params) {
   return NextResponse.json({ ok: true })
 }
 
-// DELETE — soft-delete a gallery (deleted_at tombstone, consistent with the
-// Content API's soft-delete columns). Storage objects are left in place for
-// now; a cleanup sweep can reap orphaned folders later.
+// DELETE — remove the live Shopify article FIRST (no-op if never published;
+// an already-deleted article counts as success), then soft-delete the row
+// (deleted_at tombstone). If Shopify can't be reached the gallery is NOT
+// deleted, so nothing is ever orphaned live — the user just retries.
+// Storage objects are left in place; a cleanup sweep can reap them later.
 export async function DELETE(request: Request, { params }: Params) {
   const { userId } = await auth()
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -78,6 +81,16 @@ export async function DELETE(request: Request, { params }: Params) {
 
   const gallery = await getGallery(id, workspace.tenantId)
   if (!gallery) return NextResponse.json({ error: 'Gallery not found' }, { status: 404 })
+
+  try {
+    await runShopifyDelete(workspace.tenantId, gallery.id)
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Could not remove the live Shopify article'
+    return NextResponse.json(
+      { error: `${message} — the gallery was NOT deleted so you can retry` },
+      { status: 502 },
+    )
+  }
 
   const db = createAdminClient()
   const { error } = await db
