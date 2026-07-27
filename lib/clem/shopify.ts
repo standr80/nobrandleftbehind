@@ -3,7 +3,7 @@ import { toHtml } from '@/lib/mdx/toHtml'
 import { parseFaqItems, faqPageSchema } from '@/lib/content/api'
 import { pingIndexNow } from '@/lib/clem/indexNow'
 import { buildGalleryGridHtml, galleryJsonLd, leadImage } from '@/lib/bailey/render'
-import { ensureFeaturedJpeg } from '@/lib/bailey/process'
+import { buildFeaturedJpegBuffer } from '@/lib/bailey/process'
 import type { GalleryImage } from '@/lib/bailey/constants'
 
 /**
@@ -432,6 +432,69 @@ function jsonLdScript(obj: object | null): string {
   return `<script type="application/ld+json">${JSON.stringify(obj).replace(/</g, '\\u003c')}</script>`
 }
 
+const STAGED_UPLOADS_MUTATION = `
+mutation stagedUploadsCreate($input: [StagedUploadInput!]!) {
+  stagedUploadsCreate(input: $input) {
+    stagedTargets { url resourceUrl parameters { name value } }
+    userErrors { field message }
+  }
+}`
+
+/**
+ * Push image bytes into Shopify's own staging area and return the staged
+ * resourceUrl, which article.image.url accepts natively. Used because
+ * Shopify's URL-ingestion rejects images fetched from the Supabase CDN
+ * ("Image is invalid") regardless of format.
+ */
+async function stagedUploadImage(
+  shopDomain: string,
+  apiVersion: string,
+  accessToken: string,
+  data: Buffer,
+  filename: string,
+  mimeType = 'image/jpeg'
+): Promise<string> {
+  const res = await shopifyGraphql<{
+    stagedUploadsCreate: {
+      stagedTargets: Array<{
+        url: string
+        resourceUrl: string
+        parameters: Array<{ name: string; value: string }>
+      }>
+      userErrors: ShopifyUserError[]
+    }
+  }>(shopDomain, apiVersion, accessToken, STAGED_UPLOADS_MUTATION, {
+    input: [
+      {
+        filename,
+        mimeType,
+        resource: 'IMAGE',
+        httpMethod: 'POST',
+        fileSize: String(data.length),
+      },
+    ],
+  })
+
+  if (res.stagedUploadsCreate.userErrors?.length) {
+    throw new Error(
+      'stagedUploadsCreate failed: ' +
+        res.stagedUploadsCreate.userErrors.map((e) => e.message).join('; ')
+    )
+  }
+  const target = res.stagedUploadsCreate.stagedTargets?.[0]
+  if (!target) throw new Error('stagedUploadsCreate returned no target')
+
+  const form = new FormData()
+  for (const p of target.parameters) form.append(p.name, p.value)
+  form.append('file', new Blob([new Uint8Array(data)], { type: mimeType }), filename)
+
+  const upload = await fetch(target.url, { method: 'POST', body: form })
+  if (!upload.ok) {
+    throw new Error(`staged upload POST failed: ${upload.status} ${await upload.text().catch(() => '')}`)
+  }
+  return target.resourceUrl
+}
+
 export async function runShopifyPublish(tenantId: string, postId: string): Promise<void> {
   const db = createAdminClient()
 
@@ -592,9 +655,21 @@ export async function runShopifyPublish(tenantId: string, postId: string): Promi
   if (isGallery) {
     const lead = leadImage(galleryReady)
     if (lead?.url) {
-      const jpegUrl = await ensureFeaturedJpeg(lead).catch(() => null)
-      if (jpegUrl) article.image = { url: jpegUrl, altText: lead.alt ?? post.title }
-      else console.error('[shopify] gallery featured-image JPEG generation failed — publishing without one')
+      try {
+        const jpeg = await buildFeaturedJpegBuffer(lead)
+        if (jpeg) {
+          const stagedUrl = await stagedUploadImage(
+            shopDomain,
+            apiVersion,
+            accessToken,
+            jpeg.data,
+            jpeg.filename
+          )
+          article.image = { url: stagedUrl, altText: lead.alt ?? post.title }
+        }
+      } catch (e) {
+        console.error('[shopify] featured-image staging failed — publishing without one:', e)
+      }
     }
   } else if (post.hero_image_url && /^https?:\/\//i.test(post.hero_image_url)) {
     article.image = { url: post.hero_image_url, altText: post.hero_image_alt ?? post.title }

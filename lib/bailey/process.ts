@@ -86,12 +86,13 @@ export async function rotateMaster(
   }
 }
 
-/** Shopify's featured-image ingestion rejects WebP ("Image is invalid"), so
- *  the article featured image needs a JPEG. Writes a JPEG copy of the
- *  master alongside it (idempotent upsert — cheap, one image per gallery)
- *  and returns its public URL. */
-export async function ensureFeaturedJpeg(image: GalleryImage): Promise<string | null> {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+/** Shopify's featured-image ingestion rejects both WebP and (empirically)
+ *  URL-sourcing from the Supabase CDN entirely — so the featured image is
+ *  pushed into Shopify via staged upload instead. This builds the JPEG
+ *  bytes for that: download master → JPEG q85 → { data, filename }. */
+export async function buildFeaturedJpegBuffer(
+  image: GalleryImage,
+): Promise<{ data: Buffer; filename: string } | null> {
   const db = createAdminClient()
   if (!image.master_path) return null
   const { data: blob, error: dlErr } = await db.storage
@@ -102,12 +103,8 @@ export async function ensureFeaturedJpeg(image: GalleryImage): Promise<string | 
   const jpeg = await sharp(Buffer.from(await blob.arrayBuffer()))
     .jpeg({ quality: 85 })
     .toBuffer()
-  const jpegPath = image.master_path.replace(/\.webp$/, '') + '-fi.jpg'
-  const { error: upErr } = await db.storage
-    .from(GALLERY_BUCKET)
-    .upload(jpegPath, jpeg, { contentType: 'image/jpeg', upsert: true })
-  if (upErr) return null
-  return galleryPublicUrl(supabaseUrl, jpegPath)
+  const base = image.master_path.split('/').pop()!.replace(/\.webp$/, '')
+  return { data: jpeg, filename: `${base}.jpg` }
 }
 
 /** Run the sharp pass for one image and persist the result (status:
