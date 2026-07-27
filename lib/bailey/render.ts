@@ -78,17 +78,20 @@ export function buildGalleryGridHtml(images: GalleryImage[], supabaseUrl: string
     `.nblb-g-item img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .25s}` +
     `.nblb-g-item a:hover img{transform:scale(1.04)}` +
     `.nblb-g-item figcaption{font-size:.85em;opacity:.75;margin-top:6px;line-height:1.4}` +
-    `.nblb-lb{position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.88);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px}` +
-    `.nblb-lb[hidden]{display:none}` +
-    `.nblb-lb img{max-width:92vw;max-height:78vh;object-fit:contain;border-radius:8px}` +
+    // The lightbox is re-parented to <body> by the script (theme containers
+    // with transform/overflow would otherwise trap and clip it) and its
+    // critical styles carry !important to survive theme button resets.
+    `.nblb-lb{position:fixed!important;inset:0!important;z-index:2147483000!important;background:rgba(0,0,0,.88);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;margin:0!important;max-width:none!important}` +
+    `.nblb-lb[hidden]{display:none!important}` +
+    `.nblb-lb img{max-width:92vw;max-height:78vh;width:auto!important;height:auto!important;object-fit:contain;border-radius:8px}` +
     `.nblb-lb-cap{color:#fff;font-size:.9em;margin-top:12px;text-align:center;max-width:80ch}` +
     `.nblb-lb-count{color:rgba(255,255,255,.55);font-size:.8em;margin-top:6px}` +
-    `.nblb-lb button{position:absolute;background:rgba(255,255,255,.12);color:#fff;border:0;border-radius:999px;cursor:pointer;font-size:22px;line-height:1;width:44px;height:44px;display:flex;align-items:center;justify-content:center}` +
-    `.nblb-lb button:hover{background:rgba(255,255,255,.25)}` +
-    `.nblb-lb-close{top:16px;right:16px}` +
-    `.nblb-lb-prev{left:16px;top:50%;transform:translateY(-50%)}` +
-    `.nblb-lb-next{right:16px;top:50%;transform:translateY(-50%)}` +
-    `.nblb-lb button:disabled{opacity:.25;cursor:default}` +
+    `.nblb-lb button{position:absolute!important;display:flex!important;align-items:center;justify-content:center;background:rgba(255,255,255,.16)!important;color:#fff!important;border:0!important;border-radius:999px!important;cursor:pointer;font-size:22px!important;line-height:1!important;width:44px!important;height:44px!important;min-width:44px!important;min-height:44px!important;padding:0!important;margin:0!important;box-shadow:none!important;text-transform:none!important;z-index:2147483001!important}` +
+    `.nblb-lb button:hover{background:rgba(255,255,255,.3)!important}` +
+    `.nblb-lb-close{top:16px!important;right:16px!important;left:auto!important}` +
+    `.nblb-lb-prev{left:16px!important;top:50%!important;transform:translateY(-50%)!important}` +
+    `.nblb-lb-next{right:16px!important;left:auto!important;top:50%!important;transform:translateY(-50%)!important}` +
+    `.nblb-lb button:disabled{opacity:.25!important;cursor:default}` +
     `</style>` +
     `<div class="nblb-gallery">\n${figures}\n</div>` +
     `<div class="nblb-lb" id="nblb-lb" hidden>` +
@@ -99,6 +102,7 @@ export function buildGalleryGridHtml(images: GalleryImage[], supabaseUrl: string
     `</div>` +
     `<script>(function(){` +
     `var lb=document.getElementById("nblb-lb");if(!lb||lb.dataset.init)return;lb.dataset.init="1";` +
+    `document.body.appendChild(lb);` +
     `var links=[].slice.call(document.querySelectorAll(".nblb-gallery .nblb-g-item a"));if(!links.length)return;` +
     `var items=links.map(function(a){var img=a.querySelector("img");var fig=a.parentNode.querySelector("figcaption");` +
     `return{src:a.getAttribute("href"),alt:img?img.getAttribute("alt")||"":"",cap:fig?fig.textContent:""}});` +
