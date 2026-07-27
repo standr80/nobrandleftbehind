@@ -103,7 +103,9 @@ export function buildGalleryGridHtml(images: GalleryImage[], supabaseUrl: string
     `<script>(function(){` +
     `var lb=document.getElementById("nblb-lb");if(!lb||lb.dataset.init)return;lb.dataset.init="1";` +
     `document.body.appendChild(lb);` +
-    `var links=[].slice.call(document.querySelectorAll(".nblb-gallery .nblb-g-item a"));if(!links.length)return;` +
+    // NB: Shopify's body_html filter strips empty brackets "[]" — never use
+    // an empty array literal in this script (Array.prototype instead).
+    `var links=Array.prototype.slice.call(document.querySelectorAll(".nblb-gallery .nblb-g-item a"));if(!links.length)return;` +
     `var items=links.map(function(a){var img=a.querySelector("img");var fig=a.parentNode.querySelector("figcaption");` +
     `return{src:a.getAttribute("href"),alt:img?img.getAttribute("alt")||"":"",cap:fig?fig.textContent:""}});` +
     `var pic=lb.querySelector("img"),cap=lb.querySelector(".nblb-lb-cap"),cnt=lb.querySelector(".nblb-lb-count"),` +
