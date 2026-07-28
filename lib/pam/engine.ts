@@ -24,9 +24,21 @@ const DECAY_MIN_DROP = 0.3 // 30%+ click decline over 4 weeks
 const CADENCE_DAYS: Record<string, number> = {
   daily: 1,
   weekly: 7,
+  'twice-weekly': 3.5,
   fortnightly: 14,
   biweekly: 14,
   monthly: 30,
+}
+
+/** Parse a publish cadence into days-between-posts. Accepts the named
+ *  cadences plus the "Npw" (N posts per week) shorthand, e.g. "2pw" → 3.5. */
+function cadenceToDays(cadence: string | null | undefined): number | null {
+  if (!cadence) return null
+  const named = CADENCE_DAYS[cadence.toLowerCase().trim()]
+  if (named) return named
+  const perWeek = /^(\d+)\s*pw$/i.exec(cadence.trim())
+  if (perWeek && Number(perWeek[1]) > 0) return 7 / Number(perWeek[1])
+  return null
 }
 
 interface Candidate {
@@ -77,7 +89,9 @@ export async function runPamEngine(tenantId: string): Promise<PamRunResult> {
   const now = Date.now()
   const daysAgo = (iso: string | null) => (iso ? (now - new Date(iso).getTime()) / 86400000 : Infinity)
 
-  const eightWeeksAgo = new Date(now - 8 * 7 * 86400000).toISOString().slice(0, 10)
+  // Fetch 10 weeks so the recent-4 vs prior-4 comparison always has its 8
+  // complete ISO weeks regardless of which weekday the run lands on.
+  const statsWindowStart = new Date(now - 10 * 7 * 86400000).toISOString().slice(0, 10)
   const [
     { data: tenant },
     { data: posts },
@@ -106,7 +120,7 @@ export async function runPamEngine(tenantId: string): Promise<PamRunResult> {
         .from('pam_items')
         .select('kind, status, evidence, dismissed_at')
         .eq('tenant_id', tenantId),
-      fetchGscStats(db, tenantId, eightWeeksAgo).then((data) => ({ data })),
+      fetchGscStats(db, tenantId, statsWindowStart).then((data) => ({ data })),
     ])
 
   const published = (posts ?? []).filter((p) => p.status === 'published' && p.published_at)
@@ -239,11 +253,11 @@ export async function runPamEngine(tenantId: string): Promise<PamRunResult> {
   }
 
   // ── 2. Cadence adherence ──────────────────────────────────────────────────
-  const cadenceDays = CADENCE_DAYS[tenant?.publish_cadence ?? ''] ?? null
+  const cadenceDays = cadenceToDays(tenant?.publish_cadence)
   if (!cadenceDays) {
     notes.push(
       tenant?.publish_cadence
-        ? `Cadence: unrecognised cadence "${tenant.publish_cadence}" — expected daily/weekly/fortnightly/monthly.`
+        ? `Cadence: unrecognised cadence "${tenant.publish_cadence}" — expected daily/weekly/fortnightly/monthly or Npw (e.g. 2pw).`
         : 'Cadence: no publish cadence set in workspace settings, so slippage can’t be measured.',
     )
   }
