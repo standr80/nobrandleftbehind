@@ -53,6 +53,7 @@ export async function PATCH(request: Request) {
     'enabled', 'auto_run_enabled', 'briefing_day', 'briefing_time', 'dataforseo_enabled',
     'track_competitors', 'track_keywords', 'track_rankings', 'rank_alert_threshold',
     'location_code', 'rank_location_codes', 'brand_terms', 'rank_devices',
+    'gsc_property_id',
   ]
   const updates: Record<string, unknown> = {}
   for (const key of allowed) {

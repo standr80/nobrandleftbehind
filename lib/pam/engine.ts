@@ -1,9 +1,9 @@
-// Pam stage 2 — the recommendation engine (v1, no GSC).
+// Pam — the recommendation engine.
 //
-// Signals: seasonal Scout opportunities, cadence adherence, content
-// staleness, cluster coverage, FAQ question pool. Each candidate carries a
-// one-sentence reason + evidence (incl. a dedupe_key so Pam never repeats
-// herself). GSC decay signals join as stage 4 once credentials exist.
+// Signals: seasonal Scout opportunities, GSC click/position decay (the
+// strongest refresh trigger), cadence adherence, content staleness, cluster
+// coverage, FAQ question pool. Each candidate carries a one-sentence reason
+// + evidence (incl. a dedupe_key so Pam never repeats herself).
 //
 // Rules (binding, from the spec):
 //  - few and high-confidence: hard cap on open recommendations
@@ -17,6 +17,9 @@ const REFRESH_AGE_DAYS = 270 // ~9 months without publish/refresh → stale
 const MAX_OPEN_RECOMMENDATIONS = 5
 const SEASONAL_MAX_WEEKS = 10 // recommend ahead of the peak, not during it
 const RESUGGEST_DAYS = 21 // dismissed keys stay quiet this long
+
+const DECAY_MIN_PRIOR_CLICKS = 20 // below this, drops are noise
+const DECAY_MIN_DROP = 0.3 // 30%+ click decline over 4 weeks
 
 const CADENCE_DAYS: Record<string, number> = {
   daily: 1,
@@ -47,12 +50,19 @@ export async function runPamEngine(tenantId: string): Promise<PamRunResult> {
   const now = Date.now()
   const daysAgo = (iso: string | null) => (iso ? (now - new Date(iso).getTime()) / 86400000 : Infinity)
 
-  const [{ data: tenant }, { data: posts }, { data: faqPool }, { data: opps }, { data: existing }] =
-    await Promise.all([
+  const eightWeeksAgo = new Date(now - 8 * 7 * 86400000).toISOString().slice(0, 10)
+  const [
+    { data: tenant },
+    { data: posts },
+    { data: faqPool },
+    { data: opps },
+    { data: existing },
+    { data: gscStats },
+  ] = await Promise.all([
       db.from('tenants').select('publish_cadence, content_clusters').eq('id', tenantId).single(),
       db
         .from('blog_posts')
-        .select('id, title, content_type, status, published_at, last_refreshed_at, cluster_id')
+        .select('id, title, content_type, status, published_at, last_refreshed_at, cluster_id, shopify_article_url')
         .eq('tenant_id', tenantId)
         .is('deleted_at', null),
       db
@@ -69,6 +79,12 @@ export async function runPamEngine(tenantId: string): Promise<PamRunResult> {
         .from('pam_items')
         .select('kind, status, evidence, dismissed_at')
         .eq('tenant_id', tenantId),
+      db
+        .from('gsc_page_stats')
+        .select('url, week_start, clicks, position')
+        .eq('tenant_id', tenantId)
+        .gte('week_start', eightWeeksAgo)
+        .order('week_start', { ascending: false }),
     ])
 
   const published = (posts ?? []).filter((p) => p.status === 'published' && p.published_at)
@@ -111,6 +127,77 @@ export async function runPamEngine(tenantId: string): Promise<PamRunResult> {
     })
   }
 
+  // ── 1b. GSC decay (the strongest refresh trigger — needs stage-4 sync) ────
+  if (gscStats?.length) {
+    // Split the last 8 ISO weeks into recent 4 vs prior 4 per URL.
+    const weeks = Array.from(new Set(gscStats.map((r) => r.week_start))).sort().reverse()
+    const recentWeeks = new Set(weeks.slice(0, 4))
+    const priorWeeks = new Set(weeks.slice(4, 8))
+    const byUrl = new Map<
+      string,
+      { recent: number; prior: number; posRecentW: number; posRecentN: number; posPriorW: number; posPriorN: number }
+    >()
+    for (const r of gscStats) {
+      const agg =
+        byUrl.get(r.url) ?? { recent: 0, prior: 0, posRecentW: 0, posRecentN: 0, posPriorW: 0, posPriorN: 0 }
+      if (recentWeeks.has(r.week_start)) {
+        agg.recent += r.clicks
+        if (r.position !== null) { agg.posRecentW += r.position; agg.posRecentN += 1 }
+      } else if (priorWeeks.has(r.week_start)) {
+        agg.prior += r.clicks
+        if (r.position !== null) { agg.posPriorW += r.position; agg.posPriorN += 1 }
+      }
+      byUrl.set(r.url, agg)
+    }
+
+    const normalise = (u: string | null) =>
+      (u ?? '').replace(/^https?:\/\//, '').replace(/\/$/, '').toLowerCase()
+    const postByUrl = new Map(
+      published
+        .filter((p) => p.shopify_article_url)
+        .map((p) => [normalise(p.shopify_article_url), p] as const),
+    )
+
+    const decays = Array.from(byUrl.entries())
+      .map(([url, a]) => ({
+        url,
+        recent: a.recent,
+        prior: a.prior,
+        drop: a.prior > 0 ? (a.prior - a.recent) / a.prior : 0,
+        posRecent: a.posRecentN ? a.posRecentW / a.posRecentN : null,
+        posPrior: a.posPriorN ? a.posPriorW / a.posPriorN : null,
+      }))
+      .filter((d) => d.prior >= DECAY_MIN_PRIOR_CLICKS && d.drop >= DECAY_MIN_DROP)
+      .sort((a, b) => b.prior * b.drop - a.prior * a.drop)
+      .slice(0, 2)
+
+    for (const d of decays) {
+      const post = postByUrl.get(normalise(d.url))
+      const posNote =
+        d.posPrior !== null && d.posRecent !== null && d.posRecent - d.posPrior > 0.5
+          ? ` and average position slipped ${d.posPrior.toFixed(1)} → ${d.posRecent.toFixed(1)}`
+          : ''
+      const pageLabel = post ? post.title : d.url.replace(/^https?:\/\/[^/]+/, '')
+      candidates.push({
+        item_type: post ? 'refresh' : 'other',
+        title: `Refresh: ${pageLabel}`,
+        reason: `Search clicks fell ${Math.round(d.drop * 100)}% over the last month (${d.prior} → ${d.recent})${posNote} — this page is decaying.`,
+        evidence: {
+          signal: 'gsc_decay',
+          dedupe_key: post ? `refresh:${post.id}` : `decay:${d.url}`,
+          url: d.url,
+          clicks_prior_4w: d.prior,
+          clicks_recent_4w: d.recent,
+          drop_pct: Math.round(d.drop * 100),
+          position_prior: d.posPrior,
+          position_recent: d.posRecent,
+        },
+        target_post_id: post?.id ?? null,
+        priority: 2,
+      })
+    }
+  }
+
   // ── 2. Cadence adherence ──────────────────────────────────────────────────
   const cadenceDays = CADENCE_DAYS[tenant?.publish_cadence ?? ''] ?? null
   if (cadenceDays) {
@@ -130,7 +217,7 @@ export async function runPamEngine(tenantId: string): Promise<PamRunResult> {
           days_since_last_publish: gap,
           cadence: tenant?.publish_cadence,
         },
-        priority: 2,
+        priority: 3,
       })
     }
   }

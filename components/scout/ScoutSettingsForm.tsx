@@ -17,6 +17,8 @@ interface ScoutConfig {
   rank_location_codes: number[] | null
   brand_terms: string[] | null
   rank_devices: string[] | null
+  gsc_property_id: string | null
+  gsc_connected: boolean | null
 }
 
 // Common DataForSEO Google location codes. Full list:
@@ -59,6 +61,31 @@ export default function ScoutSettingsForm({ tenantId, initialConfig, hasDatasfor
   )
   const [brandTerms, setBrandTerms] = useState((initialConfig?.brand_terms ?? []).join(', '))
   const [rankDevices, setRankDevices] = useState<string[]>(initialConfig?.rank_devices ?? ['desktop'])
+  const [gscPropertyId, setGscPropertyId] = useState(initialConfig?.gsc_property_id ?? '')
+  const [gscConnected, setGscConnected] = useState(Boolean(initialConfig?.gsc_connected))
+  const [gscSyncing, setGscSyncing] = useState(false)
+  const [gscMessage, setGscMessage] = useState<string | null>(null)
+
+  async function syncGsc() {
+    if (gscSyncing) return
+    setGscSyncing(true)
+    setGscMessage(null)
+    try {
+      const res = await fetch('/api/gsc/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tenantId }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.error ?? 'Sync failed')
+      setGscConnected(true)
+      setGscMessage(`✓ Synced ${data.urls} pages across ${data.weeks} weeks`)
+    } catch (err) {
+      setGscMessage(err instanceof Error ? err.message : 'Sync failed')
+    } finally {
+      setGscSyncing(false)
+    }
+  }
 
   function toggleDevice(d: string) {
     setRankDevices((prev) => {
@@ -109,6 +136,7 @@ export default function ScoutSettingsForm({ tenantId, initialConfig, hasDatasfor
           rank_location_codes: Array.from(new Set([locationCode, ...rankLocations])),
           brand_terms: brandTerms.split(',').map((t) => t.trim()).filter(Boolean),
           rank_devices: rankDevices.length ? rankDevices : ['desktop'],
+          gsc_property_id: gscPropertyId.trim() || null,
         }),
       })
       if (!res.ok) {
@@ -422,12 +450,44 @@ export default function ScoutSettingsForm({ tenantId, initialConfig, hasDatasfor
             )}
           </div>
 
-          <div className="flex items-center justify-between py-2">
-            <div>
-              <div className="text-sm font-medium text-slate-700">Google Search Console / GA4</div>
-              <div className="text-xs text-slate-400">Own site traffic and ranking data (V2)</div>
+          <div className="py-2">
+            <div className="flex items-center justify-between mb-1.5">
+              <div>
+                <div className="text-sm font-medium text-slate-700">Google Search Console</div>
+                <div className="text-xs text-slate-400">
+                  Clicks, impressions and position per page — feeds Pam&apos;s content-decay
+                  recommendations.
+                </div>
+              </div>
+              {gscConnected && <span className="text-xs text-green-600 font-medium shrink-0">✓ Connected</span>}
             </div>
-            <span className="text-xs text-slate-300 font-medium">Coming in V2</span>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={gscPropertyId}
+                onChange={(e) => setGscPropertyId(e.target.value)}
+                placeholder="sc-domain:putterfingers.com or https://www.putterfingers.com/"
+                className="flex-1 border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              />
+              <button
+                type="button"
+                onClick={() => void syncGsc()}
+                disabled={gscSyncing || !gscPropertyId.trim()}
+                className="px-3 py-2 rounded-lg border border-indigo-600 text-indigo-700 text-sm font-medium hover:bg-indigo-50 disabled:opacity-50 shrink-0"
+              >
+                {gscSyncing ? 'Syncing…' : 'Sync now'}
+              </button>
+            </div>
+            <p className="text-xs text-slate-400 mt-1.5">
+              Save settings first if you&apos;ve changed the property. The platform&apos;s service
+              account email must be added as a user on this Search Console property. Syncs weekly
+              automatically once connected.
+            </p>
+            {gscMessage && (
+              <p className={`text-xs mt-1 ${gscMessage.startsWith('✓') ? 'text-green-600' : 'text-red-600'}`}>
+                {gscMessage}
+              </p>
+            )}
           </div>
         </div>
       </div>

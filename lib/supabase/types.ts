@@ -228,6 +228,45 @@ export type Database = {
           },
         ]
       }
+      gsc_page_stats: {
+        Row: {
+          id: string
+          tenant_id: string
+          url: string
+          week_start: string
+          clicks: number
+          impressions: number
+          ctr: number | null
+          position: number | null
+          created_at: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          id?: string
+          tenant_id: string
+          url: string
+          week_start: string
+          clicks?: number
+          impressions?: number
+          ctr?: number | null
+          position?: number | null
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          id?: string
+          tenant_id?: string
+          url?: string
+          week_start?: string
+          clicks?: number
+          impressions?: number
+          ctr?: number | null
+          position?: number | null
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       pam_items: {
         Row: {
           id: string
