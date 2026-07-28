@@ -71,6 +71,16 @@ export default function ScoutSettingsForm({ tenantId, initialConfig, hasDatasfor
     setGscSyncing(true)
     setGscMessage(null)
     try {
+      // Persist the property first so "Sync now" is one action, not two.
+      const saveRes = await fetch('/api/scout/config', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tenantId, gsc_property_id: gscPropertyId.trim() || null }),
+      })
+      if (!saveRes.ok) {
+        const d = await saveRes.json().catch(() => ({}))
+        throw new Error(d.error ?? 'Could not save the property')
+      }
       const res = await fetch('/api/gsc/sync', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -479,7 +489,7 @@ export default function ScoutSettingsForm({ tenantId, initialConfig, hasDatasfor
               </button>
             </div>
             <p className="text-xs text-slate-400 mt-1.5">
-              Save settings first if you&apos;ve changed the property. The platform&apos;s service
+              Sync now saves the property and pulls the last 12 weeks. The platform&apos;s service
               account email must be added as a user on this Search Console property. Syncs weekly
               automatically once connected.
             </p>
