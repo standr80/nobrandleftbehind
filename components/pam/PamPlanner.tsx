@@ -186,12 +186,6 @@ export default function PamPlanner({ tenantId, initialPosts, initialItems }: Pro
     }
   }
 
-  function snoozeDate(days: number): string {
-    const d = new Date()
-    d.setDate(d.getDate() + days)
-    return dayKey(d)
-  }
-
   async function deleteItem(id: string) {
     if (busyId) return
     setBusyId(id)
@@ -209,7 +203,10 @@ export default function PamPlanner({ tenantId, initialPosts, initialItems }: Pro
 
   const backlog = items.filter((i) => i.kind === 'idea' && (i.status === 'open' || i.status === 'scheduled'))
   const doneIdeas = items.filter((i) => i.kind === 'idea' && i.status === 'done')
-  const recommendations = items.filter((i) => i.kind === 'recommendation' && i.status !== 'done')
+  const recommendations = items.filter(
+    (i) => i.kind === 'recommendation' && ['open', 'scheduled', 'snoozed'].includes(i.status),
+  )
+  const deferredRecs = items.filter((i) => i.kind === 'recommendation' && i.status === 'deferred')
 
   return (
     <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
@@ -365,11 +362,12 @@ export default function PamPlanner({ tenantId, initialPosts, initialItems }: Pro
                     )}
                     <button
                       type="button"
-                      onClick={() => void patchItem(r.id, { snoozed_until: snoozeDate(30) })}
+                      onClick={() => void patchItem(r.id, { status: 'deferred' })}
                       disabled={busyId === r.id}
+                      title="Not now — park it below without dismissing"
                       className="text-xs text-slate-400 hover:text-slate-700 ml-auto"
                     >
-                      Snooze 30d
+                      Defer
                     </button>
                     <button
                       type="button"
@@ -386,6 +384,44 @@ export default function PamPlanner({ tenantId, initialPosts, initialItems }: Pro
                 </li>
               ))}
             </ul>
+          )}
+
+          {/* Deferred — parked, not forgotten. Pam won't re-suggest these
+              while they sit here. */}
+          {deferredRecs.length > 0 && (
+            <div className="mt-3 pt-3 border-t border-slate-100">
+              <p className="text-xs font-medium text-slate-400 mb-1.5">
+                Deferred ({deferredRecs.length})
+              </p>
+              <ul className="space-y-1.5">
+                {deferredRecs.map((r) => (
+                  <li key={r.id} className="flex items-center gap-2 text-sm">
+                    <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium shrink-0 ${TYPE_BADGE[r.item_type]}`}>
+                      {r.item_type}
+                    </span>
+                    <span className="text-slate-500 truncate flex-1" title={r.reason ?? undefined}>
+                      {r.title}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => void patchItem(r.id, { status: r.scheduled_for ? 'scheduled' : 'open' })}
+                      disabled={busyId === r.id}
+                      className="text-xs text-rose-700 font-medium hover:underline shrink-0"
+                    >
+                      Restore
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => void patchItem(r.id, { status: 'dismissed' })}
+                      disabled={busyId === r.id}
+                      className="text-xs text-slate-400 hover:text-red-600 shrink-0"
+                    >
+                      Dismiss
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
           )}
         </div>
 

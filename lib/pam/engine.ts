@@ -131,7 +131,8 @@ export async function runPamEngine(tenantId: string): Promise<PamRunResult> {
   for (const item of existing ?? []) {
     const key = (item.evidence as { dedupe_key?: string } | null)?.dedupe_key
     if (!key) continue
-    if (['open', 'scheduled', 'snoozed'].includes(item.status)) blockedKeys.add(key)
+    // Deferred = "not now, don't forget" — blocks re-suggestion while parked.
+    if (['open', 'scheduled', 'snoozed', 'deferred'].includes(item.status)) blockedKeys.add(key)
     else if (item.status === 'dismissed' && daysAgo(item.dismissed_at) < RESUGGEST_DAYS) {
       blockedKeys.add(key)
     }
@@ -373,6 +374,8 @@ export async function runPamEngine(tenantId: string): Promise<PamRunResult> {
   const fresh = candidates.filter((c) => !blockedKeys.has(c.evidence.dedupe_key))
   const skippedExisting = candidates.length - fresh.length
 
+  // Deferred items don't count against the desk cap — they're parked, and
+  // parking shouldn't starve the desk of fresh recommendations.
   const currentOpen = (existing ?? []).filter(
     (i) => i.kind === 'recommendation' && ['open', 'scheduled', 'snoozed'].includes(i.status),
   ).length

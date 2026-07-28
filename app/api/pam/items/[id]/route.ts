@@ -55,7 +55,7 @@ export async function PATCH(request: Request, { params }: Params) {
     patch.status = 'snoozed'
   }
 
-  const VALID_STATUSES = ['open', 'scheduled', 'done', 'dismissed', 'snoozed']
+  const VALID_STATUSES = ['open', 'scheduled', 'done', 'dismissed', 'snoozed', 'deferred']
   if (VALID_STATUSES.includes(body.status)) {
     patch.status = body.status
     if (body.status === 'dismissed') patch.dismissed_at = new Date().toISOString()
