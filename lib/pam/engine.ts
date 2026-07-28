@@ -43,6 +43,33 @@ export interface PamRunResult {
   considered: number
   skippedExisting: number
   cappedOut: number
+  /** Per-signal explanations so an empty run is never opaque. */
+  notes: string[]
+}
+
+/** gsc_page_stats can exceed Supabase's 1000-row response cap for large
+ *  sites (Putterfingers: ~1.8k URLs × 8 weeks) — page through it. */
+async function fetchGscStats(
+  db: ReturnType<typeof createAdminClient>,
+  tenantId: string,
+  sinceWeek: string,
+): Promise<Array<{ url: string; week_start: string; clicks: number; position: number | null }>> {
+  const all: Array<{ url: string; week_start: string; clicks: number; position: number | null }> = []
+  const PAGE = 1000
+  for (let from = 0; ; from += PAGE) {
+    const { data, error } = await db
+      .from('gsc_page_stats')
+      .select('url, week_start, clicks, position')
+      .eq('tenant_id', tenantId)
+      .gte('week_start', sinceWeek)
+      .order('week_start', { ascending: false })
+      .order('url', { ascending: true })
+      .range(from, from + PAGE - 1)
+    if (error) throw new Error(`[pam] gsc fetch failed: ${error.message}`)
+    all.push(...(data ?? []))
+    if (!data || data.length < PAGE) break
+  }
+  return all
 }
 
 export async function runPamEngine(tenantId: string): Promise<PamRunResult> {
@@ -79,12 +106,7 @@ export async function runPamEngine(tenantId: string): Promise<PamRunResult> {
         .from('pam_items')
         .select('kind, status, evidence, dismissed_at')
         .eq('tenant_id', tenantId),
-      db
-        .from('gsc_page_stats')
-        .select('url, week_start, clicks, position')
-        .eq('tenant_id', tenantId)
-        .gte('week_start', eightWeeksAgo)
-        .order('week_start', { ascending: false }),
+      fetchGscStats(db, tenantId, eightWeeksAgo).then((data) => ({ data })),
     ])
 
   const published = (posts ?? []).filter((p) => p.status === 'published' && p.published_at)
@@ -102,6 +124,7 @@ export async function runPamEngine(tenantId: string): Promise<PamRunResult> {
   }
 
   const candidates: Candidate[] = []
+  const notes: string[] = []
 
   // ── 1. Seasonal Scout opportunities (most time-sensitive) ─────────────────
   const seasonal = (opps ?? [])
@@ -125,6 +148,13 @@ export async function runPamEngine(tenantId: string): Promise<PamRunResult> {
       },
       priority: 1,
     })
+  }
+  if (!seasonal.length) {
+    notes.push(
+      (opps ?? []).length
+        ? 'Seasonal: no Scout keyword peaks within the next 10 weeks.'
+        : 'Seasonal: no pending Scout keyword opportunities — run Scout to gather some.',
+    )
   }
 
   // ── 1b. GSC decay (the strongest refresh trigger — needs stage-4 sync) ────
@@ -196,10 +226,27 @@ export async function runPamEngine(tenantId: string): Promise<PamRunResult> {
         priority: 2,
       })
     }
+    const analysedUrls = byUrl.size
+    if (!decays.length) {
+      notes.push(
+        weeks.length < 8
+          ? `Decay: only ${weeks.length} weeks of GSC history so far — needs 8 for a fair before/after comparison.`
+          : `Decay: analysed ${analysedUrls} pages — none crossed the threshold (20+ clicks/month then a 30%+ drop). Healthy sign.`,
+      )
+    }
+  } else {
+    notes.push('Decay: no GSC data — connect Search Console in Scout settings and sync.')
   }
 
   // ── 2. Cadence adherence ──────────────────────────────────────────────────
   const cadenceDays = CADENCE_DAYS[tenant?.publish_cadence ?? ''] ?? null
+  if (!cadenceDays) {
+    notes.push(
+      tenant?.publish_cadence
+        ? `Cadence: unrecognised cadence "${tenant.publish_cadence}" — expected daily/weekly/fortnightly/monthly.`
+        : 'Cadence: no publish cadence set in workspace settings, so slippage can’t be measured.',
+    )
+  }
   if (cadenceDays) {
     const lastPublished = published
       .map((p) => p.published_at as string)
@@ -247,6 +294,13 @@ export async function runPamEngine(tenantId: string): Promise<PamRunResult> {
       priority: 3,
     })
   }
+  if (!stale.length) {
+    notes.push(
+      published.length
+        ? 'Staleness: nothing published more than 9 months ago without a refresh.'
+        : 'Staleness: no published content yet.',
+    )
+  }
 
   // ── 4. Cluster coverage ───────────────────────────────────────────────────
   const clusters = Array.isArray(tenant?.content_clusters)
@@ -275,6 +329,11 @@ export async function runPamEngine(tenantId: string): Promise<PamRunResult> {
       priority: 4,
     })
   }
+  if (!clusters.length) {
+    notes.push('Clusters: no content clusters configured in Settings — coverage checks can’t run.')
+  } else if (!thin.length) {
+    notes.push('Clusters: every cluster has 2+ supporting pieces.')
+  }
 
   // ── 5. FAQ question pool ──────────────────────────────────────────────────
   const unusedQuestions = (faqPool ?? []).length
@@ -290,6 +349,10 @@ export async function runPamEngine(tenantId: string): Promise<PamRunResult> {
       },
       priority: 5,
     })
+  } else {
+    notes.push(
+      `FAQ pool: ${unusedQuestions} unused question${unusedQuestions === 1 ? '' : 's'} waiting (needs 5+ for a page).`,
+    )
   }
 
   // ── Dedupe + cap + insert ─────────────────────────────────────────────────
@@ -320,10 +383,15 @@ export async function runPamEngine(tenantId: string): Promise<PamRunResult> {
     if (error) throw new Error(`[pam] insert failed: ${error.message}`)
   }
 
+  if (skippedExisting > 0) {
+    notes.push(`${skippedExisting} candidate${skippedExisting === 1 ? '' : 's'} already on the desk or recently dismissed.`)
+  }
+
   return {
     created: toInsert.length,
     considered: candidates.length,
     skippedExisting,
     cappedOut: fresh.length - toInsert.length,
+    notes,
   }
 }

@@ -139,6 +139,7 @@ export default function PamPlanner({ tenantId, initialPosts, initialItems }: Pro
 
   const [runningPam, setRunningPam] = useState(false)
   const [runSummary, setRunSummary] = useState<string | null>(null)
+  const [runNotes, setRunNotes] = useState<string[]>([])
 
   async function runPam() {
     if (runningPam) return
@@ -157,8 +158,9 @@ export default function PamPlanner({ tenantId, initialPosts, initialItems }: Pro
       setRunSummary(
         data.created > 0
           ? `Pam added ${data.created} recommendation${data.created === 1 ? '' : 's'}`
-          : 'Pam found nothing new to recommend right now',
+          : 'Pam found nothing new to recommend right now — her reasoning:',
       )
+      setRunNotes(Array.isArray(data.notes) ? data.notes : [])
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Pam run failed')
     } finally {
@@ -312,6 +314,15 @@ export default function PamPlanner({ tenantId, initialPosts, initialItems }: Pro
             </button>
           </div>
           {runSummary && <p className="text-xs text-slate-500 mb-2">{runSummary}</p>}
+          {runNotes.length > 0 && (
+            <ul className="mb-2 space-y-1">
+              {runNotes.map((n, i) => (
+                <li key={i} className="text-[11px] text-slate-400 leading-snug">
+                  · {n}
+                </li>
+              ))}
+            </ul>
+          )}
           {recommendations.length === 0 ? (
             <p className="text-xs text-slate-400">
               Nothing on the desk. Run Pam to scan this workspace — she also runs automatically
