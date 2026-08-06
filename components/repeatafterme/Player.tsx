@@ -4,6 +4,18 @@ import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { RepetezEngine } from "@/lib/repeatafterme/engine";
 import { LANGS } from "@/lib/repeatafterme/langs";
 import { parseLines, deckToCsv } from "@/lib/repeatafterme/deckParsing";
+import {
+  getSettings,
+  saveSettings,
+  getLastDeck,
+  saveLastDeck,
+  listDecks,
+  saveDeckToLibrary,
+  renameDeckInLibrary,
+  deleteDeckFromLibrary,
+  addScore,
+  type SavedDeck,
+} from "@/lib/repeatafterme/db";
 
 export default function Player() {
   const engineRef = useRef<RepetezEngine | null>(null);
@@ -20,9 +32,20 @@ export default function Player() {
   const [pasteOpen, setPasteOpen] = useState(false);
   const [pasteText, setPasteText] = useState("");
 
-  // Voices, thinking-bar animation hooks, and wake-lock reacquire-on-visible — all
-  // client-only, wired once. Mirrors the imperative style manipulation in the
-  // original repetez.html rather than re-rendering React for a CSS transition.
+  const [savedDecks, setSavedDecks] = useState<SavedDeck[]>([]);
+  const [saveBoxOpen, setSaveBoxOpen] = useState(false);
+  const [saveName, setSaveName] = useState("");
+  const [renamingId, setRenamingId] = useState<string | null>(null);
+  const [renameValue, setRenameValue] = useState("");
+
+  function refreshSavedDecks() {
+    listDecks().then(setSavedDecks);
+  }
+
+  // Voices, thinking-bar animation hooks, wake-lock reacquire-on-visible, and
+  // IndexedDB persistence hooks — all client-only, wired once. Mirrors the imperative
+  // style manipulation in the original repetez.html rather than re-rendering React for
+  // a CSS transition.
   useEffect(() => {
     if (typeof window === "undefined" || !window.speechSynthesis) return;
     const load = () => engine.setVoices(window.speechSynthesis.getVoices());
@@ -48,6 +71,26 @@ export default function Player() {
       if (document.visibilityState === "visible") engine.reacquireWakeIfPlaying();
     };
     document.addEventListener("visibilitychange", onVisible);
+
+    engine.onDeckOrSettingsChange = () => {
+      const snapshot = engine.getSnapshot();
+      void saveSettings(snapshot.settings);
+      const current = engine.getCurrentDeck();
+      void saveLastDeck(snapshot.deckLabel, current.pairs);
+    };
+    engine.onTestComplete = (result) => {
+      void addScore({ ...result, date: new Date().toISOString() });
+    };
+
+    // Resume where you left off: restore persisted settings + last-used deck, then
+    // load the saved-deck library list. Silent — hydrate() doesn't re-trigger a save.
+    Promise.all([getSettings(), getLastDeck()]).then(([settings, lastDeck]) => {
+      if (settings || lastDeck) {
+        engine.hydrate({ settings, deck: lastDeck });
+      }
+    });
+    refreshSavedDecks();
+
     return () => {
       window.speechSynthesis.onvoiceschanged = null;
       document.removeEventListener("visibilitychange", onVisible);
@@ -75,6 +118,36 @@ export default function Player() {
     a.download = L.name.toLowerCase() + "-deck.csv";
     a.click();
     URL.revokeObjectURL(a.href);
+  }
+
+  function openSaveBox() {
+    setSaveName(engine.getCurrentDeck().label);
+    setSaveBoxOpen(true);
+  }
+  async function handleSaveCurrent() {
+    const current = engine.getCurrentDeck();
+    await saveDeckToLibrary({ label: saveName.trim() || current.label, lang: current.lang, pairs: current.pairs });
+    refreshSavedDecks();
+    setSaveBoxOpen(false);
+    engine.setStatus(`Saved "${saveName.trim() || current.label}" to your decks.`);
+  }
+  function handleLoadSaved(deck: SavedDeck) {
+    engine.loadDeckForLang(deck.pairs, deck.label, deck.lang);
+  }
+  async function handleDeleteSaved(id: string) {
+    await deleteDeckFromLibrary(id);
+    refreshSavedDecks();
+  }
+  function startRename(deck: SavedDeck) {
+    setRenamingId(deck.id);
+    setRenameValue(deck.label);
+  }
+  async function commitRename() {
+    if (renamingId && renameValue.trim()) {
+      await renameDeckInLibrary(renamingId, renameValue.trim());
+      refreshSavedDecks();
+    }
+    setRenamingId(null);
   }
 
   return (
@@ -192,6 +265,7 @@ export default function Player() {
           <button className="chip" onClick={() => fileInputRef.current?.click()}>Upload CSV</button>
           <button className="chip" onClick={() => setPasteOpen((v) => !v)}>Paste phrases</button>
           <button className="chip" onClick={handleDownload}>Download deck</button>
+          <button className="chip" onClick={openSaveBox}>Save current deck</button>
         </div>
         <input ref={fileInputRef} id="csvfile" type="file" accept=".csv,.txt,.tsv" onChange={handleFile} />
 
@@ -215,7 +289,52 @@ export default function Player() {
           </div>
         </div>
 
+        <div className={"paste-box" + (saveBoxOpen ? " open" : "")}>
+          <input type="text" value={saveName} onChange={(e) => setSaveName(e.target.value)} placeholder="Deck name" />
+          <div className="gen-row">
+            <button className="chip primary" onClick={handleSaveCurrent}>Save</button>
+            <button className="chip" onClick={() => setSaveBoxOpen(false)}>Cancel</button>
+          </div>
+        </div>
+
         <div className={"status" + (snap.statusErr ? " err" : "")}>{snap.status}</div>
+
+        {savedDecks.length > 0 && (
+          <>
+            <h2>Your decks</h2>
+            <div className="panel">
+              {savedDecks.map((deck) => (
+                <div className="row" key={deck.id}>
+                  {renamingId === deck.id ? (
+                    <input
+                      type="text"
+                      value={renameValue}
+                      autoFocus
+                      onChange={(e) => setRenameValue(e.target.value)}
+                      onBlur={commitRename}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") commitRename();
+                        if (e.key === "Escape") setRenamingId(null);
+                      }}
+                      style={{ maxWidth: 220 }}
+                    />
+                  ) : (
+                    <label onClick={() => startRename(deck)} style={{ cursor: "text" }}>
+                      {deck.label}
+                      <span className="hint">
+                        {LANGS[deck.lang].short} · {deck.pairs.length} phrases
+                      </span>
+                    </label>
+                  )}
+                  <div className="gen-row">
+                    <button className="chip primary" onClick={() => handleLoadSaved(deck)}>Load</button>
+                    <button className="chip" onClick={() => handleDeleteSaved(deck.id)}>Delete</button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
       </main>
 
       <footer>Connect a Bluetooth speaker and press play. Keep the screen awake while practising.</footer>

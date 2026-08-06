@@ -76,6 +76,10 @@ export class RepetezEngine {
 
   onThinkStart: ((ms: number) => void) | null = null;
   onThinkStop: (() => void) | null = null;
+  /** Fired whenever settings or the active deck change — the consumer's cue to persist. */
+  onDeckOrSettingsChange: (() => void) | null = null;
+  /** Fired when a test run finishes — the consumer's cue to record score history. */
+  onTestComplete: ((result: { deckLabel: string; lang: LangCode; correct: number; total: number }) => void) | null = null;
 
   constructor(lang: LangCode = "fr") {
     this.settings = { pause: 1.25, rate: 0.9, dir: "EF", shuffle: false, loop: true, showText: true, mode: "drill", lang };
@@ -311,6 +315,7 @@ export class RepetezEngine {
     this.revealAnswer = false;
     this.summaryVisible = true;
     this.emit();
+    this.onTestComplete?.({ deckLabel: this.deckLabel, lang: this.settings.lang, correct: good, total: this.results.length });
   }
 
   // ---------- transport ----------
@@ -409,15 +414,18 @@ export class RepetezEngine {
   setPause(v: number) {
     this.settings.pause = v;
     this.emit();
+    this.onDeckOrSettingsChange?.();
   }
   setRate(v: number) {
     this.settings.rate = v;
     this.emit();
+    this.onDeckOrSettingsChange?.();
   }
   setDir(dir: "EF" | "FE") {
     this.settings.dir = dir;
     this.syncCard(false);
     this.emit();
+    this.onDeckOrSettingsChange?.();
   }
   setMode(mode: "drill" | "test") {
     this.stop();
@@ -428,6 +436,7 @@ export class RepetezEngine {
     this.syncCard(false);
     if (mode === "test") this.setPhase("", "Test ready — press play");
     this.emit();
+    this.onDeckOrSettingsChange?.();
   }
   setLang(code: LangCode) {
     this.stop();
@@ -441,6 +450,7 @@ export class RepetezEngine {
     this.status = `Switched to ${LANGS[code].name} — starter deck loaded. Upload or generate a deck to replace it.`;
     this.statusErr = false;
     this.emit();
+    this.onDeckOrSettingsChange?.();
   }
   toggleShuffle() {
     this.settings.shuffle = !this.settings.shuffle;
@@ -448,19 +458,22 @@ export class RepetezEngine {
     this.pos = 0;
     this.syncCard(false);
     this.emit();
+    this.onDeckOrSettingsChange?.();
   }
   toggleLoop() {
     this.settings.loop = !this.settings.loop;
     this.emit();
+    this.onDeckOrSettingsChange?.();
   }
   toggleShowText() {
     this.settings.showText = !this.settings.showText;
     this.syncCard(this.revealAnswer);
     this.emit();
+    this.onDeckOrSettingsChange?.();
   }
 
   // ---------- deck loading ----------
-  loadDeck(rows: Pair[], label: string) {
+  loadDeck(rows: Pair[], label: string, opts: { silent?: boolean } = {}) {
     if (!rows.length) {
       this.status = "No phrases found — expected: english, french (one per line).";
       this.statusErr = true;
@@ -474,9 +487,44 @@ export class RepetezEngine {
     this.resetTest();
     this.syncCard(false);
     this.deckLabel = `${label} · ${this.deck.length} phrases`;
-    this.status = `Loaded ${this.deck.length} phrases.`;
-    this.statusErr = false;
+    if (!opts.silent) {
+      this.status = `Loaded ${this.deck.length} phrases.`;
+      this.statusErr = false;
+    }
     this.emit();
+    if (!opts.silent) this.onDeckOrSettingsChange?.();
+  }
+
+  /** Restore persisted settings + last-used deck on mount. Silent — no status message,
+   *  no onDeckOrSettingsChange echo (we're loading what was already saved, not changing it). */
+  hydrate(opts: { settings?: Partial<Settings>; deck?: { pairs: Pair[]; label: string } }) {
+    if (opts.settings) this.settings = { ...this.settings, ...opts.settings };
+    if (opts.deck?.pairs.length) {
+      this.deck = opts.deck.pairs;
+      this.deckLabel = opts.deck.label;
+    } else if (opts.settings?.lang) {
+      this.deck = LANGS[this.settings.lang].starter.slice();
+      this.deckLabel = `Starter deck · ${this.deck.length} phrases`;
+    }
+    this.pos = 0;
+    this.rebuildOrder();
+    this.resetTest();
+    this.syncCard(false);
+    this.emit();
+  }
+
+  /** Load a saved deck, switching the active language first if it was saved under a
+   *  different one (so TTS uses the right voice) — used by the deck library's "Load". */
+  loadDeckForLang(pairs: Pair[], label: string, lang: LangCode) {
+    if (lang !== this.settings.lang) this.settings.lang = lang;
+    this.loadDeck(pairs, label);
+  }
+
+  /** Current deck's content, for the consumer to persist (last-used or save-to-library). */
+  getCurrentDeck(): { pairs: Pair[]; label: string; lang: LangCode } {
+    // Strip any " · N phrases" suffix so re-saving doesn't accumulate labels.
+    const label = this.deckLabel.replace(/\s*·\s*\d+\s*phrases?$/i, "");
+    return { pairs: this.deck, label, lang: this.settings.lang };
   }
 
   setStatus(msg: string, err = false) {
