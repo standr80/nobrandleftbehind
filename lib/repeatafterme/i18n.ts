@@ -86,6 +86,18 @@ export interface UiStrings {
   dueToday: (n: number) => string;
   dueQueueLabel: (n: number) => string;
 
+  // save & sync
+  saveAndSync: string;
+  syncIntro: string;
+  syncGenerateKey: string;
+  syncYourKey: string;
+  syncKeyHint: string;
+  syncNow: string;
+  syncStop: string;
+  syncRestoreLabel: string;
+  syncRestorePlaceholder: string;
+  syncRestoreBtn: string;
+
   footer: string;
 
   // status messages
@@ -100,6 +112,11 @@ export interface UiStrings {
   statusKeyForgotten: string;
   statusGenerationEmptyResponse: string;
   statusNothingDue: string;
+  statusSyncSaved: string;
+  statusSyncRestored: string;
+  statusSyncFailed: (msg: string) => string;
+  statusSyncStopped: string;
+  statusSyncNeedsKey: string;
 }
 
 const en: UiStrings = {
@@ -174,6 +191,17 @@ const en: UiStrings = {
   dueToday: (n) => `Due today (${n})`,
   dueQueueLabel: (n) => `Due today · ${n} ${n === 1 ? "phrase" : "phrases"}`,
 
+  saveAndSync: "Save & Sync",
+  syncIntro: "Get your decks and progress on another device. Generates a key on this device — no account, no email.",
+  syncGenerateKey: "Generate a key",
+  syncYourKey: "Your key",
+  syncKeyHint: "Write this down — there's no password reset. Anyone with this key can read and overwrite this data.",
+  syncNow: "Sync now",
+  syncStop: "Stop syncing on this device",
+  syncRestoreLabel: "Already have a key from another device?",
+  syncRestorePlaceholder: "XXXX-XXXX-XXXX-XXXX-XXXX",
+  syncRestoreBtn: "Restore",
+
   footer: "Connect a Bluetooth speaker and press play. Keep the screen awake while practising.",
 
   statusLoadedPhrases: (n) => `Loaded ${n} phrases.`,
@@ -187,6 +215,11 @@ const en: UiStrings = {
   statusKeyForgotten: "API key forgotten.",
   statusGenerationEmptyResponse: "couldn't read the response format",
   statusNothingDue: "Nothing due right now — nice work.",
+  statusSyncSaved: "Synced.",
+  statusSyncRestored: "Restored from sync.",
+  statusSyncFailed: (msg) => `Sync failed: ${msg}`,
+  statusSyncStopped: "Sync stopped on this device — your data stays here, nothing was deleted.",
+  statusSyncNeedsKey: "Enter a key first.",
 };
 
 const fr: UiStrings = {
@@ -261,6 +294,17 @@ const fr: UiStrings = {
   dueToday: (n) => `À réviser (${n})`,
   dueQueueLabel: (n) => `À réviser · ${n} phrases`,
 
+  saveAndSync: "Enregistrer et synchroniser",
+  syncIntro: "Retrouvez vos paquets et votre progression sur un autre appareil. Génère une clé sur cet appareil — pas de compte, pas d'e-mail.",
+  syncGenerateKey: "Générer une clé",
+  syncYourKey: "Votre clé",
+  syncKeyHint: "Notez-la — il n'y a pas de récupération de mot de passe. Toute personne avec cette clé peut lire et écraser ces données.",
+  syncNow: "Synchroniser",
+  syncStop: "Arrêter la synchronisation sur cet appareil",
+  syncRestoreLabel: "Vous avez déjà une clé d'un autre appareil ?",
+  syncRestorePlaceholder: "XXXX-XXXX-XXXX-XXXX-XXXX",
+  syncRestoreBtn: "Restaurer",
+
   footer: "Connectez une enceinte Bluetooth et appuyez sur lecture. Gardez l'écran allumé pendant l'entraînement.",
 
   statusLoadedPhrases: (n) => `${n} phrases chargées.`,
@@ -274,6 +318,11 @@ const fr: UiStrings = {
   statusKeyForgotten: "Clé API oubliée.",
   statusGenerationEmptyResponse: "format de réponse illisible",
   statusNothingDue: "Rien à réviser pour l'instant — bravo.",
+  statusSyncSaved: "Synchronisé.",
+  statusSyncRestored: "Restauré depuis la synchronisation.",
+  statusSyncFailed: (msg) => `Échec de la synchronisation : ${msg}`,
+  statusSyncStopped: "Synchronisation arrêtée sur cet appareil — vos données restent ici, rien n'a été supprimé.",
+  statusSyncNeedsKey: "Entrez d'abord une clé.",
 };
 
 const es: UiStrings = {
@@ -348,6 +397,17 @@ const es: UiStrings = {
   dueToday: (n) => `Para repasar (${n})`,
   dueQueueLabel: (n) => `Para repasar · ${n} frases`,
 
+  saveAndSync: "Guardar y sincronizar",
+  syncIntro: "Accede a tus mazos y tu progreso en otro dispositivo. Genera una clave en este dispositivo — sin cuenta, sin correo.",
+  syncGenerateKey: "Generar una clave",
+  syncYourKey: "Tu clave",
+  syncKeyHint: "Anótala — no hay recuperación de contraseña. Cualquiera con esta clave puede leer y sobrescribir estos datos.",
+  syncNow: "Sincronizar",
+  syncStop: "Dejar de sincronizar en este dispositivo",
+  syncRestoreLabel: "¿Ya tienes una clave de otro dispositivo?",
+  syncRestorePlaceholder: "XXXX-XXXX-XXXX-XXXX-XXXX",
+  syncRestoreBtn: "Restaurar",
+
   footer: "Conecta un altavoz Bluetooth y pulsa reproducir. Mantén la pantalla encendida mientras practicas.",
 
   statusLoadedPhrases: (n) => `${n} frases cargadas.`,
@@ -361,6 +421,11 @@ const es: UiStrings = {
   statusKeyForgotten: "Clave API olvidada.",
   statusGenerationEmptyResponse: "no se pudo leer el formato de la respuesta",
   statusNothingDue: "Nada que repasar por ahora — bien hecho.",
+  statusSyncSaved: "Sincronizado.",
+  statusSyncRestored: "Restaurado desde la sincronización.",
+  statusSyncFailed: (msg) => `Error al sincronizar: ${msg}`,
+  statusSyncStopped: "Sincronización detenida en este dispositivo — tus datos permanecen aquí, no se ha eliminado nada.",
+  statusSyncNeedsKey: "Introduce primero una clave.",
 };
 
 const DICTS: Record<LangCode, UiStrings> = { en, fr, es };

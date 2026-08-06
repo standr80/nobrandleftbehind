@@ -206,3 +206,73 @@ export async function listDueSrsRecords(nativeLang: Settings["nativeLang"], targ
     return [];
   }
 }
+
+export async function listAllSrsRecords(): Promise<SrsRecord[]> {
+  try {
+    const db = await openDb();
+    return await tx<SrsRecord[]>(db, STORE_SRS, "readonly", (s) => s.getAll());
+  } catch {
+    return [];
+  }
+}
+
+// ---------- zero-knowledge sync: export / restore everything ----------
+// This is the payload lib/repeatafterme/vault.ts encrypts before it ever leaves the
+// browser (see the Sync panel in components/repeatafterme/Player.tsx). Deliberately
+// excludes the AI key (lib/repeatafterme/aiSettings.ts) — that must never leave this
+// browser at all, synced or not.
+export interface SyncPayload {
+  settings: Settings | undefined;
+  decks: SavedDeck[];
+  srs: SrsRecord[];
+  scores: ScoreRecord[];
+  exportedAt: string;
+}
+
+export async function exportSyncPayload(): Promise<SyncPayload> {
+  const [settings, decks, srs, scores] = await Promise.all([getSettings(), listDecks(), listAllSrsRecords(), listScores()]);
+  return { settings, decks, srs, scores, exportedAt: new Date().toISOString() };
+}
+
+/** Overwrites local decks/srs/scores/settings with the synced payload — this is a
+ *  restore, not a merge. Each store is cleared and repopulated in its own
+ *  transaction; a failure partway through leaves earlier stores already restored
+ *  (acceptable for a personal app — re-running restore is idempotent). */
+export async function restoreSyncPayload(payload: SyncPayload): Promise<void> {
+  const db = await openDb();
+  if (payload.settings) await saveSettings(payload.settings);
+
+  await new Promise<void>((resolve, reject) => {
+    const t = db.transaction(STORE_DECKS, "readwrite");
+    const store = t.objectStore(STORE_DECKS);
+    store.clear();
+    for (const deck of payload.decks) store.put(deck);
+    t.oncomplete = () => resolve();
+    t.onerror = () => reject(t.error);
+  });
+
+  await new Promise<void>((resolve, reject) => {
+    const t = db.transaction(STORE_SRS, "readwrite");
+    const store = t.objectStore(STORE_SRS);
+    store.clear();
+    for (const rec of payload.srs) store.put(rec);
+    t.oncomplete = () => resolve();
+    t.onerror = () => reject(t.error);
+  });
+
+  await new Promise<void>((resolve, reject) => {
+    const t = db.transaction(STORE_SCORES, "readwrite");
+    const store = t.objectStore(STORE_SCORES);
+    store.clear();
+    // Drop the old auto-incremented `id` explicitly rather than setting it to
+    // undefined — IndexedDB's handling of an undefined keyPath property varies less
+    // predictably across browsers than the property simply being absent.
+    for (const rec of payload.scores) {
+      const rest: Partial<ScoreRecord> = { ...rec };
+      delete rest.id;
+      store.put(rest);
+    }
+    t.oncomplete = () => resolve();
+    t.onerror = () => reject(t.error);
+  });
+}

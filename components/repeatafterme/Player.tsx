@@ -18,12 +18,19 @@ import {
   getSrsRecord,
   saveSrsRecord,
   listDueSrsRecords,
+  exportSyncPayload,
+  restoreSyncPayload,
   type SavedDeck,
+  type SyncPayload,
 } from "@/lib/repeatafterme/db";
 import { loadAiSettings, saveAiSettings, type AiSettings } from "@/lib/repeatafterme/aiSettings";
 import { buildDeckGenPrompt } from "@/lib/repeatafterme/genPrompt";
 import type { AiProvider } from "@/lib/repeatafterme/providers";
 import { applyReview, todayIso } from "@/lib/repeatafterme/srs";
+import { generateMagicKey, sha256Hex, encryptPayload, decryptPayload } from "@/lib/repeatafterme/vault";
+import { loadMagicKey, saveMagicKey, clearMagicKey } from "@/lib/repeatafterme/syncSettings";
+
+const SYNC_SALT = "repeatafterme-v1";
 
 export default function Player() {
   const engineRef = useRef<RepetezEngine | null>(null);
@@ -67,6 +74,11 @@ export default function Player() {
 
   const [dueCount, setDueCount] = useState(0);
 
+  const [syncOpen, setSyncOpen] = useState(false);
+  const [syncMagicKey, setSyncMagicKey] = useState<string | null>(null);
+  const [syncBusy, setSyncBusy] = useState(false);
+  const [syncRestoreValue, setSyncRestoreValue] = useState("");
+
   function refreshSavedDecks() {
     listDecks().then(setSavedDecks);
   }
@@ -91,6 +103,71 @@ export default function Player() {
     setAiSettings(next);
     setAiDraftApiKey("");
     engine.setStatus(t.statusKeyForgotten);
+  }
+
+  async function handleSyncNow(keyOverride?: string) {
+    const key = keyOverride ?? syncMagicKey;
+    if (!key) return;
+    setSyncBusy(true);
+    try {
+      const [lookupHash, payload] = await Promise.all([sha256Hex(key), exportSyncPayload()]);
+      const encrypted = await encryptPayload(key, payload, SYNC_SALT);
+      const res = await fetch("/api/repeatafterme/save-data", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ lookupHash, ...encrypted }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+      engine.setStatus(t.statusSyncSaved);
+    } catch (err) {
+      engine.setStatus(t.statusSyncFailed(String((err as Error)?.message || err)), true);
+    } finally {
+      setSyncBusy(false);
+    }
+  }
+  async function handleGenerateKey() {
+    const key = generateMagicKey();
+    saveMagicKey(key);
+    setSyncMagicKey(key);
+    await handleSyncNow(key);
+  }
+  function handleStopSync() {
+    clearMagicKey();
+    setSyncMagicKey(null);
+    engine.setStatus(t.statusSyncStopped);
+  }
+  async function handleRestore() {
+    const key = syncRestoreValue.trim();
+    if (!key) {
+      engine.setStatus(t.statusSyncNeedsKey, true);
+      return;
+    }
+    setSyncBusy(true);
+    try {
+      const lookupHash = await sha256Hex(key);
+      const res = await fetch("/api/repeatafterme/load-data", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ lookupHash }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+      const payload = await decryptPayload<SyncPayload>(key, data, SYNC_SALT);
+      await restoreSyncPayload(payload);
+      saveMagicKey(key);
+      setSyncMagicKey(key);
+      setSyncRestoreValue("");
+      const restoredSettings = await getSettings();
+      engine.hydrate({ settings: restoredSettings });
+      refreshSavedDecks();
+      refreshDueCount();
+      engine.setStatus(t.statusSyncRestored);
+    } catch (err) {
+      engine.setStatus(t.statusSyncFailed(String((err as Error)?.message || err)), true);
+    } finally {
+      setSyncBusy(false);
+    }
   }
 
   // Voices, thinking-bar animation hooks, wake-lock reacquire-on-visible, and
@@ -150,6 +227,7 @@ export default function Player() {
     });
     refreshSavedDecks();
     setAiSettings(loadAiSettings());
+    setSyncMagicKey(loadMagicKey());
 
     return () => {
       window.speechSynthesis.onvoiceschanged = null;
@@ -545,6 +623,42 @@ export default function Player() {
             </div>
           </>
         )}
+
+        <h2>{t.saveAndSync}</h2>
+        <div className="deck-actions">
+          <button className="chip" onClick={() => setSyncOpen((v) => !v)}>{t.saveAndSync}</button>
+        </div>
+        <div className={"paste-box" + (syncOpen ? " open" : "")}>
+          {!syncMagicKey ? (
+            <>
+              <div className="hint">{t.syncIntro}</div>
+              <div className="gen-row">
+                <button className="chip primary" onClick={handleGenerateKey} disabled={syncBusy}>{t.syncGenerateKey}</button>
+              </div>
+            </>
+          ) : (
+            <>
+              <label>{t.syncYourKey}</label>
+              <input type="text" readOnly value={syncMagicKey} onFocus={(e) => e.target.select()} />
+              <div className="hint">{t.syncKeyHint}</div>
+              <div className="gen-row">
+                <button className="chip primary" onClick={() => handleSyncNow()} disabled={syncBusy}>{t.syncNow}</button>
+                <button className="chip" onClick={handleStopSync} disabled={syncBusy}>{t.syncStop}</button>
+              </div>
+            </>
+          )}
+          <label>{t.syncRestoreLabel}</label>
+          <input
+            type="text"
+            value={syncRestoreValue}
+            onChange={(e) => setSyncRestoreValue(e.target.value)}
+            placeholder={t.syncRestorePlaceholder}
+          />
+          <div className="gen-row">
+            <button className="chip primary" onClick={handleRestore} disabled={syncBusy}>{t.syncRestoreBtn}</button>
+            <button className="chip" onClick={() => setSyncOpen(false)}>{t.cancel}</button>
+          </div>
+        </div>
       </main>
 
       <footer>{t.footer}</footer>
