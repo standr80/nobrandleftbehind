@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import Link from "next/link";
 import { RepetezEngine } from "@/lib/repeatafterme/engine";
 import { LANGS, LANG_ORDER, availableTargets } from "@/lib/repeatafterme/langs";
 import { getStrings } from "@/lib/repeatafterme/i18n";
@@ -366,7 +367,12 @@ export default function Player() {
           {L.title}
           <em>.</em>
         </h1>
-        <span className="deck-label">{snap.deckLabel}</span>
+        <span className="deck-label">
+          <Link href="/repeatafterme/ecoutez" className="hint" style={{ marginRight: 10 }}>
+            {t.ecoutezNavLink}
+          </Link>
+          {snap.deckLabel}
+        </span>
       </header>
 
       <main>

@@ -102,6 +102,29 @@ export interface UiStrings {
   syncRestorePlaceholder: string;
   syncRestoreBtn: string;
 
+  // Écoutez (listening mode)
+  ecoutezNavLink: string;
+  ecoutezBackLink: string;
+  ecoutezIntro: string;
+  ecoutezModeTopic: string;
+  ecoutezModePaste: string;
+  ecoutezTopicPlaceholder: string;
+  ecoutezPastePlaceholder: string;
+  ecoutezLevelLabel: string;
+  ecoutezGenerate: string;
+  ecoutezGenerating: string;
+  ecoutezVocabHeading: string;
+  ecoutezPreviewVocab: string;
+  ecoutezStartListening: string;
+  ecoutezPass1: string;
+  ecoutezPass2: string;
+  ecoutezSummaryHeading: string;
+  ecoutezQuestionsHeading: string;
+  ecoutezKeyPhrasesHeading: string;
+  ecoutezExportDeck: string;
+  ecoutezGoToDrill: string;
+  ecoutezNewEpisode: string;
+
   footer: string;
 
   // status messages
@@ -121,6 +144,9 @@ export interface UiStrings {
   statusSyncFailed: (msg: string) => string;
   statusSyncStopped: string;
   statusSyncNeedsKey: string;
+  statusEcoutezGenerationFailed: (msg: string) => string;
+  statusEcoutezExported: (name: string) => string;
+  statusEcoutezNeedsKey: string;
 }
 
 const en: UiStrings = {
@@ -210,6 +236,28 @@ const en: UiStrings = {
   syncRestorePlaceholder: "XXXX-XXXX-XXXX-XXXX-XXXX",
   syncRestoreBtn: "Restore",
 
+  ecoutezNavLink: "Écoutez",
+  ecoutezBackLink: "← Back to drills",
+  ecoutezIntro: "Listen to a short passage at your level, twice — slow, then natural — with vocab before and a recap after.",
+  ecoutezModeTopic: "Topic",
+  ecoutezModePaste: "Paste text to simplify",
+  ecoutezTopicPlaceholder: "Topic (optional), e.g. a trip to the market, weekend plans",
+  ecoutezPastePlaceholder: "Paste authentic text and it'll be simplified to your level",
+  ecoutezLevelLabel: "Level",
+  ecoutezGenerate: "Generate episode",
+  ecoutezGenerating: "Writing your episode…",
+  ecoutezVocabHeading: "Vocab preview",
+  ecoutezPreviewVocab: "Play vocab preview",
+  ecoutezStartListening: "Start listening",
+  ecoutezPass1: "Listening — slow pass",
+  ecoutezPass2: "Listening — natural pass",
+  ecoutezSummaryHeading: "Summary",
+  ecoutezQuestionsHeading: "Comprehension questions",
+  ecoutezKeyPhrasesHeading: "Key phrases",
+  ecoutezExportDeck: "Export vocab as a deck",
+  ecoutezGoToDrill: "Go practise this deck",
+  ecoutezNewEpisode: "New episode",
+
   footer: "Connect a Bluetooth speaker and press play. Keep the screen awake while practising.",
 
   statusLoadedPhrases: (n) => `Loaded ${n} phrases.`,
@@ -228,6 +276,9 @@ const en: UiStrings = {
   statusSyncFailed: (msg) => `Sync failed: ${msg}`,
   statusSyncStopped: "Sync stopped on this device — your data stays here, nothing was deleted.",
   statusSyncNeedsKey: "Enter a key first.",
+  statusEcoutezGenerationFailed: (msg) => `Couldn't generate that episode: ${msg}`,
+  statusEcoutezExported: (name) => `Exported as "${name}" — find it in Your decks.`,
+  statusEcoutezNeedsKey: "Add an API key in AI Settings on the main page first.",
 };
 
 const fr: UiStrings = {
@@ -317,6 +368,28 @@ const fr: UiStrings = {
   syncRestorePlaceholder: "XXXX-XXXX-XXXX-XXXX-XXXX",
   syncRestoreBtn: "Restaurer",
 
+  ecoutezNavLink: "Écoutez",
+  ecoutezBackLink: "← Retour aux exercices",
+  ecoutezIntro: "Écoutez un court passage à votre niveau, deux fois — lentement, puis normalement — avec le vocabulaire avant et un résumé après.",
+  ecoutezModeTopic: "Sujet",
+  ecoutezModePaste: "Coller un texte à simplifier",
+  ecoutezTopicPlaceholder: "Sujet (facultatif), ex. une sortie au marché, les projets du week-end",
+  ecoutezPastePlaceholder: "Collez un texte authentique, il sera simplifié à votre niveau",
+  ecoutezLevelLabel: "Niveau",
+  ecoutezGenerate: "Générer l'épisode",
+  ecoutezGenerating: "Rédaction de votre épisode…",
+  ecoutezVocabHeading: "Aperçu du vocabulaire",
+  ecoutezPreviewVocab: "Écouter l'aperçu du vocabulaire",
+  ecoutezStartListening: "Commencer l'écoute",
+  ecoutezPass1: "Écoute — passage lent",
+  ecoutezPass2: "Écoute — passage normal",
+  ecoutezSummaryHeading: "Résumé",
+  ecoutezQuestionsHeading: "Questions de compréhension",
+  ecoutezKeyPhrasesHeading: "Phrases clés",
+  ecoutezExportDeck: "Exporter le vocabulaire en paquet",
+  ecoutezGoToDrill: "Aller pratiquer ce paquet",
+  ecoutezNewEpisode: "Nouvel épisode",
+
   footer: "Connectez une enceinte Bluetooth et appuyez sur lecture. Gardez l'écran allumé pendant l'entraînement.",
 
   statusLoadedPhrases: (n) => `${n} phrases chargées.`,
@@ -335,6 +408,9 @@ const fr: UiStrings = {
   statusSyncFailed: (msg) => `Échec de la synchronisation : ${msg}`,
   statusSyncStopped: "Synchronisation arrêtée sur cet appareil — vos données restent ici, rien n'a été supprimé.",
   statusSyncNeedsKey: "Entrez d'abord une clé.",
+  statusEcoutezGenerationFailed: (msg) => `Impossible de générer cet épisode : ${msg}`,
+  statusEcoutezExported: (name) => `Exporté sous « ${name} » — retrouvez-le dans Vos paquets.`,
+  statusEcoutezNeedsKey: "Ajoutez d'abord une clé API dans Réglages IA sur la page principale.",
 };
 
 const es: UiStrings = {
@@ -424,6 +500,28 @@ const es: UiStrings = {
   syncRestorePlaceholder: "XXXX-XXXX-XXXX-XXXX-XXXX",
   syncRestoreBtn: "Restaurar",
 
+  ecoutezNavLink: "Écoutez",
+  ecoutezBackLink: "← Volver a los ejercicios",
+  ecoutezIntro: "Escucha un texto breve a tu nivel, dos veces — lento y luego natural — con vocabulario antes y un resumen después.",
+  ecoutezModeTopic: "Tema",
+  ecoutezModePaste: "Pegar texto para simplificar",
+  ecoutezTopicPlaceholder: "Tema (opcional), p. ej. una salida al mercado, planes de fin de semana",
+  ecoutezPastePlaceholder: "Pega un texto auténtico y se simplificará a tu nivel",
+  ecoutezLevelLabel: "Nivel",
+  ecoutezGenerate: "Generar episodio",
+  ecoutezGenerating: "Redactando tu episodio…",
+  ecoutezVocabHeading: "Vista previa del vocabulario",
+  ecoutezPreviewVocab: "Escuchar vista previa del vocabulario",
+  ecoutezStartListening: "Empezar a escuchar",
+  ecoutezPass1: "Escuchando — pasada lenta",
+  ecoutezPass2: "Escuchando — pasada natural",
+  ecoutezSummaryHeading: "Resumen",
+  ecoutezQuestionsHeading: "Preguntas de comprensión",
+  ecoutezKeyPhrasesHeading: "Frases clave",
+  ecoutezExportDeck: "Exportar vocabulario como mazo",
+  ecoutezGoToDrill: "Ir a practicar este mazo",
+  ecoutezNewEpisode: "Nuevo episodio",
+
   footer: "Conecta un altavoz Bluetooth y pulsa reproducir. Mantén la pantalla encendida mientras practicas.",
 
   statusLoadedPhrases: (n) => `${n} frases cargadas.`,
@@ -442,6 +540,9 @@ const es: UiStrings = {
   statusSyncFailed: (msg) => `Error al sincronizar: ${msg}`,
   statusSyncStopped: "Sincronización detenida en este dispositivo — tus datos permanecen aquí, no se ha eliminado nada.",
   statusSyncNeedsKey: "Introduce primero una clave.",
+  statusEcoutezGenerationFailed: (msg) => `No se pudo generar el episodio: ${msg}`,
+  statusEcoutezExported: (name) => `Exportado como "${name}" — encuéntralo en Tus mazos.`,
+  statusEcoutezNeedsKey: "Añade primero una clave API en Ajustes de IA en la página principal.",
 };
 
 const DICTS: Record<LangCode, UiStrings> = { en, fr, es };
