@@ -1,6 +1,8 @@
 import { LANGS, LANG_ORDER, availableTargets, getStarterDeck, type LangCode, type Pair } from "./langs";
 import { getStrings, LANG_NAMES, type UiStrings } from "./i18n";
 import { hashContent } from "./srs";
+import { loadAiSettings } from "./aiSettings";
+import { fetchSpeech, playBlob } from "./fetchedTts";
 
 export interface Settings {
   pause: number;
@@ -74,6 +76,9 @@ export class RepetezEngine {
   private wakeLock: WakeLockSentinel | null = null;
   private voices: SpeechSynthesisVoice[] = [];
   private audioCtx: AudioContext | null = null;
+  /** In-flight fetched-audio TTS element (see speak()) — tracked so stop()/next()/
+   *  prev()/repeatCurrent() can interrupt it the same way they cancel Web Speech. */
+  private activeAudio: HTMLAudioElement | null = null;
 
   private phaseClass = "";
   private phaseLabel: string;
@@ -169,7 +174,24 @@ export class RepetezEngine {
     return pref[0];
   }
 
-  private speak(text: string, which: "native" | "target"): Promise<void> {
+  /** Fetched OpenAI audio when the configured AI provider is OpenAI (same BYOK key
+   *  used for deck generation — see aiSettings.ts), falling back to Web Speech
+   *  otherwise or if the fetch fails. Same reasoning as Écoutez's identical pattern
+   *  (fetchedTts.ts): <audio> elements route over Bluetooth reliably and survive
+   *  screen lock, unlike Web Speech. `which` only matters for the Web Speech path —
+   *  OpenAI's TTS auto-detects language from the text itself. */
+  private async speak(text: string, which: "native" | "target"): Promise<void> {
+    const ai = loadAiSettings();
+    if (ai.provider === "openai" && ai.apiKey.trim()) {
+      try {
+        const blob = await fetchSpeech(text, ai.apiKey, this.settings.rate);
+        await playBlob(blob, (audio) => (this.activeAudio = audio));
+        this.activeAudio = null;
+        return;
+      } catch {
+        // fall through to Web Speech
+      }
+    }
     return new Promise((resolve) => {
       if (typeof window === "undefined" || !window.speechSynthesis) return resolve();
       const u = new SpeechSynthesisUtterance(text);
@@ -403,6 +425,7 @@ export class RepetezEngine {
     }
     this.markVisible = false;
     if (typeof window !== "undefined") window.speechSynthesis?.cancel();
+    this.activeAudio?.pause();
     this.onThinkStop?.();
     this.setPhase("", this.t.phasePaused);
     this.pauseAudioSession();
@@ -417,6 +440,7 @@ export class RepetezEngine {
 
   next() {
     if (typeof window !== "undefined") window.speechSynthesis?.cancel();
+    this.activeAudio?.pause();
     this.pos = (this.pos + 1) % this.order.length;
     if (this.playing) void this.runFrom(this.pos);
     else {
@@ -427,6 +451,7 @@ export class RepetezEngine {
 
   prev() {
     if (typeof window !== "undefined") window.speechSynthesis?.cancel();
+    this.activeAudio?.pause();
     this.pos = (this.pos - 1 + this.order.length) % this.order.length;
     if (this.playing) void this.runFrom(this.pos);
     else {
@@ -437,6 +462,7 @@ export class RepetezEngine {
 
   repeatCurrent() {
     if (typeof window !== "undefined") window.speechSynthesis?.cancel();
+    this.activeAudio?.pause();
     if (this.playing) void this.runFrom(this.pos);
     else {
       this.playing = true;
