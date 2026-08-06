@@ -115,7 +115,7 @@ const en: UiStrings = {
   deckPhrases: (label, n) => `${label} · ${n} phrases`,
 
   nativeLanguage: "Native language",
-  language: "Language",
+  language: "Study Language",
   mode: "Mode",
   modeHint: "Test = mark yourself, get a score",
   drill: "Drill",
@@ -198,7 +198,7 @@ const fr: UiStrings = {
   deckPhrases: (label, n) => `${label} · ${n} phrases`,
 
   nativeLanguage: "Langue maternelle",
-  language: "Langue",
+  language: "Langue étudiée",
   mode: "Mode",
   modeHint: "Test = notez-vous et obtenez un score",
   drill: "Entraînement",
@@ -281,7 +281,7 @@ const es: UiStrings = {
   deckPhrases: (label, n) => `${label} · ${n} frases`,
 
   nativeLanguage: "Idioma nativo",
-  language: "Idioma",
+  language: "Idioma de estudio",
   mode: "Modo",
   modeHint: "Test = evalúate y obtén una puntuación",
   drill: "Práctica",
