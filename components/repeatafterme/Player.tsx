@@ -48,17 +48,36 @@ export default function Player() {
   const [genType, setGenType] = useState<"phrases" | "words">("phrases");
   const [genLevel, setGenLevel] = useState<"beginner" | "intermediate" | "advanced">("intermediate");
   const [genCount, setGenCount] = useState("20");
+
+  // Saved AI settings (the source of truth for whether Generate is enabled) vs. the
+  // draft being edited in the AI Settings box — kept separate so typing a key doesn't
+  // take effect until "Save" is clicked.
   const [aiSettings, setAiSettings] = useState<AiSettings>({ provider: "anthropic", apiKey: "" });
+  const [aiSettingsOpen, setAiSettingsOpen] = useState(false);
+  const [aiDraftProvider, setAiDraftProvider] = useState<AiProvider>("anthropic");
+  const [aiDraftApiKey, setAiDraftApiKey] = useState("");
 
   function refreshSavedDecks() {
     listDecks().then(setSavedDecks);
   }
-  function updateAiSettings(next: Partial<AiSettings>) {
-    setAiSettings((prev) => {
-      const merged = { ...prev, ...next };
-      saveAiSettings(merged);
-      return merged;
-    });
+  function openAiSettings() {
+    setAiDraftProvider(aiSettings.provider);
+    setAiDraftApiKey(aiSettings.apiKey);
+    setAiSettingsOpen((v) => !v);
+  }
+  function handleSaveAiSettings() {
+    const next: AiSettings = { provider: aiDraftProvider, apiKey: aiDraftApiKey.trim() };
+    saveAiSettings(next);
+    setAiSettings(next);
+    setAiSettingsOpen(false);
+    engine.setStatus(next.apiKey ? "AI settings saved." : "AI settings saved — no key set, Generate stays off until you add one.");
+  }
+  function handleForgetKey() {
+    const next: AiSettings = { provider: aiDraftProvider, apiKey: "" };
+    saveAiSettings(next);
+    setAiSettings(next);
+    setAiDraftApiKey("");
+    engine.setStatus("API key forgotten.");
   }
 
   // Voices, thinking-bar animation hooks, wake-lock reacquire-on-visible, and
@@ -322,7 +341,15 @@ export default function Player() {
         <div className="deck-actions">
           <button className="chip" onClick={() => fileInputRef.current?.click()}>Upload CSV</button>
           <button className="chip" onClick={() => setPasteOpen((v) => !v)}>Paste phrases</button>
-          <button className="chip primary" onClick={() => setGenOpen((v) => !v)}>✦ Generate with AI</button>
+          <button className="chip" onClick={openAiSettings}>AI Settings</button>
+          <button
+            className="chip primary"
+            onClick={() => setGenOpen((v) => !v)}
+            disabled={!aiSettings.apiKey.trim()}
+            title={aiSettings.apiKey.trim() ? undefined : "Add an API key in AI Settings first"}
+          >
+            ✦ Generate with AI
+          </button>
           <button className="chip" onClick={handleDownload}>Download deck</button>
           <button className="chip" onClick={openSaveBox}>Save current deck</button>
         </div>
@@ -348,21 +375,27 @@ export default function Player() {
           </div>
         </div>
 
-        <div className={"gen-box" + (genOpen ? " open" : "")}>
+        <div className={"paste-box" + (aiSettingsOpen ? " open" : "")}>
+          <select value={aiDraftProvider} onChange={(e) => setAiDraftProvider(e.target.value as AiProvider)}>
+            <option value="anthropic">Anthropic (Claude)</option>
+            <option value="openai">OpenAI (GPT)</option>
+            <option value="google">Google (Gemini)</option>
+          </select>
+          <input
+            type="password"
+            autoComplete="off"
+            value={aiDraftApiKey}
+            onChange={(e) => setAiDraftApiKey(e.target.value)}
+            placeholder="Your API key — stored only in this browser"
+          />
           <div className="gen-row">
-            <select value={aiSettings.provider} onChange={(e) => updateAiSettings({ provider: e.target.value as AiProvider })}>
-              <option value="anthropic">Anthropic (Claude)</option>
-              <option value="openai">OpenAI (GPT)</option>
-              <option value="google">Google (Gemini)</option>
-            </select>
-            <input
-              type="password"
-              autoComplete="off"
-              value={aiSettings.apiKey}
-              onChange={(e) => updateAiSettings({ apiKey: e.target.value })}
-              placeholder="Your API key — stored only in this browser"
-            />
+            <button className="chip primary" onClick={handleSaveAiSettings}>Save</button>
+            <button className="chip" onClick={handleForgetKey}>Forget key</button>
+            <button className="chip" onClick={() => setAiSettingsOpen(false)}>Cancel</button>
           </div>
+        </div>
+
+        <div className={"gen-box" + (genOpen ? " open" : "")}>
           <select value={genFocus} onChange={(e) => setGenFocus(e.target.value)}>
             <option value="">No grammar focus — topic only</option>
             {L.focuses.map(([label, val]) => (
