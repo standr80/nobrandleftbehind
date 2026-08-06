@@ -272,6 +272,10 @@ export class RepetezEngine {
         this.results.push(ok);
         if (!ok) this.missed.push(this.order[this.pos]);
         this.emit();
+        // Breathing room after the mark click — without this, the next prompt's
+        // audio started essentially instantly on tap, which felt jarring.
+        await sleep(700);
+        if (!this.playing || token !== this.runToken) break;
       } else {
         await sleep(900);
         if (!this.playing || token !== this.runToken) break;
