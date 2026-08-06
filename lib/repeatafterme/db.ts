@@ -15,7 +15,8 @@ const STORE_SCORES = "scores";
 export interface SavedDeck {
   id: string;
   label: string;
-  lang: Settings["lang"];
+  nativeLang: Settings["nativeLang"];
+  targetLang: Settings["targetLang"];
   pairs: Pair[];
   createdAt: number;
   updatedAt: number;
@@ -24,7 +25,7 @@ export interface SavedDeck {
 export interface ScoreRecord {
   id?: number;
   deckLabel: string;
-  lang: Settings["lang"];
+  targetLang: Settings["targetLang"];
   date: string; // ISO
   correct: number;
   total: number;
@@ -94,7 +95,10 @@ export async function listDecks(): Promise<SavedDeck[]> {
   try {
     const db = await openDb();
     const all = await tx<SavedDeck[]>(db, STORE_DECKS, "readonly", (s) => s.getAll());
-    return all.sort((a, b) => b.updatedAt - a.updatedAt);
+    // Backfill for decks saved before the native-language field existed — they were
+    // all native=English at the time, by definition (it's all the app supported).
+    const withDefaults = all.map((d) => ({ ...d, nativeLang: d.nativeLang ?? "en" }));
+    return withDefaults.sort((a, b) => b.updatedAt - a.updatedAt);
   } catch {
     return [];
   }
@@ -108,7 +112,8 @@ export async function saveDeckToLibrary(deck: Omit<SavedDeck, "id" | "createdAt"
   const record: SavedDeck = {
     id,
     label: deck.label,
-    lang: deck.lang,
+    nativeLang: deck.nativeLang,
+    targetLang: deck.targetLang,
     pairs: deck.pairs,
     createdAt: existing?.createdAt ?? now,
     updatedAt: now,

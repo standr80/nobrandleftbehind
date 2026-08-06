@@ -2,7 +2,8 @@
 
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { RepetezEngine } from "@/lib/repeatafterme/engine";
-import { LANGS } from "@/lib/repeatafterme/langs";
+import { LANGS, LANG_ORDER, availableTargets } from "@/lib/repeatafterme/langs";
+import { getStrings } from "@/lib/repeatafterme/i18n";
 import { parseLines, deckToCsv, extractPairs } from "@/lib/repeatafterme/deckParsing";
 import {
   getSettings,
@@ -22,11 +23,14 @@ import type { AiProvider } from "@/lib/repeatafterme/providers";
 
 export default function Player() {
   const engineRef = useRef<RepetezEngine | null>(null);
-  if (!engineRef.current) engineRef.current = new RepetezEngine("fr");
+  if (!engineRef.current) engineRef.current = new RepetezEngine("en");
   const engine = engineRef.current;
 
   const snap = useSyncExternalStore(engine.subscribe, engine.getSnapshot, engine.getSnapshot);
-  const L = LANGS[snap.settings.lang];
+  const native = snap.settings.nativeLang;
+  const target = snap.settings.targetLang;
+  const L = LANGS[target]; // target-language config (voice/focuses/etc.)
+  const t = getStrings(native); // interface follows the learner's native language
 
   const thinkbarRef = useRef<HTMLDivElement | null>(null);
   const thinkfillRef = useRef<HTMLDivElement | null>(null);
@@ -70,14 +74,14 @@ export default function Player() {
     saveAiSettings(next);
     setAiSettings(next);
     setAiSettingsOpen(false);
-    engine.setStatus(next.apiKey ? "AI settings saved." : "AI settings saved — no key set, Generate stays off until you add one.");
+    engine.setStatus(next.apiKey ? t.statusAiSettingsSaved : t.statusAiSettingsSavedNoKey);
   }
   function handleForgetKey() {
     const next: AiSettings = { provider: aiDraftProvider, apiKey: "" };
     saveAiSettings(next);
     setAiSettings(next);
     setAiDraftApiKey("");
-    engine.setStatus("API key forgotten.");
+    engine.setStatus(t.statusKeyForgotten);
   }
 
   // Voices, thinking-bar animation hooks, wake-lock reacquire-on-visible, and
@@ -140,11 +144,11 @@ export default function Player() {
   const good = snap.results.filter(Boolean).length;
   const bad = snap.results.length - good;
 
-  // Grammar-focus values are language-specific (LANGS[lang].focuses) — clear a
-  // stale selection when the language changes so it doesn't silently no-op.
+  // Grammar-focus values are target-language-specific (LANGS[target].focuses) — clear
+  // a stale selection when the target changes so it doesn't silently no-op.
   useEffect(() => {
     setGenFocus("");
-  }, [snap.settings.lang]);
+  }, [target]);
 
   function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0];
@@ -160,7 +164,7 @@ export default function Player() {
     const blob = new Blob([csv], { type: "text/csv" });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
-    a.download = L.name.toLowerCase() + "-deck.csv";
+    a.download = `${LANGS[native].short.toLowerCase()}-${L.name.toLowerCase()}-deck.csv`;
     a.click();
     URL.revokeObjectURL(a.href);
   }
@@ -171,13 +175,14 @@ export default function Player() {
   }
   async function handleSaveCurrent() {
     const current = engine.getCurrentDeck();
-    await saveDeckToLibrary({ label: saveName.trim() || current.label, lang: current.lang, pairs: current.pairs });
+    const label = saveName.trim() || current.label;
+    await saveDeckToLibrary({ label, nativeLang: current.nativeLang, targetLang: current.targetLang, pairs: current.pairs });
     refreshSavedDecks();
     setSaveBoxOpen(false);
-    engine.setStatus(`Saved "${saveName.trim() || current.label}" to your decks.`);
+    engine.setStatus(t.statusSavedDeck(label));
   }
   function handleLoadSaved(deck: SavedDeck) {
-    engine.loadDeckForLang(deck.pairs, deck.label, deck.lang);
+    engine.loadSavedDeck(deck.pairs, deck.label, deck.nativeLang, deck.targetLang);
   }
   async function handleDeleteSaved(id: string) {
     await deleteDeckFromLibrary(id);
@@ -186,7 +191,8 @@ export default function Player() {
   async function handleGenerate() {
     const focusLabel = genFocus ? L.focuses.find((f) => f[1] === genFocus)?.[0] ?? "" : "";
     const { prompt, deckName } = buildDeckGenPrompt({
-      lang: snap.settings.lang,
+      native,
+      target,
       genType,
       level: genLevel,
       count: genCount,
@@ -194,7 +200,7 @@ export default function Player() {
       focus: genFocus,
       focusLabel,
     });
-    engine.setStatus(`Generating ${genCount} phrases: ${deckName}…`);
+    engine.setStatus(t.statusGenerating(deckName));
     setGenLoading(true);
     try {
       const res = await fetch("/api/repeatafterme/generate", {
@@ -205,11 +211,11 @@ export default function Player() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
       const rows = extractPairs(data.text);
-      if (!rows.length) throw new Error("couldn't read the response format");
+      if (!rows.length) throw new Error(t.statusGenerationEmptyResponse);
       engine.loadDeck(rows, "AI: " + deckName);
       setGenOpen(false);
     } catch (err) {
-      engine.setStatus(`Generation failed: ${String((err as Error)?.message || err)}`, true);
+      engine.setStatus(t.statusGenerationFailed(String((err as Error)?.message || err)), true);
     } finally {
       setGenLoading(false);
     }
@@ -256,19 +262,19 @@ export default function Player() {
           <div className="thinkbar" ref={thinkbarRef}>
             <div ref={thinkfillRef}></div>
           </div>
-          <div className={"fr-line" + (snap.revealAnswer ? "" : " hidden-answer")}>{snap.answerText || " "}</div>
+          <div className={"fr-line" + (snap.revealAnswer ? "" : " hidden-answer")}>{snap.answerText || " "}</div>
 
           <div className={"markrow" + (snap.markVisible ? " show" : "")}>
-            <button className="mark good" onClick={() => engine.markKnew()}>✓ Knew it</button>
-            <button className="mark bad" onClick={() => engine.markMissed()}>✗ Missed it</button>
+            <button className="mark good" onClick={() => engine.markKnew()}>{t.knewIt}</button>
+            <button className="mark bad" onClick={() => engine.markMissed()}>{t.missedIt}</button>
           </div>
           <div className={"summaryrow" + (snap.summaryVisible ? " show" : "")}>
             {snap.missedCount > 0 && (
               <button className="mark bad" onClick={() => engine.practiseMisses()}>
-                Practise {snap.missedCount} {snap.missedCount === 1 ? "miss" : "misses"}
+                {t.practiseMisses(snap.missedCount)}
               </button>
             )}
-            <button className="mark good" onClick={() => engine.restartTest()}>New test</button>
+            <button className="mark good" onClick={() => engine.restartTest()}>{t.newTest}</button>
           </div>
         </div>
 
@@ -283,32 +289,45 @@ export default function Player() {
 
         <div className="panel">
           <div className="row">
-            <label>Language</label>
+            <label>{t.nativeLanguage}</label>
             <div className="seg">
-              <button className={snap.settings.lang === "fr" ? "on" : ""} onClick={() => snap.settings.lang !== "fr" && engine.setLang("fr")}>Français</button>
-              <button className={snap.settings.lang === "es" ? "on" : ""} onClick={() => snap.settings.lang !== "es" && engine.setLang("es")}>Español</button>
+              {LANG_ORDER.map((code) => (
+                <button key={code} className={native === code ? "on" : ""} onClick={() => native !== code && engine.setNativeLang(code)}>
+                  {LANGS[code].short}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="row">
+            <label>{t.language}</label>
+            <div className="seg">
+              {availableTargets(native).map((code) => (
+                <button key={code} className={target === code ? "on" : ""} onClick={() => target !== code && engine.setTargetLang(code)}>
+                  {LANGS[code].short}
+                </button>
+              ))}
             </div>
           </div>
           <div className="row">
             <label>
-              Mode<span className="hint">Test = mark yourself, get a score</span>
+              {t.mode}<span className="hint">{t.modeHint}</span>
             </label>
             <div className="seg">
-              <button className={snap.settings.mode === "drill" ? "on" : ""} onClick={() => engine.setMode("drill")}>Drill</button>
-              <button className={snap.settings.mode === "test" ? "on" : ""} onClick={() => engine.setMode("test")}>Test</button>
+              <button className={snap.settings.mode === "drill" ? "on" : ""} onClick={() => engine.setMode("drill")}>{t.drill}</button>
+              <button className={snap.settings.mode === "test" ? "on" : ""} onClick={() => engine.setMode("test")}>{t.test}</button>
             </div>
           </div>
           {snap.settings.mode === "drill" && (
             <div className="row">
               <label>
-                Autoplay<span className="hint">Off = pause after each card, press play for the next</span>
+                {t.autoplay}<span className="hint">{t.autoplayHint}</span>
               </label>
               <Toggle on={snap.settings.autoplay} onClick={() => engine.toggleAutoplay()} />
             </div>
           )}
           <div className="row">
             <label>
-              Thinking time<span className="hint">Pause before the answer</span>
+              {t.thinkingTime}<span className="hint">{t.thinkingTimeHint}</span>
             </label>
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
               <input type="range" min={0.5} max={3} step={0.25} value={snap.settings.pause} onChange={(e) => engine.setPause(+e.target.value)} />
@@ -316,56 +335,60 @@ export default function Player() {
             </div>
           </div>
           <div className="row">
-            <label>Speech speed</label>
+            <label>{t.speechSpeed}</label>
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
               <input type="range" min={0.6} max={1.2} step={0.05} value={snap.settings.rate} onChange={(e) => engine.setRate(+e.target.value)} />
               <span className="val">{snap.settings.rate}×</span>
             </div>
           </div>
           <div className="row">
-            <label>Direction</label>
+            <label>{t.direction}</label>
             <div className="seg">
-              <button className={snap.settings.dir === "EF" ? "on" : ""} onClick={() => engine.setDir("EF")}>EN → {L.short}</button>
-              <button className={snap.settings.dir === "FE" ? "on" : ""} onClick={() => engine.setDir("FE")}>{L.short} → EN</button>
+              <button className={snap.settings.dir === "EF" ? "on" : ""} onClick={() => engine.setDir("EF")}>
+                {LANGS[native].short} → {LANGS[target].short}
+              </button>
+              <button className={snap.settings.dir === "FE" ? "on" : ""} onClick={() => engine.setDir("FE")}>
+                {LANGS[target].short} → {LANGS[native].short}
+              </button>
             </div>
           </div>
           <div className="row">
-            <label>Shuffle</label>
+            <label>{t.shuffle}</label>
             <Toggle on={snap.settings.shuffle} onClick={() => engine.toggleShuffle()} />
           </div>
           <div className="row">
-            <label>Loop deck</label>
+            <label>{t.loopDeck}</label>
             <Toggle on={snap.settings.loop} onClick={() => engine.toggleLoop()} />
           </div>
           <div className="row">
             <label>
-              Show text<span className="hint">Off = audio only</span>
+              {t.showText}<span className="hint">{t.showTextHint}</span>
             </label>
             <Toggle on={snap.settings.showText} onClick={() => engine.toggleShowText()} />
           </div>
         </div>
 
-        <h2>Deck</h2>
+        <h2>{t.deckHeading}</h2>
         <div className="deck-actions">
-          <button className="chip" onClick={() => fileInputRef.current?.click()}>Upload CSV</button>
-          <button className="chip" onClick={() => setPasteOpen((v) => !v)}>Paste phrases</button>
-          <button className="chip" onClick={openAiSettings}>AI Settings</button>
+          <button className="chip" onClick={() => fileInputRef.current?.click()}>{t.uploadCsv}</button>
+          <button className="chip" onClick={() => setPasteOpen((v) => !v)}>{t.pastePhrases}</button>
+          <button className="chip" onClick={openAiSettings}>{t.aiSettingsBtn}</button>
           <button
             className="chip primary"
             onClick={() => setGenOpen((v) => !v)}
             disabled={!aiSettings.apiKey.trim()}
-            title={aiSettings.apiKey.trim() ? undefined : "Add an API key in AI Settings first"}
+            title={aiSettings.apiKey.trim() ? undefined : t.generateDisabledTitle}
           >
-            ✦ Generate with AI
+            {t.generateWithAi}
           </button>
-          <button className="chip" onClick={handleDownload}>Download deck</button>
-          <button className="chip" onClick={openSaveBox}>Save current deck</button>
+          <button className="chip" onClick={handleDownload}>{t.downloadDeck}</button>
+          <button className="chip" onClick={openSaveBox}>{t.saveCurrentDeck}</button>
         </div>
         <input ref={fileInputRef} id="csvfile" type="file" accept=".csv,.txt,.tsv" onChange={handleFile} />
 
         <div className={"paste-box" + (pasteOpen ? " open" : "")}>
           <textarea
-            placeholder={"One phrase per line:\nWhere is the station?, Où est la gare ?\nI would like a coffee, Je voudrais un café"}
+            placeholder={t.pasteBoxPlaceholder}
             value={pasteText}
             onChange={(e) => setPasteText(e.target.value)}
           />
@@ -377,9 +400,9 @@ export default function Player() {
                 setPasteOpen(false);
               }}
             >
-              Load phrases
+              {t.loadPhrases}
             </button>
-            <button className="chip" onClick={() => setPasteOpen(false)}>Cancel</button>
+            <button className="chip" onClick={() => setPasteOpen(false)}>{t.cancel}</button>
           </div>
         </div>
 
@@ -394,18 +417,18 @@ export default function Player() {
             autoComplete="off"
             value={aiDraftApiKey}
             onChange={(e) => setAiDraftApiKey(e.target.value)}
-            placeholder="Your API key — stored only in this browser"
+            placeholder={t.aiKeyPlaceholder}
           />
           <div className="gen-row">
-            <button className="chip primary" onClick={handleSaveAiSettings}>Save</button>
-            <button className="chip" onClick={handleForgetKey}>Forget key</button>
-            <button className="chip" onClick={() => setAiSettingsOpen(false)}>Cancel</button>
+            <button className="chip primary" onClick={handleSaveAiSettings}>{t.save}</button>
+            <button className="chip" onClick={handleForgetKey}>{t.forgetKey}</button>
+            <button className="chip" onClick={() => setAiSettingsOpen(false)}>{t.cancel}</button>
           </div>
         </div>
 
         <div className={"gen-box" + (genOpen ? " open" : "")}>
           <select value={genFocus} onChange={(e) => setGenFocus(e.target.value)}>
-            <option value="">No grammar focus — topic only</option>
+            <option value="">{t.noGrammarFocus}</option>
             {L.focuses.map(([label, val]) => (
               <option key={val} value={val}>{label}</option>
             ))}
@@ -414,34 +437,34 @@ export default function Player() {
             type="text"
             value={genTopic}
             onChange={(e) => setGenTopic(e.target.value)}
-            placeholder="Topic (optional), e.g. ordering wine, cycling, at the pottery studio"
+            placeholder={t.topicPlaceholder}
           />
           <div className="gen-row">
             <select value={genType} onChange={(e) => setGenType(e.target.value as "phrases" | "words")}>
-              <option value="phrases">Phrases</option>
-              <option value="words">Single words</option>
+              <option value="phrases">{t.phrasesOption}</option>
+              <option value="words">{t.singleWordsOption}</option>
             </select>
             <select value={genLevel} onChange={(e) => setGenLevel(e.target.value as "beginner" | "intermediate" | "advanced")}>
-              <option value="beginner">Beginner</option>
-              <option value="intermediate">Intermediate</option>
-              <option value="advanced">Advanced</option>
+              <option value="beginner">{t.beginner}</option>
+              <option value="intermediate">{t.intermediate}</option>
+              <option value="advanced">{t.advanced}</option>
             </select>
             <select value={genCount} onChange={(e) => setGenCount(e.target.value)}>
-              <option value="10">10 phrases</option>
-              <option value="20">20 phrases</option>
-              <option value="30">30 phrases</option>
+              <option value="10">{t.countOption(10)}</option>
+              <option value="20">{t.countOption(20)}</option>
+              <option value="30">{t.countOption(30)}</option>
             </select>
             <button className="chip primary" onClick={handleGenerate} disabled={genLoading}>
-              {genLoading ? "Generating…" : "Generate"}
+              {genLoading ? t.generating : t.generate}
             </button>
           </div>
         </div>
 
         <div className={"paste-box" + (saveBoxOpen ? " open" : "")}>
-          <input type="text" value={saveName} onChange={(e) => setSaveName(e.target.value)} placeholder="Deck name" />
+          <input type="text" value={saveName} onChange={(e) => setSaveName(e.target.value)} placeholder={t.saveDeckNamePlaceholder} />
           <div className="gen-row">
-            <button className="chip primary" onClick={handleSaveCurrent}>Save</button>
-            <button className="chip" onClick={() => setSaveBoxOpen(false)}>Cancel</button>
+            <button className="chip primary" onClick={handleSaveCurrent}>{t.save}</button>
+            <button className="chip" onClick={() => setSaveBoxOpen(false)}>{t.cancel}</button>
           </div>
         </div>
 
@@ -449,7 +472,7 @@ export default function Player() {
 
         {savedDecks.length > 0 && (
           <>
-            <h2>Your decks</h2>
+            <h2>{t.yourDecks}</h2>
             <div className="panel">
               {savedDecks.map((deck) => (
                 <div className="row" key={deck.id}>
@@ -470,13 +493,13 @@ export default function Player() {
                     <label onClick={() => startRename(deck)} style={{ cursor: "text" }}>
                       {deck.label}
                       <span className="hint">
-                        {LANGS[deck.lang].short} · {deck.pairs.length} phrases
+                        {LANGS[deck.nativeLang].short} → {LANGS[deck.targetLang].short} · {deck.pairs.length}
                       </span>
                     </label>
                   )}
                   <div className="gen-row">
-                    <button className="chip primary" onClick={() => handleLoadSaved(deck)}>Load</button>
-                    <button className="chip" onClick={() => handleDeleteSaved(deck.id)}>Delete</button>
+                    <button className="chip primary" onClick={() => handleLoadSaved(deck)}>{t.load}</button>
+                    <button className="chip" onClick={() => handleDeleteSaved(deck.id)}>{t.delete}</button>
                   </div>
                 </div>
               ))}
@@ -485,7 +508,7 @@ export default function Player() {
         )}
       </main>
 
-      <footer>Connect a Bluetooth speaker and press play. Keep the screen awake while practising.</footer>
+      <footer>{t.footer}</footer>
     </div>
   );
 }
