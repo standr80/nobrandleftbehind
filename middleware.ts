@@ -36,6 +36,11 @@ function isPlatformHost(host: string): boolean {
   // Strip port (present in dev: localhost:3000)
   const hostname = host.split(':')[0]
   return /^(www\.)?nobrandleftbehind\.(com|vercel\.app)$/i.test(hostname) ||
+    // This project's own Vercel preview/branch deployments (e.g.
+    // nobrandleftbehind-<hash>-richard-standens-projects.vercel.app) — without
+    // this, every preview URL falls through to the blog-tenant branch below
+    // and gets rewritten to /blog/* for a host that matches no real tenant.
+    /^nobrandleftbehind-[a-z0-9-]+\.vercel\.app$/i.test(hostname) ||
     hostname === 'localhost' ||
     hostname === '127.0.0.1'
 }
