@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="96" fill="#16213E"/>
+  <text x="256" y="322" font-family="Georgia, 'Libre Caslon Text', serif" font-style="italic" font-weight="700" font-size="300" fill="#FFFFFF" text-anchor="middle">R</text>
+  <rect x="0" y="452" width="170.67" height="60" fill="#2743C7"/>
+  <rect x="170.67" y="452" width="170.67" height="60" fill="#FFFFFF"/>
+  <rect x="341.34" y="452" width="170.66" height="60" fill="#B3352C"/>
+</svg>

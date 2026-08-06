@@ -125,6 +125,10 @@ export interface UiStrings {
   ecoutezGoToDrill: string;
   ecoutezNewEpisode: string;
 
+  // session stats
+  statsStreak: (n: number) => string;
+  statsMinutesToday: (n: number) => string;
+
   footer: string;
 
   // status messages
@@ -258,6 +262,9 @@ const en: UiStrings = {
   ecoutezGoToDrill: "Go practise this deck",
   ecoutezNewEpisode: "New episode",
 
+  statsStreak: (n) => `🔥 ${n}-day streak`,
+  statsMinutesToday: (n) => `${n} min today`,
+
   footer: "Connect a Bluetooth speaker and press play. Keep the screen awake while practising.",
 
   statusLoadedPhrases: (n) => `Loaded ${n} phrases.`,
@@ -390,6 +397,9 @@ const fr: UiStrings = {
   ecoutezGoToDrill: "Aller pratiquer ce paquet",
   ecoutezNewEpisode: "Nouvel épisode",
 
+  statsStreak: (n) => `🔥 Série de ${n} jour${n === 1 ? "" : "s"}`,
+  statsMinutesToday: (n) => `${n} min aujourd'hui`,
+
   footer: "Connectez une enceinte Bluetooth et appuyez sur lecture. Gardez l'écran allumé pendant l'entraînement.",
 
   statusLoadedPhrases: (n) => `${n} phrases chargées.`,
@@ -521,6 +531,9 @@ const es: UiStrings = {
   ecoutezExportDeck: "Exportar vocabulario como mazo",
   ecoutezGoToDrill: "Ir a practicar este mazo",
   ecoutezNewEpisode: "Nuevo episodio",
+
+  statsStreak: (n) => `🔥 Racha de ${n} día${n === 1 ? "" : "s"}`,
+  statsMinutesToday: (n) => `${n} min hoy`,
 
   footer: "Conecta un altavoz Bluetooth y pulsa reproducir. Mantén la pantalla encendida mientras practicas.",
 

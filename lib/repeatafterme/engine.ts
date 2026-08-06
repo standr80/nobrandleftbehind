@@ -67,6 +67,7 @@ export class RepetezEngine {
   private order: number[] = [];
   private pos = 0;
   private playing = false;
+  private playStartedAt: number | null = null;
   private runToken = 0;
   private settings: Settings;
   private t: UiStrings;
@@ -107,6 +108,9 @@ export class RepetezEngine {
   onDeckOrSettingsChange: (() => void) | null = null;
   /** Fired when a test run finishes — the consumer's cue to record score history. */
   onTestComplete: ((result: { deckLabel: string; targetLang: LangCode; correct: number; total: number }) => void) | null = null;
+  /** Fired whenever a play→stop cycle ends, with elapsed seconds — the consumer's cue
+   *  to log session-stats activity (streak, minutes practised). */
+  onSessionTime: ((seconds: number) => void) | null = null;
   /** Fired on every Test-mode mark — the consumer's cue to update spaced-repetition state. */
   onItemReviewed: ((info: { itemKey: string; deckLabel: string; nativeLang: LangCode; targetLang: LangCode; pair: Pair; correct: boolean }) => void) | null = null;
 
@@ -358,6 +362,7 @@ export class RepetezEngine {
       // screen), not the user walking away, so the screen should stay awake.
       if (this.settings.mode === "drill" && !this.settings.autoplay) {
         this.playing = false;
+        this.recordSessionTime();
         this.syncCard(false);
         this.setPhase("", this.t.phaseReadyNextCard);
         this.emit();
@@ -389,10 +394,21 @@ export class RepetezEngine {
     });
   }
 
+  /** Called from every path that transitions playing→not-playing (stop() and
+   *  finishTest(), which doesn't route through stop()) — reports real elapsed time
+   *  for session stats, ignoring negligible durations (e.g. an immediate re-pause). */
+  private recordSessionTime() {
+    if (this.playStartedAt === null) return;
+    const elapsed = (Date.now() - this.playStartedAt) / 1000;
+    this.playStartedAt = null;
+    if (elapsed > 0.5) this.onSessionTime?.(elapsed);
+  }
+
   private finishTest() {
     this.playing = false;
     this.runToken++;
     this.releaseWake();
+    this.recordSessionTime();
     const good = this.results.filter(Boolean).length;
     this.setPhase("", this.t.phaseTestComplete);
     this.promptText = this.t.correctOutOf(good, this.results.length);
@@ -410,6 +426,7 @@ export class RepetezEngine {
     if (this.settings.mode === "test" && this.pos === 0 && !this.results.length) this.resetTest();
     this.summaryVisible = false;
     this.playing = true;
+    this.playStartedAt = Date.now();
     void this.requestWake();
     this.emit();
     void this.runFrom(this.pos);
@@ -418,6 +435,7 @@ export class RepetezEngine {
   stop() {
     this.playing = false;
     this.runToken++;
+    this.recordSessionTime();
     if (this.markResolve) {
       const r = this.markResolve;
       this.markResolve = null;

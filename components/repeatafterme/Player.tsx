@@ -21,6 +21,10 @@ import {
   listDueSrsRecords,
   exportSyncPayload,
   restoreSyncPayload,
+  recordActivity,
+  getActivityLog,
+  computeStreak,
+  getTodayMinutes,
   type SavedDeck,
   type SyncPayload,
 } from "@/lib/repeatafterme/db";
@@ -74,6 +78,8 @@ export default function Player() {
   const [aiDraftApiKey, setAiDraftApiKey] = useState("");
 
   const [dueCount, setDueCount] = useState(0);
+  const [streak, setStreak] = useState(0);
+  const [minutesToday, setMinutesToday] = useState(0);
 
   const [syncOpen, setSyncOpen] = useState(false);
   const [syncMagicKey, setSyncMagicKey] = useState<string | null>(null);
@@ -86,6 +92,12 @@ export default function Player() {
   }
   function refreshDueCount() {
     listDueSrsRecords(native, target, todayIso()).then((items) => setDueCount(items.length));
+  }
+  function refreshStats() {
+    getActivityLog().then((log) => {
+      setStreak(computeStreak(log));
+      setMinutesToday(getTodayMinutes(log));
+    });
   }
   function openAiSettings() {
     setAiDraftProvider(aiSettings.provider);
@@ -232,6 +244,9 @@ export default function Player() {
         await saveSrsRecord({ itemKey: info.itemKey, deckLabel: info.deckLabel, nativeLang: info.nativeLang, targetLang: info.targetLang, pair: info.pair, ...next });
       })();
     };
+    engine.onSessionTime = (seconds) => {
+      void recordActivity(seconds).then(refreshStats);
+    };
 
     // Resume where you left off: restore persisted settings + last-used deck, then
     // load the saved-deck library list. Silent — hydrate() doesn't re-trigger a save.
@@ -241,6 +256,7 @@ export default function Player() {
       }
     });
     refreshSavedDecks();
+    refreshStats();
     setAiSettings(loadAiSettings());
     setSyncMagicKey(loadMagicKey());
 
@@ -376,6 +392,13 @@ export default function Player() {
       </header>
 
       <main>
+        {(streak > 0 || minutesToday > 0) && (
+          <div className="hint" style={{ marginBottom: 8 }}>
+            {streak > 0 && t.statsStreak(streak)}
+            {streak > 0 && minutesToday > 0 && " · "}
+            {minutesToday > 0 && t.statsMinutesToday(minutesToday)}
+          </div>
+        )}
         <div className="card" role="status" aria-live="polite">
           <span className="counter">{snap.pos + 1} / {snap.order.length}</span>
           <span className="score">

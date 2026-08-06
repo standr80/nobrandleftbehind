@@ -276,3 +276,56 @@ export async function restoreSyncPayload(payload: SyncPayload): Promise<void> {
     t.onerror = () => reject(t.error);
   });
 }
+
+// ---------- session stats (streak, minutes practised) ----------
+// Kept deliberately simple: one entry per calendar day (device-local date) with
+// accumulated seconds of active playback, fed by engine.ts's onSessionTime hook.
+// Not part of SyncPayload — this is "how much have I used the app" telemetry for the
+// learner's own eyes, not learning content worth carrying across devices.
+export interface ActivityEntry {
+  date: string; // YYYY-MM-DD, device-local
+  seconds: number;
+}
+
+const MAX_ACTIVITY_DAYS = 120;
+const ACTIVITY_KEY = "activityLog";
+
+function localDateStr(d: Date): string {
+  // Local calendar date, not UTC — a streak shouldn't break at midnight UTC for
+  // someone practising in the evening in a UTC+ timezone.
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+export async function recordActivity(seconds: number): Promise<void> {
+  if (seconds <= 0) return;
+  const log = (await loadKv<ActivityEntry[]>(ACTIVITY_KEY)) || [];
+  const today = localDateStr(new Date());
+  const idx = log.findIndex((e) => e.date === today);
+  if (idx >= 0) log[idx] = { date: today, seconds: log[idx].seconds + seconds };
+  else log.push({ date: today, seconds });
+  await saveKv(ACTIVITY_KEY, log.slice(-MAX_ACTIVITY_DAYS));
+}
+
+export const getActivityLog = () => loadKv<ActivityEntry[]>(ACTIVITY_KEY).then((log) => log || []);
+
+/** Consecutive days with any activity, counting back from today. Today not having
+ *  activity yet doesn't break an existing streak — it just hasn't extended it yet. */
+export function computeStreak(log: ActivityEntry[]): number {
+  const dates = new Set(log.map((e) => e.date));
+  const d = new Date();
+  if (!dates.has(localDateStr(d))) d.setDate(d.getDate() - 1);
+  let streak = 0;
+  while (dates.has(localDateStr(d))) {
+    streak++;
+    d.setDate(d.getDate() - 1);
+  }
+  return streak;
+}
+
+export function getTodayMinutes(log: ActivityEntry[]): number {
+  const entry = log.find((e) => e.date === localDateStr(new Date()));
+  return entry ? Math.round(entry.seconds / 60) : 0;
+}

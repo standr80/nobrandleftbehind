@@ -1,0 +1,15 @@
+{
+  "name": "Répétez",
+  "short_name": "Répétez",
+  "description": "Speak-along language drills — French, Spanish, English. No account, bring your own AI key.",
+  "start_url": "/repeatafterme",
+  "scope": "/repeatafterme/",
+  "display": "standalone",
+  "background_color": "#E9ECF2",
+  "theme_color": "#16213E",
+  "icons": [
+    { "src": "/repeatafterme/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/repeatafterme/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "/repeatafterme/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
