@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { RepetezEngine } from "@/lib/repeatafterme/engine";
 import { LANGS } from "@/lib/repeatafterme/langs";
-import { parseLines, deckToCsv } from "@/lib/repeatafterme/deckParsing";
+import { parseLines, deckToCsv, extractPairs } from "@/lib/repeatafterme/deckParsing";
 import {
   getSettings,
   saveSettings,
@@ -16,6 +16,9 @@ import {
   addScore,
   type SavedDeck,
 } from "@/lib/repeatafterme/db";
+import { loadAiSettings, saveAiSettings, type AiSettings } from "@/lib/repeatafterme/aiSettings";
+import { buildDeckGenPrompt } from "@/lib/repeatafterme/genPrompt";
+import type { AiProvider } from "@/lib/repeatafterme/providers";
 
 export default function Player() {
   const engineRef = useRef<RepetezEngine | null>(null);
@@ -38,8 +41,24 @@ export default function Player() {
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState("");
 
+  const [genOpen, setGenOpen] = useState(false);
+  const [genLoading, setGenLoading] = useState(false);
+  const [genTopic, setGenTopic] = useState("");
+  const [genFocus, setGenFocus] = useState("");
+  const [genType, setGenType] = useState<"phrases" | "words">("phrases");
+  const [genLevel, setGenLevel] = useState<"beginner" | "intermediate" | "advanced">("intermediate");
+  const [genCount, setGenCount] = useState("20");
+  const [aiSettings, setAiSettings] = useState<AiSettings>({ provider: "anthropic", apiKey: "" });
+
   function refreshSavedDecks() {
     listDecks().then(setSavedDecks);
+  }
+  function updateAiSettings(next: Partial<AiSettings>) {
+    setAiSettings((prev) => {
+      const merged = { ...prev, ...next };
+      saveAiSettings(merged);
+      return merged;
+    });
   }
 
   // Voices, thinking-bar animation hooks, wake-lock reacquire-on-visible, and
@@ -90,6 +109,7 @@ export default function Player() {
       }
     });
     refreshSavedDecks();
+    setAiSettings(loadAiSettings());
 
     return () => {
       window.speechSynthesis.onvoiceschanged = null;
@@ -100,6 +120,12 @@ export default function Player() {
 
   const good = snap.results.filter(Boolean).length;
   const bad = snap.results.length - good;
+
+  // Grammar-focus values are language-specific (LANGS[lang].focuses) — clear a
+  // stale selection when the language changes so it doesn't silently no-op.
+  useEffect(() => {
+    setGenFocus("");
+  }, [snap.settings.lang]);
 
   function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0];
@@ -138,6 +164,38 @@ export default function Player() {
     await deleteDeckFromLibrary(id);
     refreshSavedDecks();
   }
+  async function handleGenerate() {
+    const focusLabel = genFocus ? L.focuses.find((f) => f[1] === genFocus)?.[0] ?? "" : "";
+    const { prompt, deckName } = buildDeckGenPrompt({
+      lang: snap.settings.lang,
+      genType,
+      level: genLevel,
+      count: genCount,
+      topic: genTopic,
+      focus: genFocus,
+      focusLabel,
+    });
+    engine.setStatus(`Generating ${genCount} phrases: ${deckName}…`);
+    setGenLoading(true);
+    try {
+      const res = await fetch("/api/repeatafterme/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ provider: aiSettings.provider, apiKey: aiSettings.apiKey, prompt }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+      const rows = extractPairs(data.text);
+      if (!rows.length) throw new Error("couldn't read the response format");
+      engine.loadDeck(rows, "AI: " + deckName);
+      setGenOpen(false);
+    } catch (err) {
+      engine.setStatus(`Generation failed: ${String((err as Error)?.message || err)}`, true);
+    } finally {
+      setGenLoading(false);
+    }
+  }
+
   function startRename(deck: SavedDeck) {
     setRenamingId(deck.id);
     setRenameValue(deck.label);
@@ -264,6 +322,7 @@ export default function Player() {
         <div className="deck-actions">
           <button className="chip" onClick={() => fileInputRef.current?.click()}>Upload CSV</button>
           <button className="chip" onClick={() => setPasteOpen((v) => !v)}>Paste phrases</button>
+          <button className="chip primary" onClick={() => setGenOpen((v) => !v)}>✦ Generate with AI</button>
           <button className="chip" onClick={handleDownload}>Download deck</button>
           <button className="chip" onClick={openSaveBox}>Save current deck</button>
         </div>
@@ -286,6 +345,54 @@ export default function Player() {
               Load phrases
             </button>
             <button className="chip" onClick={() => setPasteOpen(false)}>Cancel</button>
+          </div>
+        </div>
+
+        <div className={"gen-box" + (genOpen ? " open" : "")}>
+          <div className="gen-row">
+            <select value={aiSettings.provider} onChange={(e) => updateAiSettings({ provider: e.target.value as AiProvider })}>
+              <option value="anthropic">Anthropic (Claude)</option>
+              <option value="openai">OpenAI (GPT)</option>
+              <option value="google">Google (Gemini)</option>
+            </select>
+            <input
+              type="password"
+              autoComplete="off"
+              value={aiSettings.apiKey}
+              onChange={(e) => updateAiSettings({ apiKey: e.target.value })}
+              placeholder="Your API key — stored only in this browser"
+            />
+          </div>
+          <select value={genFocus} onChange={(e) => setGenFocus(e.target.value)}>
+            <option value="">No grammar focus — topic only</option>
+            {L.focuses.map(([label, val]) => (
+              <option key={val} value={val}>{label}</option>
+            ))}
+          </select>
+          <input
+            type="text"
+            value={genTopic}
+            onChange={(e) => setGenTopic(e.target.value)}
+            placeholder="Topic (optional), e.g. ordering wine, cycling, at the pottery studio"
+          />
+          <div className="gen-row">
+            <select value={genType} onChange={(e) => setGenType(e.target.value as "phrases" | "words")}>
+              <option value="phrases">Phrases</option>
+              <option value="words">Single words</option>
+            </select>
+            <select value={genLevel} onChange={(e) => setGenLevel(e.target.value as "beginner" | "intermediate" | "advanced")}>
+              <option value="beginner">Beginner</option>
+              <option value="intermediate">Intermediate</option>
+              <option value="advanced">Advanced</option>
+            </select>
+            <select value={genCount} onChange={(e) => setGenCount(e.target.value)}>
+              <option value="10">10 phrases</option>
+              <option value="20">20 phrases</option>
+              <option value="30">30 phrases</option>
+            </select>
+            <button className="chip primary" onClick={handleGenerate} disabled={genLoading}>
+              {genLoading ? "Generating…" : "Generate"}
+            </button>
           </div>
         </div>
 

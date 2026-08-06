@@ -25,3 +25,17 @@ export function parseLines(text: string): Pair[] {
 export function deckToCsv(deck: Pair[]): string {
   return deck.map(([e, f]) => '"' + e.replace(/"/g, '""') + '","' + f.replace(/"/g, '""') + '"').join("\n");
 }
+
+// Ported verbatim from repetez.html's AI-generation handler. Pulls out ["en","fr"]
+// pairs even if the response was truncated mid-array — AI output isn't always clean JSON.
+export function extractPairs(text: string): Pair[] {
+  const rows: Pair[] = [];
+  const re = /\[\s*"((?:[^"\\]|\\.)*)"\s*,\s*"((?:[^"\\]|\\.)*)"\s*\]/g;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(text)) !== null) {
+    const en = m[1].replace(/\\"/g, '"').trim();
+    const fr = m[2].replace(/\\"/g, '"').trim();
+    if (en && fr) rows.push([en, fr]);
+  }
+  return rows;
+}
