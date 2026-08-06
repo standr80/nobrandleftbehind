@@ -92,6 +92,10 @@ export interface UiStrings {
   syncGenerateKey: string;
   syncYourKey: string;
   syncKeyHint: string;
+  syncReveal: string;
+  syncHide: string;
+  syncCopy: string;
+  statusSyncCopied: string;
   syncNow: string;
   syncStop: string;
   syncRestoreLabel: string;
@@ -196,6 +200,10 @@ const en: UiStrings = {
   syncGenerateKey: "Generate a key",
   syncYourKey: "Your key",
   syncKeyHint: "Write this down — there's no password reset. Anyone with this key can read and overwrite this data.",
+  syncReveal: "Show",
+  syncHide: "Hide",
+  syncCopy: "Copy",
+  statusSyncCopied: "Key copied to clipboard.",
   syncNow: "Sync now",
   syncStop: "Stop syncing on this device",
   syncRestoreLabel: "Already have a key from another device?",
@@ -299,6 +307,10 @@ const fr: UiStrings = {
   syncGenerateKey: "Générer une clé",
   syncYourKey: "Votre clé",
   syncKeyHint: "Notez-la — il n'y a pas de récupération de mot de passe. Toute personne avec cette clé peut lire et écraser ces données.",
+  syncReveal: "Afficher",
+  syncHide: "Masquer",
+  syncCopy: "Copier",
+  statusSyncCopied: "Clé copiée dans le presse-papiers.",
   syncNow: "Synchroniser",
   syncStop: "Arrêter la synchronisation sur cet appareil",
   syncRestoreLabel: "Vous avez déjà une clé d'un autre appareil ?",
@@ -402,6 +414,10 @@ const es: UiStrings = {
   syncGenerateKey: "Generar una clave",
   syncYourKey: "Tu clave",
   syncKeyHint: "Anótala — no hay recuperación de contraseña. Cualquiera con esta clave puede leer y sobrescribir estos datos.",
+  syncReveal: "Mostrar",
+  syncHide: "Ocultar",
+  syncCopy: "Copiar",
+  statusSyncCopied: "Clave copiada al portapapeles.",
   syncNow: "Sincronizar",
   syncStop: "Dejar de sincronizar en este dispositivo",
   syncRestoreLabel: "¿Ya tienes una clave de otro dispositivo?",

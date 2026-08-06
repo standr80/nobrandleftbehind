@@ -76,6 +76,7 @@ export default function Player() {
 
   const [syncOpen, setSyncOpen] = useState(false);
   const [syncMagicKey, setSyncMagicKey] = useState<string | null>(null);
+  const [syncKeyRevealed, setSyncKeyRevealed] = useState(false);
   const [syncBusy, setSyncBusy] = useState(false);
   const [syncRestoreValue, setSyncRestoreValue] = useState("");
 
@@ -130,12 +131,25 @@ export default function Player() {
     const key = generateMagicKey();
     saveMagicKey(key);
     setSyncMagicKey(key);
+    setSyncKeyRevealed(true); // shown in the clear right away — the whole point is to write it down
     await handleSyncNow(key);
   }
   function handleStopSync() {
     clearMagicKey();
     setSyncMagicKey(null);
+    setSyncKeyRevealed(false);
     engine.setStatus(t.statusSyncStopped);
+  }
+  async function handleCopyKey() {
+    if (!syncMagicKey) return;
+    try {
+      await navigator.clipboard.writeText(syncMagicKey);
+      engine.setStatus(t.statusSyncCopied);
+    } catch {
+      // Clipboard API can be denied (permissions, non-HTTPS, etc.) — fall back to
+      // just revealing the key so the user can select-and-copy manually.
+      setSyncKeyRevealed(true);
+    }
   }
   async function handleRestore() {
     const key = syncRestoreValue.trim();
@@ -639,7 +653,17 @@ export default function Player() {
           ) : (
             <>
               <label>{t.syncYourKey}</label>
-              <input type="text" readOnly value={syncMagicKey} onFocus={(e) => e.target.select()} />
+              <div className="gen-row">
+                <input
+                  type={syncKeyRevealed ? "text" : "password"}
+                  readOnly
+                  value={syncMagicKey}
+                  onFocus={(e) => e.target.select()}
+                  style={{ flex: 1 }}
+                />
+                <button className="chip" onClick={() => setSyncKeyRevealed((v) => !v)}>{syncKeyRevealed ? t.syncHide : t.syncReveal}</button>
+                <button className="chip" onClick={handleCopyKey}>{t.syncCopy}</button>
+              </div>
               <div className="hint">{t.syncKeyHint}</div>
               <div className="gen-row">
                 <button className="chip primary" onClick={() => handleSyncNow()} disabled={syncBusy}>{t.syncNow}</button>
