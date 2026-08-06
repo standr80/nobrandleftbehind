@@ -9,6 +9,7 @@ import { loadAiSettings } from "@/lib/repeatafterme/aiSettings";
 import { buildEcoutezPrompt } from "@/lib/repeatafterme/ecoutezPrompt";
 import { extractEcoutezPayload, type EcoutezPayload } from "@/lib/repeatafterme/ecoutezParsing";
 import { speakText } from "@/lib/repeatafterme/simpleTts";
+import { fetchSpeech, playBlob } from "@/lib/repeatafterme/fetchedTts";
 
 type Phase = "setup" | "preview" | "listening" | "complete";
 
@@ -32,6 +33,7 @@ export default function EcoutezPlayer() {
 
   const voicesRef = useRef<SpeechSynthesisVoice[]>([]);
   const stopTokenRef = useRef(0);
+  const activeAudioRef = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
     getSettings().then((s) => {
@@ -56,6 +58,7 @@ export default function EcoutezPlayer() {
     return () => {
       stopTokenRef.current++;
       if (typeof window !== "undefined") window.speechSynthesis?.cancel();
+      activeAudioRef.current?.pause();
     };
   }, []);
 
@@ -66,6 +69,26 @@ export default function EcoutezPlayer() {
   function setOk(msg: string) {
     setStatus(msg);
     setStatusErr(false);
+  }
+
+  /** Fetched OpenAI audio when the configured AI provider is OpenAI (same BYOK key
+   *  already used for generation — see aiSettings.ts), falling back to Web Speech
+   *  otherwise or if the fetch fails. Bluetooth-routing reliability is the payoff —
+   *  see fetchedTts.ts. `lang` only matters for the Web Speech path; OpenAI's TTS
+   *  auto-detects language from the text. */
+  async function speak(text: string, lang: LangCode, rate: number) {
+    const ai = loadAiSettings();
+    if (ai.provider === "openai" && ai.apiKey.trim()) {
+      try {
+        const blob = await fetchSpeech(text, ai.apiKey, rate);
+        await playBlob(blob, (audio) => (activeAudioRef.current = audio));
+        activeAudioRef.current = null;
+        return;
+      } catch {
+        // fall through to Web Speech
+      }
+    }
+    await speakText(text, lang, rate, voicesRef.current);
   }
 
   async function handleGenerate() {
@@ -102,9 +125,9 @@ export default function EcoutezPlayer() {
     const token = ++stopTokenRef.current;
     for (const [nativeText, targetText] of episode.vocab) {
       if (token !== stopTokenRef.current) return;
-      await speakText(targetText, target, 0.9, voicesRef.current);
+      await speak(targetText, target, 0.9);
       if (token !== stopTokenRef.current) return;
-      await speakText(nativeText, native, 1, voicesRef.current);
+      await speak(nativeText, native, 1);
       if (token !== stopTokenRef.current) return;
       await new Promise((r) => setTimeout(r, 350));
     }
@@ -115,12 +138,12 @@ export default function EcoutezPlayer() {
     const token = ++stopTokenRef.current;
     setPhase("listening");
     setPass(1);
-    await speakText(episode.article, target, 0.8, voicesRef.current);
+    await speak(episode.article, target, 0.8);
     if (token !== stopTokenRef.current) return;
     await new Promise((r) => setTimeout(r, 600));
     if (token !== stopTokenRef.current) return;
     setPass(2);
-    await speakText(episode.article, target, 1, voicesRef.current);
+    await speak(episode.article, target, 1);
     if (token !== stopTokenRef.current) return;
     setPass(null);
     setPhase("complete");
@@ -138,6 +161,7 @@ export default function EcoutezPlayer() {
   function handleNewEpisode() {
     stopTokenRef.current++;
     if (typeof window !== "undefined") window.speechSynthesis?.cancel();
+    activeAudioRef.current?.pause();
     setEpisode(null);
     setExported(false);
     setStatus("");
