@@ -1,16 +1,18 @@
 import type { Pair } from "./langs";
 import type { Settings } from "./engine";
+import type { SrsState } from "./srs";
 
 // Thin native-IndexedDB wrapper — no dependency added for a personal side-app.
 // Everything here is local-first: nothing in this file talks to the network.
 // (Sprint 5's zero-knowledge sync layers on top of this, it doesn't replace it.)
 
 const DB_NAME = "repeatafterme";
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 
 const STORE_DECKS = "decks";
 const STORE_KV = "kv";
 const STORE_SCORES = "scores";
+const STORE_SRS = "srs";
 
 export interface SavedDeck {
   id: string;
@@ -31,6 +33,17 @@ export interface ScoreRecord {
   total: number;
 }
 
+/** One item's spaced-repetition state. `pair`/`deckLabel` are denormalised (duplicated
+ *  from whichever deck the item came from) so the due-today queue can be built and
+ *  played without re-resolving back through possibly-deleted or ad-hoc decks. */
+export interface SrsRecord extends SrsState {
+  itemKey: string; // `${contentHashOfDeck}:${indexInDeck}` — see srs.ts hashContent()
+  deckLabel: string;
+  nativeLang: Settings["nativeLang"];
+  targetLang: Settings["targetLang"];
+  pair: Pair;
+}
+
 function openDb(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
     if (typeof indexedDB === "undefined") {
@@ -48,6 +61,9 @@ function openDb(): Promise<IDBDatabase> {
       }
       if (!db.objectStoreNames.contains(STORE_SCORES)) {
         db.createObjectStore(STORE_SCORES, { keyPath: "id", autoIncrement: true });
+      }
+      if (!db.objectStoreNames.contains(STORE_SRS)) {
+        db.createObjectStore(STORE_SRS, { keyPath: "itemKey" });
       }
     };
     req.onsuccess = () => resolve(req.result);
@@ -154,6 +170,38 @@ export async function listScores(): Promise<ScoreRecord[]> {
     const db = await openDb();
     const all = await tx<ScoreRecord[]>(db, STORE_SCORES, "readonly", (s) => s.getAll());
     return all.sort((a, b) => (a.date < b.date ? 1 : -1));
+  } catch {
+    return [];
+  }
+}
+
+// ---------- spaced repetition ----------
+export async function getSrsRecord(itemKey: string): Promise<SrsRecord | undefined> {
+  try {
+    const db = await openDb();
+    return await tx<SrsRecord | undefined>(db, STORE_SRS, "readonly", (s) => s.get(itemKey));
+  } catch {
+    return undefined;
+  }
+}
+
+export async function saveSrsRecord(record: SrsRecord): Promise<void> {
+  try {
+    const db = await openDb();
+    await tx(db, STORE_SRS, "readwrite", (s) => s.put(record));
+  } catch {
+    // best-effort
+  }
+}
+
+/** Due items for the current native/target pairing — the due-today queue is scoped
+ *  to one language pairing at a time (mixing pairings would need per-item TTS
+ *  language switching mid-session, which the engine doesn't support — see engine.ts). */
+export async function listDueSrsRecords(nativeLang: Settings["nativeLang"], targetLang: Settings["targetLang"], todayIso: string): Promise<SrsRecord[]> {
+  try {
+    const db = await openDb();
+    const all = await tx<SrsRecord[]>(db, STORE_SRS, "readonly", (s) => s.getAll());
+    return all.filter((r) => r.nativeLang === nativeLang && r.targetLang === targetLang && r.dueDate <= todayIso);
   } catch {
     return [];
   }

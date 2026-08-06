@@ -15,11 +15,15 @@ import {
   renameDeckInLibrary,
   deleteDeckFromLibrary,
   addScore,
+  getSrsRecord,
+  saveSrsRecord,
+  listDueSrsRecords,
   type SavedDeck,
 } from "@/lib/repeatafterme/db";
 import { loadAiSettings, saveAiSettings, type AiSettings } from "@/lib/repeatafterme/aiSettings";
 import { buildDeckGenPrompt } from "@/lib/repeatafterme/genPrompt";
 import type { AiProvider } from "@/lib/repeatafterme/providers";
+import { applyReview, todayIso } from "@/lib/repeatafterme/srs";
 
 export default function Player() {
   const engineRef = useRef<RepetezEngine | null>(null);
@@ -61,8 +65,13 @@ export default function Player() {
   const [aiDraftProvider, setAiDraftProvider] = useState<AiProvider>("anthropic");
   const [aiDraftApiKey, setAiDraftApiKey] = useState("");
 
+  const [dueCount, setDueCount] = useState(0);
+
   function refreshSavedDecks() {
     listDecks().then(setSavedDecks);
+  }
+  function refreshDueCount() {
+    listDueSrsRecords(native, target, todayIso()).then((items) => setDueCount(items.length));
   }
   function openAiSettings() {
     setAiDraftProvider(aiSettings.provider);
@@ -122,6 +131,14 @@ export default function Player() {
     };
     engine.onTestComplete = (result) => {
       void addScore({ ...result, date: new Date().toISOString() });
+      refreshDueCount();
+    };
+    engine.onItemReviewed = (info) => {
+      void (async () => {
+        const existing = await getSrsRecord(info.itemKey);
+        const next = applyReview(existing, info.correct);
+        await saveSrsRecord({ itemKey: info.itemKey, deckLabel: info.deckLabel, nativeLang: info.nativeLang, targetLang: info.targetLang, pair: info.pair, ...next });
+      })();
     };
 
     // Resume where you left off: restore persisted settings + last-used deck, then
@@ -140,6 +157,14 @@ export default function Player() {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Due count is scoped to the current native/target pairing (see db.ts's
+  // listDueSrsRecords) — recompute whenever either changes, including the initial
+  // hydrate-from-IndexedDB update after mount.
+  useEffect(() => {
+    refreshDueCount();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [native, target]);
 
   const good = snap.results.filter(Boolean).length;
   const bad = snap.results.length - good;
@@ -183,6 +208,14 @@ export default function Player() {
   }
   function handleLoadSaved(deck: SavedDeck) {
     engine.loadSavedDeck(deck.pairs, deck.label, deck.nativeLang, deck.targetLang);
+  }
+  async function handleStartDueQueue() {
+    const items = await listDueSrsRecords(native, target, todayIso());
+    if (!items.length) {
+      engine.setStatus(t.statusNothingDue);
+      return;
+    }
+    engine.loadDueQueue(items, t.dueQueueLabel(items.length));
   }
   async function handleDeleteSaved(id: string) {
     await deleteDeckFromLibrary(id);
@@ -367,6 +400,12 @@ export default function Player() {
             <Toggle on={snap.settings.showText} onClick={() => engine.toggleShowText()} />
           </div>
         </div>
+
+        {dueCount > 0 && (
+          <div className="deck-actions">
+            <button className="chip primary" onClick={handleStartDueQueue}>{t.dueToday(dueCount)}</button>
+          </div>
+        )}
 
         <h2>{t.deckHeading}</h2>
         <div className="deck-actions">

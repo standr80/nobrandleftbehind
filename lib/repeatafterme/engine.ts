@@ -1,5 +1,6 @@
 import { LANGS, LANG_ORDER, availableTargets, getStarterDeck, type LangCode, type Pair } from "./langs";
 import { getStrings, LANG_NAMES, type UiStrings } from "./i18n";
+import { hashContent } from "./srs";
 
 export interface Settings {
   pause: number;
@@ -85,6 +86,13 @@ export class RepetezEngine {
   private status = "";
   private statusErr = false;
 
+  /** Set only while playing a due-today queue (loadDueQueue) — maps each deck index to
+   *  the item's real itemKey from wherever it originally came from, so marking it feeds
+   *  SRS back to the right underlying item rather than a fresh hash of this ephemeral
+   *  aggregated "deck". null for a normal single-source deck, where the itemKey is
+   *  derived on the fly from a content hash (see markReviewed()). */
+  private itemKeyOverride: string[] | null = null;
+
   private listeners = new Set<() => void>();
   private snapshot: EngineSnapshot;
 
@@ -94,6 +102,8 @@ export class RepetezEngine {
   onDeckOrSettingsChange: (() => void) | null = null;
   /** Fired when a test run finishes — the consumer's cue to record score history. */
   onTestComplete: ((result: { deckLabel: string; targetLang: LangCode; correct: number; total: number }) => void) | null = null;
+  /** Fired on every Test-mode mark — the consumer's cue to update spaced-repetition state. */
+  onItemReviewed: ((info: { itemKey: string; deckLabel: string; nativeLang: LangCode; targetLang: LangCode; pair: Pair; correct: boolean }) => void) | null = null;
 
   constructor(nativeLang: LangCode = "en", targetLang?: LangCode) {
     const target = targetLang ?? availableTargets(nativeLang)[0];
@@ -291,6 +301,7 @@ export class RepetezEngine {
         this.results.push(ok);
         if (!ok) this.missed.push(this.order[this.pos]);
         this.emit();
+        this.markReviewed(this.order[this.pos], ok);
         // Breathing room after the mark click — without this, the next prompt's
         // audio started essentially instantly on tap, which felt jarring.
         await sleep(700);
@@ -338,6 +349,22 @@ export class RepetezEngine {
     this.missed = [];
     this.summaryVisible = false;
     this.markVisible = false;
+  }
+
+  /** itemKey is either resolved from itemKeyOverride (due-queue: item came from
+   *  elsewhere, keep its real identity) or derived on the fly from a content hash of
+   *  the current deck (normal deck: cheap enough to recompute per mark, and avoids a
+   *  cached field ever going stale after a deck reload). */
+  private markReviewed(deckIndex: number, correct: boolean) {
+    const itemKey = this.itemKeyOverride ? this.itemKeyOverride[deckIndex] : `${hashContent(this.deck)}:${deckIndex}`;
+    this.onItemReviewed?.({
+      itemKey,
+      deckLabel: this.deckLabel,
+      nativeLang: this.settings.nativeLang,
+      targetLang: this.settings.targetLang,
+      pair: this.deck[deckIndex],
+      correct,
+    });
   }
 
   private finishTest() {
@@ -496,6 +523,7 @@ export class RepetezEngine {
     this.loadStarterFor(code, this.settings.targetLang);
   }
   private loadStarterFor(native: LangCode, target: LangCode) {
+    this.itemKeyOverride = null;
     this.deck = getStarterDeck(native, target);
     this.pos = 0;
     this.rebuildOrder();
@@ -541,6 +569,7 @@ export class RepetezEngine {
       return;
     }
     this.stop();
+    this.itemKeyOverride = null;
     this.deck = rows;
     this.pos = 0;
     this.rebuildOrder();
@@ -558,6 +587,7 @@ export class RepetezEngine {
   /** Restore persisted settings + last-used deck on mount. Silent — no status message,
    *  no onDeckOrSettingsChange echo (we're loading what was already saved, not changing it). */
   hydrate(opts: { settings?: Partial<Settings>; deck?: { pairs: Pair[]; label: string } }) {
+    this.itemKeyOverride = null;
     if (opts.settings) this.settings = { ...this.settings, ...opts.settings };
     this.t = getStrings(this.settings.nativeLang);
     if (opts.deck?.pairs.length) {
@@ -584,6 +614,29 @@ export class RepetezEngine {
     }
     if (targetLang !== this.settings.targetLang) this.settings.targetLang = targetLang;
     this.loadDeck(pairs, label);
+  }
+
+  /** Load an aggregated queue of due SRS items (from db.ts's listDueSrsRecords) as the
+   *  active deck, in Test mode, remembering each item's real itemKey so marking it
+   *  updates the right underlying item rather than being treated as new content.
+   *  Scoped to items already matching the current native/target pairing — see
+   *  db.ts's listDueSrsRecords for why mixed-pairing queues aren't supported. */
+  loadDueQueue(items: { itemKey: string; pair: Pair }[], label: string) {
+    if (!items.length) return;
+    this.stop();
+    this.settings.mode = "test";
+    this.itemKeyOverride = items.map((i) => i.itemKey);
+    this.deck = items.map((i) => i.pair);
+    this.pos = 0;
+    this.rebuildOrder();
+    this.resetTest();
+    this.syncCard(false);
+    this.deckLabel = label;
+    this.setPhase("", this.t.phaseTestReady);
+    this.status = "";
+    this.statusErr = false;
+    this.emit();
+    this.onDeckOrSettingsChange?.();
   }
 
   /** Current deck's content, for the consumer to persist (last-used or save-to-library). */

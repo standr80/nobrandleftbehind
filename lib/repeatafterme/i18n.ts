@@ -82,6 +82,10 @@ export interface UiStrings {
   newTest: string;
   practiseMisses: (n: number) => string;
 
+  // spaced repetition
+  dueToday: (n: number) => string;
+  dueQueueLabel: (n: number) => string;
+
   footer: string;
 
   // status messages
@@ -95,6 +99,7 @@ export interface UiStrings {
   statusAiSettingsSavedNoKey: string;
   statusKeyForgotten: string;
   statusGenerationEmptyResponse: string;
+  statusNothingDue: string;
 }
 
 const en: UiStrings = {
@@ -166,6 +171,9 @@ const en: UiStrings = {
   newTest: "New test",
   practiseMisses: (n) => `Practise ${n} ${n === 1 ? "miss" : "misses"}`,
 
+  dueToday: (n) => `Due today (${n})`,
+  dueQueueLabel: (n) => `Due today · ${n} ${n === 1 ? "phrase" : "phrases"}`,
+
   footer: "Connect a Bluetooth speaker and press play. Keep the screen awake while practising.",
 
   statusLoadedPhrases: (n) => `Loaded ${n} phrases.`,
@@ -178,6 +186,7 @@ const en: UiStrings = {
   statusAiSettingsSavedNoKey: "AI settings saved — no key set, Generate stays off until you add one.",
   statusKeyForgotten: "API key forgotten.",
   statusGenerationEmptyResponse: "couldn't read the response format",
+  statusNothingDue: "Nothing due right now — nice work.",
 };
 
 const fr: UiStrings = {
@@ -249,6 +258,9 @@ const fr: UiStrings = {
   newTest: "Nouveau test",
   practiseMisses: (n) => `Réviser ${n} ${n === 1 ? "erreur" : "erreurs"}`,
 
+  dueToday: (n) => `À réviser (${n})`,
+  dueQueueLabel: (n) => `À réviser · ${n} phrases`,
+
   footer: "Connectez une enceinte Bluetooth et appuyez sur lecture. Gardez l'écran allumé pendant l'entraînement.",
 
   statusLoadedPhrases: (n) => `${n} phrases chargées.`,
@@ -261,6 +273,7 @@ const fr: UiStrings = {
   statusAiSettingsSavedNoKey: "Réglages IA enregistrés — aucune clé définie, Générer reste désactivé tant que vous n'en ajoutez pas une.",
   statusKeyForgotten: "Clé API oubliée.",
   statusGenerationEmptyResponse: "format de réponse illisible",
+  statusNothingDue: "Rien à réviser pour l'instant — bravo.",
 };
 
 const es: UiStrings = {
@@ -332,6 +345,9 @@ const es: UiStrings = {
   newTest: "Nuevo test",
   practiseMisses: (n) => `Practicar ${n} ${n === 1 ? "fallo" : "fallos"}`,
 
+  dueToday: (n) => `Para repasar (${n})`,
+  dueQueueLabel: (n) => `Para repasar · ${n} frases`,
+
   footer: "Conecta un altavoz Bluetooth y pulsa reproducir. Mantén la pantalla encendida mientras practicas.",
 
   statusLoadedPhrases: (n) => `${n} frases cargadas.`,
@@ -344,6 +360,7 @@ const es: UiStrings = {
   statusAiSettingsSavedNoKey: "Ajustes de IA guardados — sin clave definida, Generar seguirá desactivado hasta que añadas una.",
   statusKeyForgotten: "Clave API olvidada.",
   statusGenerationEmptyResponse: "no se pudo leer el formato de la respuesta",
+  statusNothingDue: "Nada que repasar por ahora — bien hecho.",
 };
 
 const DICTS: Record<LangCode, UiStrings> = { en, fr, es };
