@@ -9,6 +9,10 @@ export interface Settings {
   showText: boolean;
   mode: "drill" | "test";
   lang: LangCode;
+  /** Drill mode only. When false, playback pauses after each card instead of
+   *  continuing straight to the next one — for pondering at a screen rather than
+   *  hands-free listening (e.g. while driving). */
+  autoplay: boolean;
 }
 
 export interface EngineSnapshot {
@@ -82,7 +86,7 @@ export class RepetezEngine {
   onTestComplete: ((result: { deckLabel: string; lang: LangCode; correct: number; total: number }) => void) | null = null;
 
   constructor(lang: LangCode = "fr") {
-    this.settings = { pause: 1.25, rate: 0.9, dir: "EF", shuffle: false, loop: true, showText: true, mode: "drill", lang };
+    this.settings = { pause: 1.25, rate: 0.9, dir: "EF", shuffle: false, loop: true, showText: true, mode: "drill", lang, autoplay: true };
     this.deck = LANGS[lang].starter.slice();
     this.deckLabel = `Starter deck · ${this.deck.length} phrases`;
     this.rebuildOrder();
@@ -298,6 +302,19 @@ export class RepetezEngine {
       } else {
         this.pos++;
       }
+
+      // Drill mode, autoplay off: pause here rather than continuing straight into
+      // the next card. `pos` is already advanced, so a subsequent play() picks up
+      // the next card — not a repeat of the one just finished. Wake lock is left
+      // alone deliberately: this is an expected step in the flow (pondering at a
+      // screen), not the user walking away, so the screen should stay awake.
+      if (this.settings.mode === "drill" && !this.settings.autoplay) {
+        this.playing = false;
+        this.syncCard(false);
+        this.setPhase("", "Ready for next card — press play");
+        this.emit();
+        return;
+      }
     }
   }
 
@@ -472,6 +489,11 @@ export class RepetezEngine {
   toggleShowText() {
     this.settings.showText = !this.settings.showText;
     this.syncCard(this.revealAnswer);
+    this.emit();
+    this.onDeckOrSettingsChange?.();
+  }
+  toggleAutoplay() {
+    this.settings.autoplay = !this.settings.autoplay;
     this.emit();
     this.onDeckOrSettingsChange?.();
   }

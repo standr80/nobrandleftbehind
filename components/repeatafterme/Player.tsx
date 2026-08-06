@@ -298,6 +298,14 @@ export default function Player() {
               <button className={snap.settings.mode === "test" ? "on" : ""} onClick={() => engine.setMode("test")}>Test</button>
             </div>
           </div>
+          {snap.settings.mode === "drill" && (
+            <div className="row">
+              <label>
+                Autoplay<span className="hint">Off = pause after each card, press play for the next</span>
+              </label>
+              <Toggle on={snap.settings.autoplay} onClick={() => engine.toggleAutoplay()} />
+            </div>
+          )}
           <div className="row">
             <label>
               Thinking time<span className="hint">Pause before the answer</span>
