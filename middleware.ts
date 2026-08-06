@@ -7,6 +7,8 @@ const isPublicRoute = createRouteMatcher([
   '/',               // marketing landing page
   '/agents(.*)',     // public agent CV pages
   '/academy(.*)',    // public academy page
+  '/repeatafterme(.*)',     // Répétez — public, no-account, BYOK language drill app
+  '/api/repeatafterme(.*)', // Répétez API routes — BYOK, no NBLB auth required
   '/sitemap.xml',    // marketing sitemap (crawlers)
   '/robots.txt',     // marketing robots (crawlers)
   '/sign-in(.*)',
