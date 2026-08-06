@@ -94,10 +94,15 @@ export const saveLastDeck = (label: string, pairs: Pair[]) => saveKv("lastDeck",
 export async function listDecks(): Promise<SavedDeck[]> {
   try {
     const db = await openDb();
-    const all = await tx<SavedDeck[]>(db, STORE_DECKS, "readonly", (s) => s.getAll());
-    // Backfill for decks saved before the native-language field existed — they were
-    // all native=English at the time, by definition (it's all the app supported).
-    const withDefaults = all.map((d) => ({ ...d, nativeLang: d.nativeLang ?? "en" }));
+    const all = await tx<(SavedDeck & { lang?: string })[]>(db, STORE_DECKS, "readonly", (s) => s.getAll());
+    // Backfill for decks saved before native/target split existed — they were all
+    // native=English at the time (it's all the app supported), and what's now
+    // `targetLang` used to be stored under the field name `lang`.
+    const withDefaults = all.map((d) => ({
+      ...d,
+      nativeLang: d.nativeLang ?? "en",
+      targetLang: d.targetLang ?? (d.lang as SavedDeck["targetLang"] | undefined) ?? "fr",
+    }));
     return withDefaults.sort((a, b) => b.updatedAt - a.updatedAt);
   } catch {
     return [];
