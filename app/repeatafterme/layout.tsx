@@ -15,7 +15,13 @@ export const metadata: Metadata = {
     // app/favicon.ico (a 16x16 .ico, auto-injected on every route by Next.js's
     // root-level special-file convention — it can't be suppressed from here, only
     // out-prioritised with a more specific declaration).
-    icon: [{ url: "/repeatafterme/icon-192.png", sizes: "192x192", type: "image/png" }],
+    icon: [
+      // Safari 17+ specifically prefers an SVG favicon when one's declared — listed
+      // first since browsers generally take the first icon link that matches what
+      // they support.
+      { url: "/repeatafterme/icon-source.svg", type: "image/svg+xml" },
+      { url: "/repeatafterme/icon-192.png", sizes: "192x192", type: "image/png" },
+    ],
     shortcut: [{ url: "/repeatafterme/icon-192.png", sizes: "192x192", type: "image/png" }],
     apple: [{ url: "/repeatafterme/apple-touch-icon.png", sizes: "180x180", type: "image/png" }],
   },
