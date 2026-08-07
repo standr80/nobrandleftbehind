@@ -11,8 +11,13 @@ export const metadata: Metadata = {
   description: "A Michel Thomas / Paul Noble-style speak-along drill across English, French and Spanish. Free, no account, bring your own AI key.",
   manifest: "/repeatafterme/manifest.webmanifest",
   icons: {
-    icon: "/repeatafterme/icon-192.png",
-    apple: "/repeatafterme/apple-touch-icon.png",
+    // Explicit sizes/type so this clearly outranks the platform's own site-wide
+    // app/favicon.ico (a 16x16 .ico, auto-injected on every route by Next.js's
+    // root-level special-file convention — it can't be suppressed from here, only
+    // out-prioritised with a more specific declaration).
+    icon: [{ url: "/repeatafterme/icon-192.png", sizes: "192x192", type: "image/png" }],
+    shortcut: [{ url: "/repeatafterme/icon-192.png", sizes: "192x192", type: "image/png" }],
+    apple: [{ url: "/repeatafterme/apple-touch-icon.png", sizes: "180x180", type: "image/png" }],
   },
   appleWebApp: {
     capable: true,
