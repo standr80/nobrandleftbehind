@@ -106,6 +106,23 @@ export const saveSettings = (settings: Settings) => saveKv("settings", settings)
 export const getLastDeck = () => loadKv<{ label: string; pairs: Pair[] }>("lastDeck");
 export const saveLastDeck = (label: string, pairs: Pair[]) => saveKv("lastDeck", { label, pairs });
 
+// ---------- last position + bookmark ----------
+// Both keyed by deckKey (a content hash — see srs.ts's hashContent(), same technique
+// used for SRS item identity) rather than stored inside the deck record itself, so
+// restoring a position never needs to re-write the (potentially large) deck content —
+// and a stale position for a deck that's since changed just silently doesn't match on
+// read, rather than needing explicit invalidation.
+export const getLastPosition = () => loadKv<{ deckKey: string; deckIndex: number }>("lastPosition");
+export const saveLastPosition = (deckKey: string, deckIndex: number) => saveKv("lastPosition", { deckKey, deckIndex });
+
+export interface Bookmark {
+  deckKey: string;
+  deckIndex: number;
+  createdAt: number;
+}
+export const getBookmark = (deckKey: string) => loadKv<Bookmark>(`bookmark:${deckKey}`);
+export const saveBookmark = (deckKey: string, deckIndex: number) => saveKv(`bookmark:${deckKey}`, { deckKey, deckIndex, createdAt: Date.now() });
+
 // ---------- named deck library ----------
 export async function listDecks(): Promise<SavedDeck[]> {
   try {

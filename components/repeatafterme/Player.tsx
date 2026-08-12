@@ -25,13 +25,17 @@ import {
   getActivityLog,
   computeStreak,
   getTodayMinutes,
+  getLastPosition,
+  saveLastPosition,
+  getBookmark,
+  saveBookmark,
   type SavedDeck,
   type SyncPayload,
 } from "@/lib/repeatafterme/db";
 import { loadAiSettings, saveAiSettings, type AiSettings } from "@/lib/repeatafterme/aiSettings";
 import { buildDeckGenPrompt } from "@/lib/repeatafterme/genPrompt";
 import type { AiProvider } from "@/lib/repeatafterme/providers";
-import { applyReview, todayIso } from "@/lib/repeatafterme/srs";
+import { applyReview, todayIso, hashContent } from "@/lib/repeatafterme/srs";
 import { generateMagicKey, sha256Hex, encryptPayload, decryptPayload } from "@/lib/repeatafterme/vault";
 import { loadMagicKey, saveMagicKey, clearMagicKey } from "@/lib/repeatafterme/syncSettings";
 
@@ -81,6 +85,10 @@ export default function Player() {
   const [streak, setStreak] = useState(0);
   const [minutesToday, setMinutesToday] = useState(0);
 
+  const [goToOpen, setGoToOpen] = useState(false);
+  const [goToValue, setGoToValue] = useState("");
+  const [bookmarkDeckIndex, setBookmarkDeckIndex] = useState<number | null>(null);
+
   const [syncOpen, setSyncOpen] = useState(false);
   const [syncMagicKey, setSyncMagicKey] = useState<string | null>(null);
   const [syncKeyRevealed, setSyncKeyRevealed] = useState(false);
@@ -98,6 +106,26 @@ export default function Player() {
       setStreak(computeStreak(log));
       setMinutesToday(getTodayMinutes(log));
     });
+  }
+  function refreshBookmark() {
+    const current = engine.getCurrentDeck();
+    getBookmark(hashContent(current.pairs)).then((b) => setBookmarkDeckIndex(b ? b.deckIndex : null));
+  }
+  function handleGoTo() {
+    const n = parseInt(goToValue, 10);
+    if (!Number.isNaN(n)) engine.goToPosition(n);
+    setGoToValue("");
+    setGoToOpen(false);
+  }
+  async function handleSetBookmark() {
+    const current = engine.getCurrentDeck();
+    const deckIndex = engine.getCurrentDeckIndex();
+    await saveBookmark(hashContent(current.pairs), deckIndex);
+    setBookmarkDeckIndex(deckIndex);
+    engine.setStatus(t.statusBookmarkSet(snap.pos + 1));
+  }
+  function handleGoToBookmark() {
+    if (bookmarkDeckIndex !== null) engine.goToDeckIndex(bookmarkDeckIndex);
   }
   function openAiSettings() {
     setAiDraftProvider(aiSettings.provider);
@@ -232,6 +260,7 @@ export default function Player() {
       void saveSettings(snapshot.settings);
       const current = engine.getCurrentDeck();
       void saveLastDeck(snapshot.deckLabel, current.pairs);
+      refreshBookmark();
     };
     engine.onTestComplete = (result) => {
       void addScore({ ...result, date: new Date().toISOString() });
@@ -247,13 +276,20 @@ export default function Player() {
     engine.onSessionTime = (seconds) => {
       void recordActivity(seconds).then(refreshStats);
     };
+    engine.onPositionChange = (deckIndex) => {
+      const current = engine.getCurrentDeck();
+      void saveLastPosition(hashContent(current.pairs), deckIndex);
+    };
 
-    // Resume where you left off: restore persisted settings + last-used deck, then
-    // load the saved-deck library list. Silent — hydrate() doesn't re-trigger a save.
-    Promise.all([getSettings(), getLastDeck()]).then(([settings, lastDeck]) => {
+    // Resume where you left off: restore persisted settings + last-used deck +
+    // position (if it still matches this deck's content), then load the saved-deck
+    // library list. Silent — hydrate() doesn't re-trigger a save.
+    Promise.all([getSettings(), getLastDeck(), getLastPosition()]).then(([settings, lastDeck, lastPos]) => {
       if (settings || lastDeck) {
-        engine.hydrate({ settings, deck: lastDeck });
+        const deckIndex = lastDeck && lastPos && lastPos.deckKey === hashContent(lastDeck.pairs) ? lastPos.deckIndex : undefined;
+        engine.hydrate({ settings, deck: lastDeck, deckIndex });
       }
+      refreshBookmark();
     });
     refreshSavedDecks();
     refreshStats();
@@ -526,6 +562,36 @@ export default function Player() {
           <div className="deck-actions">
             <button className="chip primary" onClick={handleStartDueQueue}>{t.dueToday(dueCount)}</button>
           </div>
+        )}
+
+        {snap.settings.mode === "drill" && (
+          <>
+            <div className="deck-actions">
+              <button className="chip" onClick={() => setGoToOpen((v) => !v)}>{t.goToCard}</button>
+              <button className="chip" onClick={handleSetBookmark}>{t.bookmarkSet}</button>
+              {bookmarkDeckIndex !== null && (
+                <button className="chip" onClick={handleGoToBookmark}>{t.bookmarkGo(snap.order.indexOf(bookmarkDeckIndex) + 1)}</button>
+              )}
+            </div>
+            <div className={"paste-box" + (goToOpen ? " open" : "")}>
+              <div className="gen-row">
+                <input
+                  type="number"
+                  min={1}
+                  max={snap.order.length}
+                  value={goToValue}
+                  onChange={(e) => setGoToValue(e.target.value)}
+                  placeholder={t.goToCardPlaceholder}
+                  style={{ width: 80 }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") handleGoTo();
+                  }}
+                />
+                <button className="chip primary" onClick={handleGoTo}>{t.goToBtn}</button>
+                <button className="chip" onClick={() => setGoToOpen(false)}>{t.cancel}</button>
+              </div>
+            </div>
+          </>
         )}
 
         <h2>{t.deckHeading}</h2>

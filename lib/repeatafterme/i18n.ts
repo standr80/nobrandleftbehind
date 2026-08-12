@@ -129,6 +129,14 @@ export interface UiStrings {
   statsStreak: (n: number) => string;
   statsMinutesToday: (n: number) => string;
 
+  // go-to-card + bookmark (Drill mode only)
+  goToCard: string;
+  goToCardPlaceholder: string;
+  goToBtn: string;
+  bookmarkSet: string;
+  bookmarkGo: (n: number) => string;
+  statusBookmarkSet: (n: number) => string;
+
   footer: string;
 
   // status messages
@@ -265,6 +273,13 @@ const en: UiStrings = {
   statsStreak: (n) => `🔥 ${n}-day streak`,
   statsMinutesToday: (n) => `${n} min today`,
 
+  goToCard: "Go to card",
+  goToCardPlaceholder: "#",
+  goToBtn: "Go",
+  bookmarkSet: "🔖 Bookmark here",
+  bookmarkGo: (n) => `↩ Go to bookmark (${n})`,
+  statusBookmarkSet: (n) => `Bookmarked card ${n}.`,
+
   footer: "Connect a Bluetooth speaker and press play. Keep the screen awake while practising.",
 
   statusLoadedPhrases: (n) => `Loaded ${n} phrases.`,
@@ -400,6 +415,13 @@ const fr: UiStrings = {
   statsStreak: (n) => `🔥 Série de ${n} jour${n === 1 ? "" : "s"}`,
   statsMinutesToday: (n) => `${n} min aujourd'hui`,
 
+  goToCard: "Aller à la carte",
+  goToCardPlaceholder: "#",
+  goToBtn: "Aller",
+  bookmarkSet: "🔖 Marquer cet endroit",
+  bookmarkGo: (n) => `↩ Aller au signet (${n})`,
+  statusBookmarkSet: (n) => `Carte ${n} marquée.`,
+
   footer: "Connectez une enceinte Bluetooth et appuyez sur lecture. Gardez l'écran allumé pendant l'entraînement.",
 
   statusLoadedPhrases: (n) => `${n} phrases chargées.`,
@@ -534,6 +556,13 @@ const es: UiStrings = {
 
   statsStreak: (n) => `🔥 Racha de ${n} día${n === 1 ? "" : "s"}`,
   statsMinutesToday: (n) => `${n} min hoy`,
+
+  goToCard: "Ir a la tarjeta",
+  goToCardPlaceholder: "#",
+  goToBtn: "Ir",
+  bookmarkSet: "🔖 Marcar este punto",
+  bookmarkGo: (n) => `↩ Ir al marcador (${n})`,
+  statusBookmarkSet: (n) => `Tarjeta ${n} marcada.`,
 
   footer: "Conecta un altavoz Bluetooth y pulsa reproducir. Mantén la pantalla encendida mientras practicas.",
 

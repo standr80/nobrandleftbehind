@@ -113,6 +113,11 @@ export class RepetezEngine {
   onSessionTime: ((seconds: number) => void) | null = null;
   /** Fired on every Test-mode mark — the consumer's cue to update spaced-repetition state. */
   onItemReviewed: ((info: { itemKey: string; deckLabel: string; nativeLang: LangCode; targetLang: LangCode; pair: Pair; correct: boolean }) => void) | null = null;
+  /** Fired whenever the current card settles on a new item (not just revealing the
+   *  answer for the same one) — with the stable deck-item index (order[pos]), not the
+   *  raw position, so it stays meaningful across shuffle changes. Consumer's cue to
+   *  persist "resume where I left off". */
+  onPositionChange: ((deckIndex: number) => void) | null = null;
 
   constructor(nativeLang: LangCode = "en", targetLang?: LangCode) {
     const target = targetLang ?? availableTargets(nativeLang)[0];
@@ -354,6 +359,7 @@ export class RepetezEngine {
       } else {
         this.pos++;
       }
+      this.notePosition();
 
       // Drill mode, autoplay off: pause here rather than continuing straight into
       // the next card. `pos` is already advanced, so a subsequent play() picks up
@@ -376,6 +382,10 @@ export class RepetezEngine {
     this.missed = [];
     this.summaryVisible = false;
     this.markVisible = false;
+  }
+
+  private notePosition() {
+    if (this.order.length) this.onPositionChange?.(this.order[this.pos]);
   }
 
   /** itemKey is either resolved from itemKeyOverride (due-queue: item came from
@@ -460,6 +470,7 @@ export class RepetezEngine {
     if (typeof window !== "undefined") window.speechSynthesis?.cancel();
     this.activeAudio?.pause();
     this.pos = (this.pos + 1) % this.order.length;
+    this.notePosition();
     if (this.playing) void this.runFrom(this.pos);
     else {
       this.syncCard(false);
@@ -471,6 +482,7 @@ export class RepetezEngine {
     if (typeof window !== "undefined") window.speechSynthesis?.cancel();
     this.activeAudio?.pause();
     this.pos = (this.pos - 1 + this.order.length) % this.order.length;
+    this.notePosition();
     if (this.playing) void this.runFrom(this.pos);
     else {
       this.syncCard(false);
@@ -487,6 +499,41 @@ export class RepetezEngine {
       this.emit();
       void this.runFrom(this.pos);
     }
+  }
+
+  /** The stable identity of the current card (order[pos]) — unaffected by shuffle
+   *  re-randomising `order` itself. Used by the consumer for "bookmark this spot". */
+  getCurrentDeckIndex(): number {
+    return this.order[this.pos];
+  }
+
+  /** Jump to the Nth card (1-indexed, matching the on-screen counter) in the
+   *  *current* play order. Drill mode only — Test mode's scoring assumes sequential
+   *  completion, so jumping around mid-test would leave results/missed inconsistent.
+   *  With shuffle on, "card N" is only a stable target until the next reshuffle. */
+  goToPosition(n: number) {
+    if (this.settings.mode !== "drill" || !this.order.length) return;
+    this.stop();
+    this.pos = Math.min(Math.max(0, Math.trunc(n) - 1), this.order.length - 1);
+    this.syncCard(false);
+    this.setPhase("", this.t.phaseReady);
+    this.emit();
+    this.notePosition();
+  }
+
+  /** Jump to a specific underlying card by its stable deck-item identity — used to
+   *  restore a bookmark. Correct regardless of shuffle state, unlike goToPosition().
+   *  No-ops quietly if the index isn't in the current order (e.g. deck shrank). */
+  goToDeckIndex(deckIndex: number) {
+    if (this.settings.mode !== "drill") return;
+    const idx = this.order.indexOf(deckIndex);
+    if (idx < 0) return;
+    this.stop();
+    this.pos = idx;
+    this.syncCard(false);
+    this.setPhase("", this.t.phaseReady);
+    this.emit();
+    this.notePosition();
   }
 
   // ---------- test marking ----------
@@ -628,9 +675,11 @@ export class RepetezEngine {
     if (!opts.silent) this.onDeckOrSettingsChange?.();
   }
 
-  /** Restore persisted settings + last-used deck on mount. Silent — no status message,
-   *  no onDeckOrSettingsChange echo (we're loading what was already saved, not changing it). */
-  hydrate(opts: { settings?: Partial<Settings>; deck?: { pairs: Pair[]; label: string } }) {
+  /** Restore persisted settings + last-used deck (+ position, if it matches this
+   *  deck's content — see db.ts's getLastPosition) on mount. Silent — no status
+   *  message, no onDeckOrSettingsChange/onPositionChange echo (we're loading what was
+   *  already saved, not changing it). */
+  hydrate(opts: { settings?: Partial<Settings>; deck?: { pairs: Pair[]; label: string }; deckIndex?: number }) {
     this.itemKeyOverride = null;
     if (opts.settings) this.settings = { ...this.settings, ...opts.settings };
     this.t = getStrings(this.settings.nativeLang);
@@ -643,6 +692,10 @@ export class RepetezEngine {
     }
     this.pos = 0;
     this.rebuildOrder();
+    if (opts.deckIndex !== undefined) {
+      const idx = this.order.indexOf(opts.deckIndex);
+      if (idx >= 0) this.pos = idx;
+    }
     this.resetTest();
     this.syncCard(false);
     this.emit();
