@@ -477,6 +477,42 @@ export default function Player() {
           <button className="btn-round" aria-label="Replay this phrase" style={{ fontSize: 16 }} onClick={() => engine.repeatCurrent()}>↻</button>
         </div>
 
+        {dueCount > 0 && (
+          <div className="deck-actions">
+            <button className="chip primary" onClick={handleStartDueQueue}>{t.dueToday(dueCount)}</button>
+          </div>
+        )}
+
+        {snap.settings.mode === "drill" && (
+          <>
+            <div className="deck-actions">
+              <button className="chip" onClick={() => setGoToOpen((v) => !v)}>{t.goToCard}</button>
+              <button className="chip" onClick={handleSetBookmark}>{t.bookmarkSet}</button>
+              {bookmarkDeckIndex !== null && (
+                <button className="chip" onClick={handleGoToBookmark}>{t.bookmarkGo(snap.order.indexOf(bookmarkDeckIndex) + 1)}</button>
+              )}
+            </div>
+            <div className={"paste-box" + (goToOpen ? " open" : "")}>
+              <div className="gen-row">
+                <input
+                  type="number"
+                  min={1}
+                  max={snap.order.length}
+                  value={goToValue}
+                  onChange={(e) => setGoToValue(e.target.value)}
+                  placeholder={t.goToCardPlaceholder}
+                  style={{ width: 80 }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") handleGoTo();
+                  }}
+                />
+                <button className="chip primary" onClick={handleGoTo}>{t.goToBtn}</button>
+                <button className="chip" onClick={() => setGoToOpen(false)}>{t.cancel}</button>
+              </div>
+            </div>
+          </>
+        )}
+
         <div className="panel">
           <div className="row">
             <label>{t.nativeLanguage}</label>
@@ -557,42 +593,6 @@ export default function Player() {
             <Toggle on={snap.settings.showText} onClick={() => engine.toggleShowText()} />
           </div>
         </div>
-
-        {dueCount > 0 && (
-          <div className="deck-actions">
-            <button className="chip primary" onClick={handleStartDueQueue}>{t.dueToday(dueCount)}</button>
-          </div>
-        )}
-
-        {snap.settings.mode === "drill" && (
-          <>
-            <div className="deck-actions">
-              <button className="chip" onClick={() => setGoToOpen((v) => !v)}>{t.goToCard}</button>
-              <button className="chip" onClick={handleSetBookmark}>{t.bookmarkSet}</button>
-              {bookmarkDeckIndex !== null && (
-                <button className="chip" onClick={handleGoToBookmark}>{t.bookmarkGo(snap.order.indexOf(bookmarkDeckIndex) + 1)}</button>
-              )}
-            </div>
-            <div className={"paste-box" + (goToOpen ? " open" : "")}>
-              <div className="gen-row">
-                <input
-                  type="number"
-                  min={1}
-                  max={snap.order.length}
-                  value={goToValue}
-                  onChange={(e) => setGoToValue(e.target.value)}
-                  placeholder={t.goToCardPlaceholder}
-                  style={{ width: 80 }}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") handleGoTo();
-                  }}
-                />
-                <button className="chip primary" onClick={handleGoTo}>{t.goToBtn}</button>
-                <button className="chip" onClick={() => setGoToOpen(false)}>{t.cancel}</button>
-              </div>
-            </div>
-          </>
-        )}
 
         <h2>{t.deckHeading}</h2>
         <div className="deck-actions">
