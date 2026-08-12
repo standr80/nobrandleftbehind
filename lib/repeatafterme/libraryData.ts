@@ -44,6 +44,17 @@ export const LIBRARIES: LibraryMeta[] = [
     deckCount: 69,
     wordCount: 2822,
   },
+  {
+    id: "fr-alevel-aqa",
+    title: "A-Level French (AQA)",
+    description:
+      "The AQA A-Level French vocabulary list for Year 12 and Year 13, organised by sub-theme (plus the No et Moi set-text vocabulary).",
+    nativeLang: "en",
+    targetLang: "fr",
+    manifestUrl: "/repeatafterme/library/fr-alevel-aqa.json",
+    deckCount: 14,
+    wordCount: 4242,
+  },
 ];
 
 /** Stable id for a deck copied from a library into the user's own deck library — same
