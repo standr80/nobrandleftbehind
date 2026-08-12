@@ -125,6 +125,20 @@ export interface UiStrings {
   ecoutezGoToDrill: string;
   ecoutezNewEpisode: string;
 
+  // Deck Library (pre-built decks)
+  libraryNavLink: string;
+  libraryBackLink: string;
+  libraryIntro: string;
+  libraryLanguageLabel: string;
+  libraryBrowseBtn: string;
+  libraryWordCount: (n: number) => string;
+  libraryDeckCount: (n: number) => string;
+  libraryLoading: string;
+  libraryLoadFailed: string;
+  libraryAddBtn: string;
+  libraryAddedBtn: string;
+  libraryMixedGroup: string;
+
   // session stats
   statsStreak: (n: number) => string;
   statsMinutesToday: (n: number) => string;
@@ -159,6 +173,7 @@ export interface UiStrings {
   statusEcoutezGenerationFailed: (msg: string) => string;
   statusEcoutezExported: (name: string) => string;
   statusEcoutezNeedsKey: string;
+  statusLibraryDeckAdded: (label: string) => string;
 }
 
 const en: UiStrings = {
@@ -270,6 +285,19 @@ const en: UiStrings = {
   ecoutezGoToDrill: "Go practise this deck",
   ecoutezNewEpisode: "New episode",
 
+  libraryNavLink: "Library",
+  libraryBackLink: "← Back to drills",
+  libraryIntro: "Browse pre-built decks by language and topic, and add any of them straight to your own deck list — no typing or uploading required.",
+  libraryLanguageLabel: "Language",
+  libraryBrowseBtn: "Browse",
+  libraryWordCount: (n) => `${n} words`,
+  libraryDeckCount: (n) => `${n} decks`,
+  libraryLoading: "Loading library…",
+  libraryLoadFailed: "Couldn't load this library — try again in a moment.",
+  libraryAddBtn: "Add to my decks",
+  libraryAddedBtn: "✓ Added",
+  libraryMixedGroup: "Mixed (smaller categories combined)",
+
   statsStreak: (n) => `🔥 ${n}-day streak`,
   statsMinutesToday: (n) => `${n} min today`,
 
@@ -301,6 +329,7 @@ const en: UiStrings = {
   statusEcoutezGenerationFailed: (msg) => `Couldn't generate that episode: ${msg}`,
   statusEcoutezExported: (name) => `Exported as "${name}" — find it in Your decks.`,
   statusEcoutezNeedsKey: "Add an API key in AI Settings on the main page first.",
+  statusLibraryDeckAdded: (label) => `Added "${label}" to your decks.`,
 };
 
 const fr: UiStrings = {
@@ -412,6 +441,19 @@ const fr: UiStrings = {
   ecoutezGoToDrill: "Aller pratiquer ce paquet",
   ecoutezNewEpisode: "Nouvel épisode",
 
+  libraryNavLink: "Bibliothèque",
+  libraryBackLink: "← Retour aux exercices",
+  libraryIntro: "Parcourez des paquets prêts à l'emploi par langue et par thème, et ajoutez-les directement à vos paquets — sans rien taper ni importer.",
+  libraryLanguageLabel: "Langue",
+  libraryBrowseBtn: "Parcourir",
+  libraryWordCount: (n) => `${n} mots`,
+  libraryDeckCount: (n) => `${n} paquets`,
+  libraryLoading: "Chargement de la bibliothèque…",
+  libraryLoadFailed: "Impossible de charger cette bibliothèque — réessayez dans un instant.",
+  libraryAddBtn: "Ajouter à mes paquets",
+  libraryAddedBtn: "✓ Ajouté",
+  libraryMixedGroup: "Mixte (petites catégories regroupées)",
+
   statsStreak: (n) => `🔥 Série de ${n} jour${n === 1 ? "" : "s"}`,
   statsMinutesToday: (n) => `${n} min aujourd'hui`,
 
@@ -443,6 +485,7 @@ const fr: UiStrings = {
   statusEcoutezGenerationFailed: (msg) => `Impossible de générer cet épisode : ${msg}`,
   statusEcoutezExported: (name) => `Exporté sous « ${name} » — retrouvez-le dans Vos paquets.`,
   statusEcoutezNeedsKey: "Ajoutez d'abord une clé API dans Réglages IA sur la page principale.",
+  statusLibraryDeckAdded: (label) => `« ${label} » ajouté à vos paquets.`,
 };
 
 const es: UiStrings = {
@@ -554,6 +597,19 @@ const es: UiStrings = {
   ecoutezGoToDrill: "Ir a practicar este mazo",
   ecoutezNewEpisode: "Nuevo episodio",
 
+  libraryNavLink: "Biblioteca",
+  libraryBackLink: "← Volver a los ejercicios",
+  libraryIntro: "Explora mazos ya preparados por idioma y tema, y añádelos directamente a tus propios mazos — sin escribir ni importar nada.",
+  libraryLanguageLabel: "Idioma",
+  libraryBrowseBtn: "Explorar",
+  libraryWordCount: (n) => `${n} palabras`,
+  libraryDeckCount: (n) => `${n} mazos`,
+  libraryLoading: "Cargando biblioteca…",
+  libraryLoadFailed: "No se pudo cargar esta biblioteca — inténtalo de nuevo en un momento.",
+  libraryAddBtn: "Añadir a mis mazos",
+  libraryAddedBtn: "✓ Añadido",
+  libraryMixedGroup: "Mixto (categorías pequeñas combinadas)",
+
   statsStreak: (n) => `🔥 Racha de ${n} día${n === 1 ? "" : "s"}`,
   statsMinutesToday: (n) => `${n} min hoy`,
 
@@ -585,6 +641,7 @@ const es: UiStrings = {
   statusEcoutezGenerationFailed: (msg) => `No se pudo generar el episodio: ${msg}`,
   statusEcoutezExported: (name) => `Exportado como "${name}" — encuéntralo en Tus mazos.`,
   statusEcoutezNeedsKey: "Añade primero una clave API en Ajustes de IA en la página principal.",
+  statusLibraryDeckAdded: (label) => `Se añadió «${label}» a tus mazos.`,
 };
 
 const DICTS: Record<LangCode, UiStrings> = { en, fr, es };

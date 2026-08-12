@@ -420,6 +420,9 @@ export default function Player() {
           <em>.</em>
         </h1>
         <span className="deck-label">
+          <Link href="/repeatafterme/library" className="hint" style={{ marginRight: 10 }}>
+            {t.libraryNavLink}
+          </Link>
           <Link href="/repeatafterme/ecoutez" className="hint" style={{ marginRight: 10 }}>
             {t.ecoutezNavLink}
           </Link>
