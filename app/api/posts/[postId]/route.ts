@@ -2,7 +2,11 @@ import { auth } from '@clerk/nextjs/server'
 import { NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { triggerDeployHook } from '@/lib/clem/deployHook'
-import { runShopifyDelete } from '@/lib/clem/shopify'
+import { repairRelatedLinks, runShopifyDelete, type RemovedPostRef } from '@/lib/clem/shopify'
+
+// The delete itself is quick; the sibling link repair that follows it reads
+// (and sometimes rewrites) each related article's live body.
+export const maxDuration = 60
 
 interface Params {
   params: Promise<{ postId: string }>
@@ -107,9 +111,10 @@ export async function DELETE(_request: Request, { params }: Params) {
     .eq('id', post.tenant_id)
     .single()
 
+  let removed: RemovedPostRef | null = null
   if (tenant?.cms_type === 'shopify') {
     try {
-      await runShopifyDelete(post.tenant_id, postId)
+      removed = await runShopifyDelete(post.tenant_id, postId)
     } catch (delErr) {
       console.error('[delete] runShopifyDelete failed:', delErr)
       return NextResponse.json(
@@ -130,6 +135,11 @@ export async function DELETE(_request: Request, { params }: Params) {
 
   const { error } = await db.from('blog_posts').delete().eq('id', postId)
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+  // Siblings still carry a Related-reading link to the article we just removed
+  // — rewrite their blocks so those links don't 404. Best-effort, and only once
+  // the row is actually gone.
+  if (removed) await repairRelatedLinks(post.tenant_id, removed)
 
   return NextResponse.json({ ok: true })
 }

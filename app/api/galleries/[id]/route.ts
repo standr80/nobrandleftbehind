@@ -4,7 +4,11 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { getActiveWorkspace, resolveMutationWorkspace } from '@/lib/workspace/active'
 import { getGallery, galleryImages } from '@/lib/bailey/galleries'
 import { galleryPublicUrl } from '@/lib/bailey/constants'
-import { runShopifyDelete } from '@/lib/clem/shopify'
+import { repairRelatedLinks, runShopifyDelete, type RemovedPostRef } from '@/lib/clem/shopify'
+
+// The delete itself is quick; the sibling link repair that follows it reads
+// (and sometimes rewrites) each related article's live body.
+export const maxDuration = 60
 
 interface Params {
   params: Promise<{ id: string }>
@@ -70,6 +74,8 @@ export async function PATCH(request: Request, { params }: Params) {
 // (deleted_at tombstone). If Shopify can't be reached the gallery is NOT
 // deleted, so nothing is ever orphaned live — the user just retries.
 // Storage objects are left in place; a cleanup sweep can reap them later.
+// Finally, sibling pages that were linking to this gallery are repaired, so
+// their Related-reading blocks don't keep pointing at a dead URL.
 export async function DELETE(request: Request, { params }: Params) {
   const { userId } = await auth()
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -82,8 +88,9 @@ export async function DELETE(request: Request, { params }: Params) {
   const gallery = await getGallery(id, workspace.tenantId)
   if (!gallery) return NextResponse.json({ error: 'Gallery not found' }, { status: 404 })
 
+  let removed: RemovedPostRef | null = null
   try {
-    await runShopifyDelete(workspace.tenantId, gallery.id)
+    removed = await runShopifyDelete(workspace.tenantId, gallery.id)
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Could not remove the live Shopify article'
     return NextResponse.json(
@@ -95,9 +102,20 @@ export async function DELETE(request: Request, { params }: Params) {
   const db = createAdminClient()
   const { error } = await db
     .from('blog_posts')
-    .update({ deleted_at: new Date().toISOString() })
+    .update({
+      deleted_at: new Date().toISOString(),
+      // The Shopify article is gone, so drop the pointers with it — nothing
+      // should be able to treat this tombstoned row as a live, linkable page.
+      shopify_article_id: null,
+      shopify_article_url: null,
+    })
     .eq('id', gallery.id)
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+  // Best-effort, and only after the tombstone is committed so the recomputed
+  // blocks can't pick this gallery back up.
+  if (removed) await repairRelatedLinks(workspace.tenantId, removed)
+
   return NextResponse.json({ ok: true })
 }

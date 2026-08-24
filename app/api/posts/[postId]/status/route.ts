@@ -3,8 +3,12 @@ import { NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { calculateNextSlot } from '@/lib/clem/schedule'
 import { runPublish } from '@/lib/clem/publish'
-import { runShopifyPublish, runShopifyUnpublish } from '@/lib/clem/shopify'
+import { repairRelatedLinks, runShopifyPublish, runShopifyUnpublish } from '@/lib/clem/shopify'
 import { triggerDeployHook } from '@/lib/clem/deployHook'
+
+// publish_now runs a full Shopify publish; unpublish now also repairs the
+// sibling links left behind. Both need more than the default budget.
+export const maxDuration = 120
 
 interface Params {
   params: Promise<{ postId: string }>
@@ -32,7 +36,7 @@ export async function POST(request: Request, { params }: Params) {
 
   const { data: post } = await db
     .from('blog_posts')
-    .select('tenant_id, title, status')
+    .select('tenant_id, title, status, content_type, tags, shopify_article_url')
     .eq('id', postId)
     .single()
 
@@ -200,6 +204,18 @@ export async function POST(request: Request, { params }: Params) {
           scheduled_for: null,
         })
         .eq('id', postId)
+
+      // The article is hidden on the storefront now, so every sibling still
+      // linking to it points at a 404 — rebuild those Related-reading blocks.
+      // Best-effort, and after the status flip so nothing can re-link it.
+      if (tenant?.cms_type === 'shopify') {
+        await repairRelatedLinks(post.tenant_id, {
+          id: postId,
+          content_type: post.content_type,
+          tags: post.tags,
+          url: post.shopify_article_url,
+        })
+      }
       break
     }
 

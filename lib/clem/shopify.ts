@@ -351,6 +351,9 @@ async function getRelatedPublished(
     .eq('content_type', post.content_type)
     .neq('id', post.id)
     .not('shopify_article_id', 'is', null)
+    // Soft-deleted rows keep status='published' until the tombstone is read,
+    // so without this a deleted post stays linkable forever.
+    .is('deleted_at', null)
     .order('published_at', { ascending: false })
     .limit(50)
 
@@ -366,41 +369,74 @@ async function getRelatedPublished(
     .map((s) => s.r)
 }
 
-function relatedItemsFrom(rows: RelatedRow[]): RelatedItem[] {
-  return rows
+/** Is this URL definitively gone? Only a 404/410 counts — a timeout, a 5xx or
+ *  a redirect all read as alive, because a transient blip must never strip a
+ *  good internal link out of a published page. */
+async function urlIsGone(url: string): Promise<boolean> {
+  try {
+    const res = await fetch(url, {
+      method: 'HEAD',
+      redirect: 'follow',
+      signal: AbortSignal.timeout(5000),
+    })
+    return res.status === 404 || res.status === 410
+  } catch {
+    return false
+  }
+}
+
+/** Related-reading items for these rows, with dead URLs pruned. The DB is the
+ *  first line of defence (getRelatedPublished already drops deleted and
+ *  unpublished siblings); this is the backstop for articles that went missing
+ *  out-of-band — deleted straight from the Shopify admin, say. */
+async function relatedItemsFrom(rows: RelatedRow[]): Promise<RelatedItem[]> {
+  const items = rows
     .filter((r) => r.shopify_article_url)
     .map((r) => ({ title: r.title, url: r.shopify_article_url as string }))
+  const alive = await Promise.all(items.map(async (it) => !(await urlIsGone(it.url))))
+  return items.filter((_, i) => alive[i])
 }
 
 /**
- * Retroactively refresh one older article's Related-reading block to include the
- * newly published post. Reads the live body and rewrites only the delimited
- * block. Best-effort — throws are caught by the caller so linking never blocks
- * the main publish.
+ * Recompute one already-published article's Related-reading block and rewrite it
+ * in place. Reads the live body and replaces only the delimited block.
+ *
+ * Two callers, distinguished by `opts`:
+ *  - publish  (`requirePostId`) — retroactive internal linking: pull the newly
+ *    published post into its siblings' blocks.
+ *  - removal  (`excludePostId`) — link repair: push a deleted or unpublished
+ *    post out of its siblings' blocks.
+ *
+ * Best-effort — throws are caught by the caller so linking never blocks the
+ * publish or delete that triggered it.
  */
-async function refreshRelatedBlock(
+async function rewriteRelatedBlock(
   db: Db,
   shopDomain: string,
   apiVersion: string,
   accessToken: string,
   tenantId: string,
-  newPostId: string,
   clusters: unknown,
-  y: RelatedRow
+  y: RelatedRow,
+  opts: { requirePostId?: string; excludePostId?: string }
 ): Promise<void> {
   if (!y.shopify_article_id || gidIsPage(y.shopify_article_id)) return
-  const rel = await getRelatedPublished(
+  let rel = await getRelatedPublished(
     db,
     tenantId,
     { id: y.id, content_type: y.content_type, tags: y.tags },
     3
   )
-  // Churn guard: only rewrite this older article if the new post actually makes
-  // its related set (i.e. displaces a weaker entry). Otherwise leave it alone —
-  // avoids rewriting the same popular articles on every publish.
-  if (!rel.some((r) => r.id === newPostId)) return
+  // A post being removed can still look published in the DB (the caller may not
+  // have committed the tombstone yet) — never link to it.
+  if (opts.excludePostId) rel = rel.filter((r) => r.id !== opts.excludePostId)
+  // Churn guard, publish only: rewrite this older article only if the new post
+  // actually makes its related set (i.e. displaces a weaker entry). Otherwise
+  // leave it alone — avoids rewriting the same popular articles on every
+  // publish. Repairs skip the guard: they have to converge.
+  if (opts.requirePostId && !rel.some((r) => r.id === opts.requirePostId)) return
   const pinned = clusterMoneyItem(clusters, y.cluster_id)
-  const block = relatedReadingBlock([...(pinned ? [pinned] : []), ...relatedItemsFrom(rel)])
+  const block = relatedReadingBlock([...(pinned ? [pinned] : []), ...(await relatedItemsFrom(rel))])
 
   const read = await shopifyGraphql<{ article: { body: string | null } | null }>(
     shopDomain,
@@ -423,6 +459,89 @@ async function refreshRelatedBlock(
   )
   if (res.articleUpdate.userErrors?.length) {
     throw new Error(res.articleUpdate.userErrors.map((e) => e.message).join('; '))
+  }
+}
+
+/** How many siblings one removal will check. The block itself only ever holds
+ *  three links, so this is a generous ceiling, not a normal case. */
+const REPAIR_CANDIDATE_LIMIT = 25
+
+/** What a post used to be, captured BEFORE its row is tombstoned or deleted so
+ *  the link repair can still run afterwards. */
+export interface RemovedPostRef {
+  id: string
+  content_type: string
+  tags: string[] | null
+  url: string | null
+}
+
+/**
+ * Repair the internal links left behind when a post is deleted or unpublished.
+ *
+ * Its published siblings keep whatever Related-reading block they were last
+ * given, so without this their links to the removed post 404 forever — nothing
+ * else ever revisits them.
+ *
+ * Candidates are the removed post's own related set: the shared-tag relation is
+ * symmetric, so anything that could have linked to it also matches it. Each
+ * candidate's block is recomputed (minus the removed post) and rewritten in
+ * place; identical blocks cost one read and no write.
+ *
+ * Best-effort and never throws — a failed repair must not fail the delete that
+ * triggered it. Call AFTER the row has been tombstoned or deleted.
+ */
+export async function repairRelatedLinks(
+  tenantId: string,
+  removed: RemovedPostRef
+): Promise<void> {
+  try {
+    const db = createAdminClient()
+    const { data: tenant } = await db
+      .from('tenants')
+      .select(
+        'cms_type, shopify_shop_domain, shopify_client_id, shopify_client_secret, shopify_access_token, shopify_api_version, content_clusters'
+      )
+      .eq('id', tenantId)
+      .single()
+    if (!tenant || tenant.cms_type !== 'shopify') return
+    const hasCreds =
+      (tenant.shopify_client_id && tenant.shopify_client_secret) || tenant.shopify_access_token
+    if (!tenant.shopify_shop_domain || !hasCreds) return
+
+    const candidates = await getRelatedPublished(
+      db,
+      tenantId,
+      { id: removed.id, content_type: removed.content_type, tags: removed.tags },
+      REPAIR_CANDIDATE_LIMIT
+    )
+    if (!candidates.length) return
+
+    const shopDomain = normaliseShopDomain(tenant.shopify_shop_domain)
+    const apiVersion = tenant.shopify_api_version?.trim() || DEFAULT_SHOPIFY_API_VERSION
+    const accessToken = await getAccessToken(shopDomain, {
+      clientId: tenant.shopify_client_id,
+      clientSecret: tenant.shopify_client_secret,
+      staticToken: tenant.shopify_access_token,
+    })
+
+    for (const y of candidates) {
+      try {
+        await rewriteRelatedBlock(
+          db,
+          shopDomain,
+          apiVersion,
+          accessToken,
+          tenantId,
+          tenant.content_clusters,
+          y,
+          { excludePostId: removed.id }
+        )
+      } catch (e) {
+        console.error('[shopify] related-link repair failed for', y.id, e)
+      }
+    }
+  } catch (e) {
+    console.error('[shopify] related-link repair failed:', e)
   }
 }
 
@@ -627,7 +746,7 @@ export async function runShopifyPublish(tenantId: string, postId: string): Promi
   const pinnedMoney = clusterMoneyItem(tenant.content_clusters, post.cluster_id)
   const bodyWithRelated =
     fullBody +
-    relatedReadingBlock([...(pinnedMoney ? [pinnedMoney] : []), ...relatedItemsFrom(relatedRows)])
+    relatedReadingBlock([...(pinnedMoney ? [pinnedMoney] : []), ...(await relatedItemsFrom(relatedRows))])
 
   // ── 5–7. Create/update the article (FAQ → FAQ blog, else main blog) ──────────
   const base = (tenant.shopify_store_url?.trim().replace(/\/$/, '')) || `https://${shopDomain}`
@@ -770,7 +889,9 @@ export async function runShopifyPublish(tenantId: string, postId: string): Promi
   // this newly published post. Best-effort per post — never blocks the publish.
   for (const y of relatedRows) {
     try {
-      await refreshRelatedBlock(db, shopDomain, apiVersion, accessToken, tenantId, postId, tenant.content_clusters, y)
+      await rewriteRelatedBlock(db, shopDomain, apiVersion, accessToken, tenantId, tenant.content_clusters, y, {
+        requirePostId: postId,
+      })
     } catch (e) {
       console.error('[shopify] retroactive related-link update failed for', y.id, e)
     }
@@ -872,12 +993,19 @@ export async function runShopifyUnpublish(tenantId: string, postId: string): Pro
  * shopify_article_id + content_type from it). No-op if never pushed. An
  * already-deleted resource is treated as success so it can't block deletion.
  */
-export async function runShopifyDelete(tenantId: string, postId: string): Promise<void> {
+export async function runShopifyDelete(
+  tenantId: string,
+  postId: string
+): Promise<RemovedPostRef | null> {
   const db = createAdminClient()
 
   const [{ data: post, error: postErr }, { data: tenant, error: tenantErr }] =
     await Promise.all([
-      db.from('blog_posts').select('shopify_article_id, content_type').eq('id', postId).single(),
+      db
+        .from('blog_posts')
+        .select('shopify_article_id, shopify_article_url, content_type, tags')
+        .eq('id', postId)
+        .single(),
       db
         .from('tenants')
         .select(
@@ -890,8 +1018,8 @@ export async function runShopifyDelete(tenantId: string, postId: string): Promis
   if (postErr || !post) throw new Error(`[shopify] Post not found: ${postId}`)
   if (tenantErr || !tenant) throw new Error(`[shopify] Tenant not found: ${tenantId}`)
 
-  // Never pushed to Shopify → nothing to delete.
-  if (!post.shopify_article_id) return
+  // Never pushed to Shopify → nothing to delete, and nothing linking to it.
+  if (!post.shopify_article_id) return null
 
   const shopDomainRaw = tenant.shopify_shop_domain
   const hasCreds =
@@ -933,5 +1061,13 @@ export async function runShopifyDelete(tenantId: string, postId: string): Promis
       `[shopify] delete failed: ` +
         realErrors.map((e) => `${(e.field ?? []).join('.')} ${e.message}`).join('; ')
     )
+  }
+
+  // Handed back so the caller can repair sibling links once the row is gone.
+  return {
+    id: postId,
+    content_type: post.content_type,
+    tags: post.tags,
+    url: post.shopify_article_url,
   }
 }
