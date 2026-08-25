@@ -1,0 +1,986 @@
+<title>Phase One Sample Run</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Condensed:wght@600;700&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&display=swap">
+
+<style>
+  :root {
+    --paper:        #F6F7F4;
+    --surface:      #FFFFFF;
+    --surface-alt:  #EDEFE9;
+    --ink:          #1B1F1C;
+    --ink-soft:     #4E5651;
+    --ink-faint:    #7C857E;
+    --sage:         #5C7A63;
+    --sage-deep:    #3E5545;
+    --sage-wash:    #E4EAE2;
+    --amber:        #8A5D24;
+    --amber-wash:   #F2E7D6;
+    --rule:         #D6DAD1;
+    --rule-strong:  #B4BBB0;
+
+    --f-display: "IBM Plex Sans Condensed", "Helvetica Neue", Arial, sans-serif;
+    --f-body:    "IBM Plex Sans", "Helvetica Neue", Arial, sans-serif;
+    --f-mono:    "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper:       #141715;
+      --surface:     #1B1F1C;
+      --surface-alt: #232823;
+      --ink:         #E8EAE5;
+      --ink-soft:    #AEB5AC;
+      --ink-faint:   #828A82;
+      --sage:        #8FAE96;
+      --sage-deep:   #B3CDB8;
+      --sage-wash:   #232D25;
+      --amber:       #C89B5E;
+      --amber-wash:  #2C2519;
+      --rule:        #2E332E;
+      --rule-strong: #414740;
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --paper:       #141715;
+    --surface:     #1B1F1C;
+    --surface-alt: #232823;
+    --ink:         #E8EAE5;
+    --ink-soft:    #AEB5AC;
+    --ink-faint:   #828A82;
+    --sage:        #8FAE96;
+    --sage-deep:   #B3CDB8;
+    --sage-wash:   #232D25;
+    --amber:       #C89B5E;
+    --amber-wash:  #2C2519;
+    --rule:        #2E332E;
+    --rule-strong: #414740;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--f-body);
+    font-size: 16px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap {
+    max-width: 1080px;
+    margin: 0 auto;
+    padding: 0 28px 96px;
+  }
+
+  .prose { max-width: 68ch; }
+
+  /* ---------- Masthead ---------- */
+
+  .masthead {
+    border-bottom: 2px solid var(--ink);
+    padding: 56px 0 24px;
+    margin-bottom: 0;
+  }
+
+  .eyebrow {
+    font-family: var(--f-mono);
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--sage);
+    margin: 0 0 14px;
+  }
+
+  h1 {
+    font-family: var(--f-display);
+    font-weight: 700;
+    font-size: clamp(2.4rem, 6vw, 3.6rem);
+    line-height: 1.02;
+    letter-spacing: -0.015em;
+    text-wrap: balance;
+    margin: 0 0 16px;
+  }
+
+  .standfirst {
+    font-size: 1.1rem;
+    color: var(--ink-soft);
+    max-width: 62ch;
+    margin: 0;
+  }
+
+  /* ---------- Facts strip ---------- */
+
+  .facts {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 1px;
+    background: var(--rule);
+    border-bottom: 1px solid var(--rule);
+    margin-bottom: 64px;
+  }
+
+  .fact {
+    background: var(--paper);
+    padding: 18px 20px 20px;
+  }
+
+  .fact dt {
+    font-family: var(--f-mono);
+    font-size: 10.5px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    margin: 0 0 6px;
+  }
+
+  .fact dd {
+    margin: 0;
+    font-family: var(--f-display);
+    font-weight: 600;
+    font-size: 1.35rem;
+    line-height: 1.15;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* ---------- Sections ---------- */
+
+  section { margin-bottom: 64px; }
+
+  h2 {
+    font-family: var(--f-display);
+    font-weight: 700;
+    font-size: 1.75rem;
+    letter-spacing: -0.005em;
+    text-wrap: balance;
+    margin: 0 0 6px;
+    padding-top: 20px;
+    border-top: 1px solid var(--rule-strong);
+  }
+
+  .sec-note {
+    color: var(--ink-faint);
+    font-size: 0.94rem;
+    margin: 0 0 26px;
+    max-width: 62ch;
+  }
+
+  h3 {
+    font-family: var(--f-display);
+    font-weight: 600;
+    font-size: 1.12rem;
+    letter-spacing: 0.005em;
+    margin: 34px 0 12px;
+  }
+
+  p { margin: 0 0 14px; }
+
+  /* ---------- Tables ---------- */
+
+  .scroll {
+    overflow-x: auto;
+    border: 1px solid var(--rule);
+    background: var(--surface);
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+    min-width: 560px;
+  }
+
+  thead th {
+    background: var(--surface-alt);
+    font-family: var(--f-mono);
+    font-weight: 500;
+    font-size: 10.5px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+    text-align: left;
+    padding: 11px 14px;
+    border-bottom: 1px solid var(--rule-strong);
+    white-space: nowrap;
+  }
+
+  tbody td {
+    padding: 11px 14px;
+    border-bottom: 1px solid var(--rule);
+    vertical-align: top;
+  }
+
+  tbody tr:last-child td { border-bottom: 0; }
+
+  .code {
+    font-family: var(--f-mono);
+    font-size: 0.82rem;
+    font-weight: 500;
+    color: var(--sage-deep);
+    white-space: nowrap;
+  }
+
+  .num { font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+  .dim {
+    font-family: var(--f-mono);
+    font-size: 0.84rem;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+
+  /* ---------- Chips ---------- */
+
+  .chip {
+    display: inline-block;
+    font-family: var(--f-mono);
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 3px 7px;
+    border-radius: 2px;
+    white-space: nowrap;
+  }
+
+  .chip-confirm {
+    background: var(--amber-wash);
+    color: var(--amber);
+    border: 1px solid var(--amber);
+  }
+
+  .chip-core {
+    background: var(--sage-wash);
+    color: var(--sage-deep);
+    border: 1px solid var(--sage);
+  }
+
+  /* ---------- Spec list ---------- */
+
+  .specs {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 1px;
+    background: var(--rule);
+    border: 1px solid var(--rule);
+  }
+
+  .spec {
+    background: var(--surface);
+    padding: 16px 18px;
+  }
+
+  .spec dt {
+    font-family: var(--f-mono);
+    font-size: 10.5px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    margin: 0 0 5px;
+  }
+
+  .spec dd {
+    margin: 0;
+    font-family: var(--f-mono);
+    font-size: 0.92rem;
+    font-weight: 500;
+    line-height: 1.45;
+  }
+
+  /* ---------- Callout ---------- */
+
+  .callout {
+    border-left: 3px solid var(--sage);
+    background: var(--sage-wash);
+    padding: 16px 20px;
+    margin: 24px 0;
+  }
+
+  .callout p:last-child { margin-bottom: 0; }
+
+  .callout-warn {
+    border-left-color: var(--amber);
+    background: var(--amber-wash);
+  }
+
+  .callout strong { font-weight: 600; }
+
+  /* ---------- Placeholder block ---------- */
+
+  .placeholder {
+    font-family: var(--f-mono);
+    font-size: 0.86rem;
+    line-height: 1.7;
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    padding: 18px 20px;
+    white-space: pre-wrap;
+    overflow-x: auto;
+  }
+
+  /* ---------- Checklist ---------- */
+
+  ul.plain, ol.plain { padding-left: 20px; margin: 0 0 14px; }
+  ul.plain li, ol.plain li { margin-bottom: 8px; }
+
+  .rule-off {
+    border: 0;
+    border-top: 1px solid var(--rule);
+    margin: 0 0 12px;
+  }
+
+  /* ---------- Name appendix ---------- */
+
+  .tables {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 20px;
+  }
+
+  .tbl {
+    border: 1px solid var(--rule);
+    background: var(--surface);
+  }
+
+  .tbl-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 10px;
+    padding: 10px 14px;
+    background: var(--surface-alt);
+    border-bottom: 1px solid var(--rule-strong);
+  }
+
+  .tbl-mm {
+    font-family: var(--f-display);
+    font-weight: 700;
+    font-size: 0.95rem;
+  }
+
+  .tbl-eu {
+    font-family: var(--f-mono);
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--sage);
+  }
+
+  .tbl table { min-width: 0; font-size: 0.86rem; }
+  .tbl tbody td { padding: 7px 14px; }
+  .tbl thead th { padding: 7px 14px; font-size: 9.5px; }
+  .tick-col { width: 42px; text-align: center; }
+
+  .tick {
+    display: inline-block;
+    width: 13px;
+    height: 13px;
+    border: 1.5px solid var(--rule-strong);
+    border-radius: 2px;
+    vertical-align: -2px;
+  }
+
+  footer.foot {
+    border-top: 2px solid var(--ink);
+    padding-top: 18px;
+    font-size: 0.86rem;
+    color: var(--ink-faint);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px 28px;
+  }
+
+  footer.foot span { font-family: var(--f-mono); font-size: 11px; letter-spacing: 0.06em; }
+
+  a { color: var(--sage-deep); }
+  a:focus-visible, button:focus-visible { outline: 2px solid var(--sage); outline-offset: 2px; }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { animation: none !important; transition: none !important; }
+  }
+
+  @media (max-width: 640px) {
+    .wrap { padding: 0 18px 64px; }
+    .masthead { padding-top: 36px; }
+  }
+</style>
+
+<div class="wrap">
+
+  <header class="masthead">
+    <p class="eyebrow">Event Stuff Ltd &middot; Print Production</p>
+    <h1>Phase One Sample Run</h1>
+    <p class="standfirst">
+      Everything needed to produce the first batch of wedding and celebration signage
+      for the new Etsy shop. These are <strong>listing samples</strong> &mdash; printed to be
+      photographed, not to fulfil customer orders.
+    </p>
+  </header>
+
+  <dl class="facts">
+    <div class="fact"><dt>Artworks</dt><dd>20</dd></div>
+    <div class="fact"><dt>Pieces to print</dt><dd>25</dd></div>
+    <div class="fact"><dt>Design families</dt><dd>2</dd></div>
+    <div class="fact"><dt>Substrates</dt><dd>4 + 1 TBC</dd></div>
+    <div class="fact"><dt>Brief issued</dt><dd>25 Aug 2026</dd></div>
+  </dl>
+
+  <section>
+    <h2>What this is for</h2>
+    <p class="sec-note">Read this first &mdash; it changes how you'd approach the job.</p>
+    <div class="prose">
+      <p>
+        We're opening our own Etsy shop selling personalised wedding and celebration
+        signage &mdash; the same products we currently print and dispatch on behalf of other
+        Etsy sellers. This batch exists so we can photograph a complete, consistent set
+        of listing images.
+      </p>
+      <p>
+        That means two things. Everything in one design family must look like it belongs
+        to the same family &mdash; same typeface, same weight, same margins. And every piece
+        must be <em>photographable</em>: clean edges, no handling marks, no dust.
+      </p>
+      <p>
+        Where a physical print isn't sensible &mdash; an A0 board printed purely to be
+        photographed once &mdash; a composite or AI mockup is fine. See
+        <a href="#photography">Photography</a> for where each is appropriate.
+      </p>
+    </div>
+  </section>
+
+  <section>
+    <h2>Design families</h2>
+    <p class="sec-note">Two families in Phase One. Every product below appears in one or both.</p>
+
+    <div class="scroll">
+      <table>
+        <thead>
+          <tr><th>Code</th><th>Family</th><th>Direction</th><th>Palette</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="code">MM</td>
+            <td><strong>Minimalist Mono</strong></td>
+            <td>White ground, soft-black type. Clean serif display paired with a light sans for detail lines. No ornament. Generous margins &mdash; the white space is the design.</td>
+            <td class="dim">#FFFFFF ground<br>#1A1A1A type</td>
+          </tr>
+          <tr>
+            <td class="code">EU</td>
+            <td><strong>Eucalyptus Greenery</strong></td>
+            <td>Watercolour eucalyptus sprigs, corner or full wreath framing. Same type discipline as MM but warmer. Botanical elements must be original or commercially licensed.</td>
+            <td class="dim">#FBFBF8 ground<br>#2E3B30 type<br>#7E9A82 foliage</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="callout callout-warn">
+      <p>
+        <strong>No licensed characters.</strong> Nothing derived from Winnie the Pooh,
+        Peter Rabbit, Disney, Beatrix Potter or any other rights-held property &mdash; however
+        common it is on Etsy. Keep licence records for any purchased botanical or
+        decorative assets.
+      </p>
+    </div>
+  </section>
+
+  <section>
+    <h2>Production schedule</h2>
+    <p class="sec-note">
+      25 pieces. Item codes are <span class="code">FAMILY-PRODUCT-SIZE</span> &mdash; please
+      label the back of each board with its code in pencil so photography can match them up.
+    </p>
+
+    <h3>Large format &mdash; hero samples</h3>
+    <div class="scroll">
+      <table>
+        <thead>
+          <tr><th>Item</th><th>Product</th><th>Size</th><th>Substrate</th><th>Qty</th></tr>
+        </thead>
+        <tbody>
+          <tr><td class="code">MM-WEL-A1</td><td>Wedding welcome sign</td><td class="dim">A1</td><td>Foamex 5mm</td><td class="num">1</td></tr>
+          <tr><td class="code">MM-SEAT-A1</td><td>Seating plan</td><td class="dim">A1</td><td>Foamex 5mm</td><td class="num">1</td></tr>
+          <tr><td class="code">MM-OOTD-A1</td><td>Order of the day</td><td class="dim">A1</td><td>Foamex 5mm</td><td class="num">1</td></tr>
+          <tr><td class="code">MM-ENG-A2</td><td>Engagement party welcome</td><td class="dim">A2</td><td>Foamex 5mm</td><td class="num">1</td></tr>
+          <tr><td class="code">MM-BABY-A2</td><td>Baby shower welcome</td><td class="dim">A2</td><td>Foamex 5mm</td><td class="num">1</td></tr>
+          <tr><td class="code">MM-BRIDE-A2</td><td>Bridal shower welcome</td><td class="dim">A2</td><td>Foamex 5mm</td><td class="num">1</td></tr>
+          <tr><td class="code">EU-WEL-A1</td><td>Wedding welcome sign</td><td class="dim">A1</td><td>Foamex 5mm</td><td class="num">1</td></tr>
+          <tr><td class="code">EU-SEAT-A1</td><td>Seating plan</td><td class="dim">A1</td><td>Foamex 5mm</td><td class="num">1</td></tr>
+          <tr><td class="code">EU-OOTD-A1</td><td>Order of the day</td><td class="dim">A1</td><td>Foamex 5mm</td><td class="num">1</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Substrate demonstration</h3>
+    <p class="sec-note">
+      So listings can show the buyer what each option actually looks like. Same artwork,
+      different material.
+    </p>
+    <div class="scroll">
+      <table>
+        <thead>
+          <tr><th>Item</th><th>Product</th><th>Size</th><th>Substrate</th><th>Qty</th></tr>
+        </thead>
+        <tbody>
+          <tr><td class="code">MM-WEL-A2-3MM</td><td>Wedding welcome sign</td><td class="dim">A2</td><td>Foamex 3mm</td><td class="num">1</td></tr>
+          <tr><td class="code">EU-WEL-A2-3MM</td><td>Wedding welcome sign</td><td class="dim">A2</td><td>Foamex 3mm</td><td class="num">1</td></tr>
+          <tr><td class="code">MM-WEL-A2-PST</td><td>Wedding welcome sign</td><td class="dim">A2</td><td>Satin poster 235gsm</td><td class="num">1</td></tr>
+          <tr><td class="code">EU-WEL-A2-PST</td><td>Wedding welcome sign</td><td class="dim">A2</td><td>Satin poster 235gsm</td><td class="num">1</td></tr>
+          <tr><td class="code">SWATCH-SET</td><td>Blank substrate swatches, approx. 100 &times; 150mm, one per material</td><td class="dim">100&times;150</td><td>All</td><td class="num">1 set</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Small format</h3>
+    <div class="scroll">
+      <table>
+        <thead>
+          <tr><th>Item</th><th>Product</th><th>Size</th><th>Substrate</th><th>Qty</th></tr>
+        </thead>
+        <tbody>
+          <tr><td class="code">MM-AISLE-SET</td><td>Aisle signs &mdash; 10 different designs, one phrase each (see placeholder copy)</td><td class="dim">8 &times; 10 in</td><td>Smooth matte card 300gsm</td><td class="num">10</td></tr>
+          <tr><td class="code">MM-SWEET-8X10</td><td>&ldquo;Love is Sweet&rdquo; dessert table sign</td><td class="dim">8 &times; 10 in</td><td>Smooth matte card 300gsm</td><td class="num">1</td></tr>
+          <tr><td class="code">MM-SWEET-5X7</td><td>&ldquo;Love is Sweet&rdquo; dessert table sign</td><td class="dim">5 &times; 7 in</td><td>Smooth matte card 300gsm</td><td class="num">1</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="callout">
+      <p>
+        <strong>Pack shots need no extra printing.</strong> The Duo (welcome + seating) and
+        Trio (welcome + seating + order of the day) listings are photographed from the
+        hero samples above, grouped. Please don't produce duplicates for these.
+      </p>
+    </div>
+  </section>
+
+  <section>
+    <h2>Substrates</h2>
+    <p class="sec-note">
+      Specs are matched to what the established Etsy sellers in this category actually
+      supply, so we're comparable on quality from day one.
+    </p>
+
+    <div class="scroll">
+      <table>
+        <thead>
+          <tr><th>Substrate</th><th>Specification</th><th>Used for</th><th>Status</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Foamex 5mm</strong></td>
+            <td>Rigid PVC foam board, luxury matte finish, weatherproof. Clean-cut edges, no burring.</td>
+            <td>Premium large format &mdash; the hero product</td>
+            <td><span class="chip chip-core">Core</span></td>
+          </tr>
+          <tr>
+            <td><strong>Foamex 3mm</strong></td>
+            <td>As above, thinner. Standard board option.</td>
+            <td>Volume large format</td>
+            <td><span class="chip chip-core">Core</span></td>
+          </tr>
+          <tr>
+            <td><strong>Satin poster</strong></td>
+            <td>235gsm satin paper. Supplied rolled in a tube for real orders; lay flat for photography.</td>
+            <td>Entry price point, framing customers</td>
+            <td><span class="chip chip-core">Core</span></td>
+          </tr>
+          <tr>
+            <td><strong>Smooth matte card</strong></td>
+            <td>300gsm bright-white smooth matte cardstock, unframed.</td>
+            <td>Small reception and aisle signs</td>
+            <td><span class="chip chip-core">Core</span></td>
+          </tr>
+          <tr>
+            <td><strong>Canvas</strong></td>
+            <td>280gsm canvas, hand-stretched over 18mm solid pine.</td>
+            <td>Premium alternative to board</td>
+            <td><span class="chip chip-confirm">Confirm first</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="callout callout-warn">
+      <p>
+        <strong>Canvas is unconfirmed.</strong> Stretching 280gsm canvas over 18mm pine is a
+        different process from our flatbed work. Before producing anything on canvas,
+        confirm with Richard whether we're doing this in-house, outsourcing, or dropping it
+        from the range. Roughly a quarter of competitor variants are canvas, so it matters &mdash;
+        but Phase One can launch without it.
+      </p>
+    </div>
+  </section>
+
+  <section>
+    <h2>Sizes</h2>
+    <p class="sec-note">Trim sizes. Add bleed as specified in the next section.</p>
+
+    <div class="scroll">
+      <table>
+        <thead>
+          <tr><th>Size</th><th>Millimetres</th><th>Inches</th><th>Notes</th></tr>
+        </thead>
+        <tbody>
+          <tr><td class="code">A0</td><td class="dim">841 &times; 1189</td><td class="dim">33.1 &times; 46.8</td><td>Largest offered. Mockup rather than print for photography.</td></tr>
+          <tr><td class="code">A1</td><td class="dim">594 &times; 841</td><td class="dim">23.4 &times; 33.1</td><td>The volume size. Hero samples are A1.</td></tr>
+          <tr><td class="code">A2</td><td class="dim">420 &times; 594</td><td class="dim">16.5 &times; 23.4</td><td>Second most common.</td></tr>
+          <tr><td class="code">A3</td><td class="dim">297 &times; 420</td><td class="dim">11.7 &times; 16.5</td><td>Entry size for large format.</td></tr>
+          <tr><td class="code">A4</td><td class="dim">210 &times; 297</td><td class="dim">8.3 &times; 11.7</td><td>Small signs.</td></tr>
+          <tr><td class="code">8 &times; 10 in</td><td class="dim">203 &times; 254</td><td class="dim">8 &times; 10</td><td>Fits standard frames &mdash; buyers frame these themselves.</td></tr>
+          <tr><td class="code">5 &times; 7 in</td><td class="dim">127 &times; 178</td><td class="dim">5 &times; 7</td><td>Table-top signs.</td></tr>
+          <tr><td class="code">800 sq</td><td class="dim">800 &times; 800</td><td class="dim">31.5 &times; 31.5</td><td>Optional bespoke square. A differentiator &mdash; no A-series competitor offers it.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section>
+    <h2>Artwork specification</h2>
+    <p class="sec-note">Applies to every item in the schedule.</p>
+
+    <dl class="specs">
+      <div class="spec"><dt>Resolution</dt><dd>300 dpi at final trim size</dd></div>
+      <div class="spec"><dt>Bleed</dt><dd>3mm all round</dd></div>
+      <div class="spec"><dt>Safe margin</dt><dd>10mm inside trim</dd></div>
+      <div class="spec"><dt>Print colour</dt><dd>CMYK</dd></div>
+      <div class="spec"><dt>Screen colour</dt><dd>sRGB copies for Etsy</dd></div>
+      <div class="spec"><dt>File format</dt><dd>PDF/X-1a or PDF/X-4</dd></div>
+      <div class="spec"><dt>Fonts</dt><dd>Outlined or fully embedded</dd></div>
+      <div class="spec"><dt>Naming</dt><dd>Item code, e.g. MM-WEL-A1.pdf</dd></div>
+    </dl>
+
+    <div class="callout">
+      <p>
+        <strong>Watch the file sizes.</strong> A0 at 300 dpi is roughly 9,933 &times; 14,043 px.
+        Flattened CMYK TIFFs at that size run to several hundred megabytes &mdash; keep working
+        files on the server, not in email.
+      </p>
+    </div>
+  </section>
+
+  <section>
+    <h2>Placeholder copy</h2>
+    <p class="sec-note">
+      Use exactly this wording across every sample. Consistency matters more than the
+      content &mdash; a set that shares one fictional couple reads as a coherent range.
+    </p>
+
+    <h3>The couple</h3>
+    <div class="placeholder">Names      Emily &amp; James
+Full       Emily &amp; James Hartley
+Date       Saturday 12th June 2027
+Venue      The Old Barn, Hingham, Norfolk</div>
+
+    <h3>Order of the day</h3>
+    <div class="placeholder">1:00pm     Ceremony
+2:00pm     Drinks Reception
+3:30pm     Photographs
+4:30pm     Wedding Breakfast
+7:00pm     Speeches
+8:00pm     Evening Reception
+9:00pm     First Dance
+11:30pm    Carriages</div>
+
+    <h3>Seating plan</h3>
+    <div class="callout callout-warn">
+      <p>
+        <strong>The seating plan must show a realistic guest count.</strong> Ten tables of
+        eight &mdash; eighty names. Competitor listings all show full plans, and a mockup with
+        four names on it looks like a placeholder and undersells the product. This is the
+        single most important detail in this brief.
+      </p>
+    </div>
+    <div class="placeholder">MM family &mdash; tables numbered:   Table One &hellip; Table Ten
+EU family &mdash; tables named:      Willow &middot; Hazel &middot; Rosemary &middot; Juniper &middot; Bramble
+                               Clover &middot; Heather &middot; Fennel &middot; Laurel &middot; Sorrel
+
+Eight guest names per table. Use plausible UK full names,
+mixed lengths &mdash; some short, some long enough to test the
+longest line the layout has to handle.</div>
+
+    <h3>Celebration signs</h3>
+    <div class="placeholder">Engagement       Emily &amp; James &mdash; We're Engaged
+Baby shower      Welcome to Baby Hartley's Baby Shower
+Bridal shower    Emily's Bridal Shower
+Dessert sign     Love is Sweet &mdash; Please Take a Treat</div>
+
+    <h3>Aisle set &mdash; ten phrases</h3>
+    <div class="placeholder">1  Love is patient          6  Love believes all things
+2  Love is kind             7  Love rejoices in truth
+3  Love does not envy       8  Love always perseveres
+4  Love does not boast      9  Love always protects
+5  Love is not proud       10  Love never fails</div>
+  </section>
+
+  <section id="photography">
+    <h2>Photography</h2>
+    <p class="sec-note">
+      Etsy allows ten images per listing. The first is the search thumbnail &mdash; it has to
+      work at about 200px, so the design must be legible small.
+    </p>
+
+    <h3>Shots needed per product</h3>
+    <div class="scroll">
+      <table>
+        <thead>
+          <tr><th>Shot</th><th>Purpose</th><th>Physical or mockup</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><strong>Hero, styled</strong></td><td>Board on an easel in a venue-like setting. This sells the product.</td><td>Physical, photographed</td></tr>
+          <tr><td><strong>Straight-on</strong></td><td>Full design square to camera, evenly lit, fully legible.</td><td>Physical or flat composite</td></tr>
+          <tr><td><strong>Edge detail</strong></td><td>Close crop showing board thickness and matte finish. Proves quality.</td><td><strong>Physical only</strong></td></tr>
+          <tr><td><strong>Size comparison</strong></td><td>A0&ndash;A3 shown to scale, ideally against a human figure.</td><td>Mockup / diagram</td></tr>
+          <tr><td><strong>Substrate options</strong></td><td>The same design across board, poster and canvas.</td><td>Physical where possible</td></tr>
+          <tr><td><strong>Pack shot</strong></td><td>Duo and Trio groupings for the bundle listings.</td><td>Physical, grouped</td></tr>
+          <tr><td><strong>How it works</strong></td><td>Simple graphic: send details &rarr; proof in 48h &rarr; printed and shipped.</td><td>Graphic</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Where mockups are and aren't acceptable</h3>
+    <div class="prose">
+      <p>
+        Composites and AI mockups are fine for in-situ styling, size variants, and
+        colourway alternatives &mdash; there's no sense printing an A0 board to photograph it once.
+      </p>
+      <p>
+        They are <strong>not</strong> acceptable for edge and texture detail, where the whole
+        point is showing real material. And the design shown must always be the design the
+        customer receives &mdash; a mockup that flatters beyond what we can print is a returns
+        problem and an Etsy policy problem.
+      </p>
+    </div>
+
+    <dl class="specs">
+      <div class="spec"><dt>Minimum size</dt><dd>2000px shortest side</dd></div>
+      <div class="spec"><dt>Colour space</dt><dd>sRGB</dd></div>
+      <div class="spec"><dt>Crop</dt><dd>Square preferred &mdash; Etsy's grid</dd></div>
+      <div class="spec"><dt>Background</dt><dd>Consistent across the set</dd></div>
+    </dl>
+
+    <div class="callout">
+      <p>
+        <strong>You'll need an easel as a prop.</strong> Every competitor photographs on one
+        and every competitor states it isn't included. Source one for the shoot &mdash; and note
+        we may want to sell easels as an add-on, which nobody in this category seems to do.
+      </p>
+    </div>
+  </section>
+
+  <section>
+    <h2>Confirm before starting</h2>
+    <p class="sec-note">Three open items. The first two affect what gets produced.</p>
+    <hr class="rule-off">
+    <ol class="plain">
+      <li><strong>Canvas capability</strong> &mdash; in-house, outsourced, or dropped from Phase One?</li>
+      <li><strong>Easel</strong> &mdash; prop only, or are we sourcing stock to sell as an add-on?</li>
+      <li><strong>Brand name and logo</strong> &mdash; needed if any sample carries branding, and for the packaging shots.</li>
+    </ol>
+  </section>
+
+  <section>
+    <h2>Appendix &mdash; guest names</h2>
+    <p class="sec-note">
+      Eighty names for the two seating plans. Use the same list on both boards
+      &mdash; it is one fictional wedding shown in two design families, so the guest
+      list should match.
+    </p>
+
+    <div class="prose">
+      <p>
+        The mix is deliberate: it reflects the UK as it is now, and it deliberately
+        varies name length. <strong>Alexandra Kingsley-Moore</strong> and
+        <strong>Amelia Fitzgerald-Barnes</strong> are the longest lines the layout has to
+        cope with; <strong>Joe Marsh</strong> and <strong>Beth Rowe</strong> are the
+        shortest. If the design holds both without looking uneven, it will hold a real
+        customer&rsquo;s list.
+      </p>
+      <p>
+        Two tick columns, one per board: <strong>MM</strong> for Minimalist Mono
+        (<span class="code">MM-SEAT-A1</span>), <strong>EU</strong> for Eucalyptus
+        (<span class="code">EU-SEAT-A1</span>). Tick each name as it is placed so nobody
+        is dropped or duplicated.
+      </p>
+      <p>
+        Table headings differ by family: Minimalist Mono uses numbered tables, Eucalyptus
+        uses the botanical names shown on the right of each block.
+      </p>
+    </div>
+
+    <div class="tables">
+      <div class="tbl">
+        <div class="tbl-head"><span class="tbl-mm">Table One</span><span class="tbl-eu">Willow</span></div>
+        <table>
+          <thead><tr><th>Guest</th><th class="tick-col">MM</th><th class="tick-col">EU</th></tr></thead>
+          <tbody>
+            <tr><td>Sarah Whitfield</td><td class="tick-col"><span class="tick"></span></td><td class="tick-col"><span class="tick"></span></td></tr>
+            <tr><td>Tom Ashby</td><td class="tick-col"><span class="tick"></span></td><td class="tick-col"><span class="tick"></span></td></tr>
+            <tr><td>Priya Raghunathan</td><td class="tick-col"><span class="tick"></span></td><td class="tick-col"><span class="tick"></span></td></tr>
+            <tr><td>Daniel Osei</td><td class="tick-col"><span class="tick"></span></td><td class="tick-col"><span class="tick"></span></td></tr>
+            <tr><td>Emma Clarke</td><td class="tick-col"><span class="tick"></span></td><td class="tick-col"><span class="tick"></span></td></tr>
+            <tr><td>Krzysztof Nowakowski</td><td class="tick-col"><span class="tick"></span></td><td class="tick-col"><span class="tick"></span></td></tr>
+            <tr><td>Amelia Fitzgerald-Barnes</td><td class="tick-col"><span class="tick"></span></td><td class="tick-col"><span class="tick"></span></td></tr>
+            <tr><td>Wei Chen</td><td class="tick-col"><span class="tick"></span></td><td class="tick-col"><span class="tick"></span></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="tbl">
+        <div class="tbl-head"><span class="tbl-mm">Table Two</span><span class="tbl-eu">Hazel</span></div>
+        <table>
+          <thead><tr><th>Guest</th><th class="tick-col">MM</th><th class="tick-col">EU</th></tr></thead>
+          <tbody>
+            <tr><td>James Holloway</td><td class="tick-col"><span class="tick"></span></td><td class="tick-col"><span class="tick"></span></td></tr>
+            <tr><td>Aisha Rahman</td><td class="tick-col"><span class="tick"></span></td><td class="tick-col"><span class="tick"></span></td></tr>
+            <tr><td>Michael Boateng</td><td class="tick-col"><span class="tick"></span></td><td class="tick-col"><span class="tick"></span></td></tr>
+            <tr><td>Lucy Pemberton</td><td class="tick-col"><span class="tick"></span></td><td class="tick-col"><span class="tick"></span></td></tr>
+            <tr><td>Rajesh Krishnamurthy</td><td class="tick-col"><span class="tick"></span></td><td class="tick-col"><span class="tick"></span></td></tr>
+            <tr><td>Kate Doyle</td><td class="tick-col"><span class="tick"></span></td><td class="tick-col"><span class="tick"></span></td></tr>
+            <tr><td>Ben Attwood</td><td class="tick-col"><span class="tick"></span></td><td class="tick-col"><span class="tick"></span></td></tr>
+            <tr><td>Fatima Al-Hassan</td><td class="tick-col"><span class="tick"></span></td><td class="tick-col"><span class="tick"></span></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="tbl">
+        <div class="tbl-head"><span class="tbl-mm">Table Three</span><span class="tbl-eu">Rosemary</span></div>
+        <table>
+          <thead><tr><th>Guest</th><th class="tick-col">MM</th><th class="tick-col">EU</th></tr></thead>
+          <tbody>
+            <tr><td>Charlotte Beaumont</td><td class="tick-col"><span class="tick"></span></td><td class="tick-col"><span class="tick"></span></td></tr>
+            <tr><td>Oliver Reid</td><td class="tick-col"><span class="tick"></span></td><td class="tick-col"><span class="tick"></span></td></tr>
+            <tr><td>Nadia Petrova</td><td class="tick-col"><span class="tick"></span></td><td class="tick-col"><span class="tick"></span></td></tr>
+            <tr><td>Samuel Adeyemi</td><td class="tick-col"><span class="tick"></span></td><td class="tick-col"><span class="tick"></span></td></tr>
+            <tr><td>Grace Lin</td><td class="tick-col"><span class="tick"></span></td><td class="tick-col"><span class="tick"></span></td></tr>
+            <tr><td>Harry Sutcliffe</td><td class="tick-col"><span class="tick"></span></td><td class="tick-col"><span class="tick"></span></td></tr>
+            <tr><td>Zainab Iqbal</td><td class="tick-col"><span class="tick"></span></td><td class="tick-col"><span class="tick"></span></td></tr>
+            <tr><td>Joe Marsh</td><td class="tick-col"><span class="tick"></span></td><td class="tick-col"><span class="tick"></span></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="tbl">
+        <div class="tbl-head"><span class="tbl-mm">Table Four</span><span class="tbl-eu">Juniper</span></div>
+        <table>
+          <thead><tr><th>Guest</th><th class="tick-col">MM</th><th class="tick-col">EU</th></tr></thead>
+          <tbody>
+            <tr><td>Eleanor Wainwright</td><td class="tick-col"><span class="tick"></span></td><td class="tick-col"><span class="tick"></span></td></tr>
+            <tr><td>Marcus Bailey</td><td class="tick-col"><span class="tick"></span></td><td class="tick-col"><span class="tick"></span></td></tr>
+            <tr><td>Sofia Rodrigues</td><td class="tick-col"><span class="tick"></span></td><td class="tick-col"><span class="tick"></span></td></tr>
+            <tr><td>Aaron Levy</td><td class="tick-col"><span class="tick"></span></td><td class="tick-col"><span class="tick"></span></td></tr>
+            <tr><td>Meera Sundaram</td><td class="tick-col"><span class="tick"></span></td><td class="tick-col"><span class="tick"></span></td></tr>
+            <tr><td>Callum Fraser</td><td class="tick-col"><span class="tick"></span></td><td class="tick-col"><span class="tick"></span></td></tr>
+            <tr><td>Beth Rowe</td><td class="tick-col"><span class="tick"></span></td><td class="tick-col"><span class="tick"></span></td></tr>
+            <tr><td>Ibrahim Yusuf</td><td class="tick-col"><span class="tick"></span></td><td class="tick-col"><span class="tick"></span></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="tbl">
+        <div class="tbl-head"><span class="tbl-mm">Table Five</span><span class="tbl-eu">Bramble</span></div>
+        <table>
+          <thead><tr><th>Guest</th><th class="tick-col">MM</th><th class="tick-col">EU</th></tr></thead>
+          <tbody>
+            <tr><td>Isabelle Montgomery</td><td class="tick-col"><span class="tick"></span></td><td class="tick-col"><span class="tick"></span></td></tr>
+            <tr><td>Ryan Kavanagh</td><td class="tick-col"><span class="tick"></span></td><td class="tick-col"><span class="tick"></span></td></tr>
+            <tr><td>Anika Bhattacharya</td><td class="tick-col"><span class="tick"></span></td><td class="tick-col"><span class="tick"></span></td></tr>
+            <tr><td>David Okonkwo</td><td class="tick-col"><span class="tick"></span></td><td class="tick-col"><span class="tick"></span></td></tr>
+            <tr><td>Chloe Bennett</td><td class="tick-col"><span class="tick"></span></td><td class="tick-col"><span class="tick"></span></td></tr>
+            <tr><td>Andrei Constantinescu</td><td class="tick-col"><span class="tick"></span></td><td class="tick-col"><span class="tick"></span></td></tr>
+            <tr><td>Millie Hart</td><td class="tick-col"><span class="tick"></span></td><td class="tick-col"><span class="tick"></span></td></tr>
+            <tr><td>Hana Nakamura</td><td class="tick-col"><span class="tick"></span></td><td class="tick-col"><span class="tick"></span></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="tbl">
+        <div class="tbl-head"><span class="tbl-mm">Table Six</span><span class="tbl-eu">Clover</span></div>
+        <table>
+          <thead><tr><th>Guest</th><th class="tick-col">MM</th><th class="tick-col">EU</th></tr></thead>
+          <tbody>
+            <tr><td>Rebecca Thornton</td><td class="tick-col"><span class="tick"></span></td><td class="tick-col"><span class="tick"></span></td></tr>
+            <tr><td>Josh Palmer</td><td class="tick-col"><span class="tick"></span></td><td class="tick-col"><span class="tick"></span></td></tr>
+            <tr><td>Yasmin Sharif</td><td class="tick-col"><span class="tick"></span></td><td class="tick-col"><span class="tick"></span></td></tr>
+            <tr><td>Elijah Mensah</td><td class="tick-col"><span class="tick"></span></td><td class="tick-col"><span class="tick"></span></td></tr>
+            <tr><td>Sophie Laurent</td><td class="tick-col"><span class="tick"></span></td><td class="tick-col"><span class="tick"></span></td></tr>
+            <tr><td>Nathan Brooks</td><td class="tick-col"><span class="tick"></span></td><td class="tick-col"><span class="tick"></span></td></tr>
+            <tr><td>Divya Venkatesan</td><td class="tick-col"><span class="tick"></span></td><td class="tick-col"><span class="tick"></span></td></tr>
+            <tr><td>Max Ellis</td><td class="tick-col"><span class="tick"></span></td><td class="tick-col"><span class="tick"></span></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="tbl">
+        <div class="tbl-head"><span class="tbl-mm">Table Seven</span><span class="tbl-eu">Heather</span></div>
+        <table>
+          <thead><tr><th>Guest</th><th class="tick-col">MM</th><th class="tick-col">EU</th></tr></thead>
+          <tbody>
+            <tr><td>Georgia Fairweather</td><td class="tick-col"><span class="tick"></span></td><td class="tick-col"><span class="tick"></span></td></tr>
+            <tr><td>Adam Sinclair</td><td class="tick-col"><span class="tick"></span></td><td class="tick-col"><span class="tick"></span></td></tr>
+            <tr><td>Leila Karimi</td><td class="tick-col"><span class="tick"></span></td><td class="tick-col"><span class="tick"></span></td></tr>
+            <tr><td>Tobi Adebayo</td><td class="tick-col"><span class="tick"></span></td><td class="tick-col"><span class="tick"></span></td></tr>
+            <tr><td>Alice Dunn</td><td class="tick-col"><span class="tick"></span></td><td class="tick-col"><span class="tick"></span></td></tr>
+            <tr><td>Piotr Lewandowski</td><td class="tick-col"><span class="tick"></span></td><td class="tick-col"><span class="tick"></span></td></tr>
+            <tr><td>Freya Nicholson</td><td class="tick-col"><span class="tick"></span></td><td class="tick-col"><span class="tick"></span></td></tr>
+            <tr><td>Kenji Watanabe</td><td class="tick-col"><span class="tick"></span></td><td class="tick-col"><span class="tick"></span></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="tbl">
+        <div class="tbl-head"><span class="tbl-mm">Table Eight</span><span class="tbl-eu">Fennel</span></div>
+        <table>
+          <thead><tr><th>Guest</th><th class="tick-col">MM</th><th class="tick-col">EU</th></tr></thead>
+          <tbody>
+            <tr><td>Victoria Ashworth-Hale</td><td class="tick-col"><span class="tick"></span></td><td class="tick-col"><span class="tick"></span></td></tr>
+            <tr><td>Liam O'Sullivan</td><td class="tick-col"><span class="tick"></span></td><td class="tick-col"><span class="tick"></span></td></tr>
+            <tr><td>Sana Chaudhry</td><td class="tick-col"><span class="tick"></span></td><td class="tick-col"><span class="tick"></span></td></tr>
+            <tr><td>Joseph Nwosu</td><td class="tick-col"><span class="tick"></span></td><td class="tick-col"><span class="tick"></span></td></tr>
+            <tr><td>Ruby Carter</td><td class="tick-col"><span class="tick"></span></td><td class="tick-col"><span class="tick"></span></td></tr>
+            <tr><td>Dimitri Anastasiou</td><td class="tick-col"><span class="tick"></span></td><td class="tick-col"><span class="tick"></span></td></tr>
+            <tr><td>Poppy Greenwood</td><td class="tick-col"><span class="tick"></span></td><td class="tick-col"><span class="tick"></span></td></tr>
+            <tr><td>Arjun Malhotra</td><td class="tick-col"><span class="tick"></span></td><td class="tick-col"><span class="tick"></span></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="tbl">
+        <div class="tbl-head"><span class="tbl-mm">Table Nine</span><span class="tbl-eu">Laurel</span></div>
+        <table>
+          <thead><tr><th>Guest</th><th class="tick-col">MM</th><th class="tick-col">EU</th></tr></thead>
+          <tbody>
+            <tr><td>Catherine Pryce</td><td class="tick-col"><span class="tick"></span></td><td class="tick-col"><span class="tick"></span></td></tr>
+            <tr><td>Sam Whittaker</td><td class="tick-col"><span class="tick"></span></td><td class="tick-col"><span class="tick"></span></td></tr>
+            <tr><td>Amara Diallo</td><td class="tick-col"><span class="tick"></span></td><td class="tick-col"><span class="tick"></span></td></tr>
+            <tr><td>Ethan Ward</td><td class="tick-col"><span class="tick"></span></td><td class="tick-col"><span class="tick"></span></td></tr>
+            <tr><td>Rosa Delgado</td><td class="tick-col"><span class="tick"></span></td><td class="tick-col"><span class="tick"></span></td></tr>
+            <tr><td>Hassan Mahmood</td><td class="tick-col"><span class="tick"></span></td><td class="tick-col"><span class="tick"></span></td></tr>
+            <tr><td>Erin Gallagher</td><td class="tick-col"><span class="tick"></span></td><td class="tick-col"><span class="tick"></span></td></tr>
+            <tr><td>Tara Sivalingam</td><td class="tick-col"><span class="tick"></span></td><td class="tick-col"><span class="tick"></span></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="tbl">
+        <div class="tbl-head"><span class="tbl-mm">Table Ten</span><span class="tbl-eu">Sorrel</span></div>
+        <table>
+          <thead><tr><th>Guest</th><th class="tick-col">MM</th><th class="tick-col">EU</th></tr></thead>
+          <tbody>
+            <tr><td>Alexandra Kingsley-Moore</td><td class="tick-col"><span class="tick"></span></td><td class="tick-col"><span class="tick"></span></td></tr>
+            <tr><td>Owen Griffiths</td><td class="tick-col"><span class="tick"></span></td><td class="tick-col"><span class="tick"></span></td></tr>
+            <tr><td>Noor Abdelrahman</td><td class="tick-col"><span class="tick"></span></td><td class="tick-col"><span class="tick"></span></td></tr>
+            <tr><td>Jack Turner</td><td class="tick-col"><span class="tick"></span></td><td class="tick-col"><span class="tick"></span></td></tr>
+            <tr><td>Mei Ling Tan</td><td class="tick-col"><span class="tick"></span></td><td class="tick-col"><span class="tick"></span></td></tr>
+            <tr><td>Christopher Byrne</td><td class="tick-col"><span class="tick"></span></td><td class="tick-col"><span class="tick"></span></td></tr>
+            <tr><td>Lauren Fitzpatrick</td><td class="tick-col"><span class="tick"></span></td><td class="tick-col"><span class="tick"></span></td></tr>
+            <tr><td>Sanjay Ramanathan</td><td class="tick-col"><span class="tick"></span></td><td class="tick-col"><span class="tick"></span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <footer class="foot">
+    <span>Phase One Sample Run</span>
+    <span>Issued 25 Aug 2026</span>
+    <span>Owner: Richard Standen</span>
+    <span>Event Stuff Ltd</span>
+  </footer>
+
+</div>

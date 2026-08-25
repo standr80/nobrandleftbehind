@@ -2,6 +2,7 @@ import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server'
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 import { ACTIVE_WORKSPACE_COOKIE, PENDING_INVITE_COOKIE } from '@/lib/workspace/active'
+import { DEV_COOKIE, isValidDevToken } from '@/lib/dev/auth'
 
 const isPublicRoute = createRouteMatcher([
   '/',               // marketing landing page
@@ -19,6 +20,9 @@ const isPublicRoute = createRouteMatcher([
   '/api/feed(.*)',  // public embed feed — no auth, CORS open
   '/api/content(.*)', // public Content API v1 — no auth, CORS open
   '/preview/embed(.*)', // iframe preview for embed builder
+  '/api/dev(.*)',   // /dev password gate — guarded by its own cookie, not Clerk
+  '/dev(.*)',       // ditto: the R&D area has its own gate below, Clerk must not
+                    // redirect it to sign-in (it has no Clerk accounts at all)
 ])
 
 // Platform routes where the workspace cookie must be valid
@@ -64,6 +68,30 @@ export default clerkMiddleware(async (auth, request: NextRequest) => {
     return NextResponse.rewrite(url, { request: { headers: requestHeaders } })
   }
 
+  // ── /dev R&D area ────────────────────────────────────────────────────────────
+  // Shared-password area, entirely separate from Clerk: no accounts, no user
+  // table. Covers the pages (/dev/*), the raw documents (/dev-docs/*) and the
+  // logout route. The login page and its POST handler must stay reachable or
+  // there would be no way in.
+  const isDevArea =
+    pathname === '/dev' ||
+    pathname.startsWith('/dev/') ||
+    pathname.startsWith('/dev-docs/') ||
+    pathname === '/api/dev/logout'
+  const isDevEntry = pathname === '/dev/login' || pathname === '/api/dev/login'
+
+  if (isDevArea && !isDevEntry) {
+    const ok = await isValidDevToken(request.cookies.get(DEV_COOKIE)?.value)
+    if (!ok) {
+      const url = request.nextUrl.clone()
+      url.pathname = '/dev/login'
+      url.search = ''
+      url.searchParams.set('next', pathname)
+      return NextResponse.redirect(url)
+    }
+    return NextResponse.next()
+  }
+
   // ── Platform routing (unchanged) ─────────────────────────────────────────────
   if (isPublicRoute(request)) return NextResponse.next()
 
@@ -97,5 +125,9 @@ export const config = {
     '/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)',
     // Always run for API routes
     '/(api|trpc)(.*)',
+    // Always run for the gated R&D documents. Without this the pattern above
+    // would let /dev-docs/*.html through unauthenticated, because it skips
+    // anything ending in a static-asset extension.
+    '/dev-docs/:path*',
   ],
 }
