@@ -94,8 +94,11 @@ export async function resolveTenant(db: Db, slug: string): Promise<ResolvedTenan
 export const SUMMARY_COLUMNS =
   'id, title, slug, excerpt, meta_description, tags, hero_image_url, hero_image_alt, hero_image_credit, created_by, published_at, updated_at, deleted_at, status, content_type, author:authors(name, job_title, bio, links, slug)'
 
-/** Same as summary plus the body (and FAQ data) for single-post responses. */
-export const POST_COLUMNS = `${SUMMARY_COLUMNS}, body_mdx, faq_items`
+/** Same as summary plus the body (and FAQ / gallery data) for single-post
+ *  responses. `gallery_images` is deliberately NOT in SUMMARY_COLUMNS: the
+ *  arrays are large, and a listing needs only the cover image, which galleries
+ *  now stamp onto `hero_image_url` at publish time. */
+export const POST_COLUMNS = `${SUMMARY_COLUMNS}, body_mdx, faq_items, gallery_images`
 
 export interface RawPost {
   id: string
@@ -115,6 +118,7 @@ export interface RawPost {
   content_type?: string | null
   body_mdx?: string | null
   faq_items?: unknown
+  gallery_images?: unknown
   author?: AuthorRow | AuthorRow[] | null
 }
 
@@ -161,6 +165,75 @@ export function toTombstone(p: RawPost) {
     deleted: true as const,
     updated_at: p.updated_at ?? '',
   }
+}
+
+// ---------------------------------------------------------------------------
+// Galleries
+// ---------------------------------------------------------------------------
+
+/**
+ * One published gallery image.
+ *
+ * Deliberately a subset of the internal `GalleryImage` in lib/bailey/constants:
+ * storage paths, processing status, error text, source provenance and the
+ * `hidden` flag are all internal and must not leave the building.
+ */
+export interface PublicGalleryImage {
+  id: string
+  url: string
+  thumb_url: string
+  width: number
+  height: number
+  alt: string
+  caption: string
+}
+
+interface RawGalleryImage {
+  id?: unknown
+  url?: unknown
+  thumb_url?: unknown
+  width?: unknown
+  height?: unknown
+  alt?: unknown
+  caption?: unknown
+  order?: unknown
+  status?: unknown
+  hidden?: unknown
+}
+
+/**
+ * Parse blog_posts.gallery_images into the public list.
+ *
+ * Three filters, each of which matters:
+ *  - `hidden` images are parked by the editor, often because someone asked not
+ *    to appear. They must never reach a consumer.
+ *  - anything not 'ready' is half-processed and would render broken.
+ *  - anything missing url/width/height would cause layout shift on the
+ *    consumer's page, which is the one thing an all-image page cannot afford.
+ */
+export function parseGalleryImages(raw: unknown): PublicGalleryImage[] {
+  if (!Array.isArray(raw)) return []
+  return raw
+    .filter((it): it is RawGalleryImage => !!it && typeof it === 'object')
+    .filter((img) => img.hidden !== true && img.status === 'ready')
+    .filter(
+      (img) =>
+        typeof img.url === 'string' &&
+        !!img.url &&
+        typeof img.width === 'number' &&
+        typeof img.height === 'number',
+    )
+    .sort((a, b) => (Number(a.order) || 0) - (Number(b.order) || 0))
+    .map((img) => ({
+      id: String(img.id ?? ''),
+      url: String(img.url),
+      // Falls back to the master when no transform/variant thumb was stored.
+      thumb_url: typeof img.thumb_url === 'string' && img.thumb_url ? img.thumb_url : String(img.url),
+      width: Number(img.width),
+      height: Number(img.height),
+      alt: String(img.alt ?? ''),
+      caption: String(img.caption ?? ''),
+    }))
 }
 
 // ---------------------------------------------------------------------------
@@ -248,6 +321,8 @@ export function toPost(p: RawPost, domain: string, bodyHtml: string, fallbackAut
   const a = pickAuthor(p.author) || fallbackAuthor
   const faqItems = parseFaqItems(p.faq_items)
   const schema = faqPageSchema(faqItems)
+  const galleryImages =
+    p.content_type === 'gallery' ? parseGalleryImages(p.gallery_images) : []
   return {
     ...toSummary(p, domain, fallbackAuthor),
     author_bio: a?.bio ?? '',
@@ -258,6 +333,18 @@ export function toPost(p: RawPost, domain: string, bodyHtml: string, fallbackAut
     // string so consumer sites can drop it straight into <head>. Empty for blogs.
     faq_items: faqItems,
     faq_jsonld: schema ? JSON.stringify(schema) : '',
+    // Galleries expose their images as data rather than pre-rendered HTML, so a
+    // consumer can build its own grid, lightbox and ImageGallery schema with
+    // its own image pipeline. Bailey's HTML renderer stays the path for
+    // consumers that can only take markup. Absent on non-gallery posts.
+    ...(p.content_type === 'gallery'
+      ? {
+          gallery: {
+            images: galleryImages,
+            lead_image: galleryImages[0]?.url ?? null,
+          },
+        }
+      : {}),
   }
 }
 

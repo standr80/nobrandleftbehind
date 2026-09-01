@@ -122,6 +122,54 @@ CORS preflight, 204.
 | `body_html` | `toHtml(body_mdx)` | server-rendered; see caching note |
 | `body_format` | const | `"html"` — reserved for future raw-MDX option |
 
+### Post (single), gallery additions
+
+A post with `content_type: "gallery"` carries a `gallery` object alongside
+`body_html` (which holds Clem's intro copy only — the images are NOT in it).
+
+```json
+{
+  "content_type": "gallery",
+  "body_html": "<p>Clem's intro…</p>",
+  "gallery": {
+    "lead_image": "https://…/master.webp",
+    "images": [
+      {
+        "id": "img_abc123",
+        "url": "https://…/master.webp",
+        "thumb_url": "https://…/render/image/…?width=400",
+        "width": 2000,
+        "height": 1333,
+        "alt": "…",
+        "caption": "…"
+      }
+    ]
+  }
+}
+```
+
+Images are **data, not markup**, so a consumer can build its own grid, lightbox
+and `ImageGallery` schema with its own image pipeline. Bailey's HTML renderer
+(`lib/bailey/render.ts`) remains the path for consumers that can only take
+markup, such as the WordPress plugin and the JS embed.
+
+The array is filtered and ordered server-side:
+
+- `hidden` images are **never** returned. They are parked by the editor, often
+  because someone asked not to appear — this is a privacy boundary, not a
+  display preference.
+- images not in `status: "ready"` are omitted (half-processed, would render
+  broken), as are any missing `url`/`width`/`height` (the consumer needs
+  intrinsic dimensions to avoid layout shift on an all-image page).
+- ordered by the stored `order` field.
+- internal fields — `storage_path`, `master_path`, `status`, `error`,
+  `source`, `source_ref`, `hidden` — are not exposed.
+
+`gallery` is absent on non-gallery posts. Gallery **list** responses do not
+include the image array (the payload would be large for two fields); they carry
+the cover image in the standard `hero_image` field, which the gallery publish
+step stamps from the lead image.
+
 ### Tombstone
 
 ```json
