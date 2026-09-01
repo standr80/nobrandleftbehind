@@ -81,6 +81,9 @@ export interface GalleryImage {
   /** Hidden images stay in the gallery (admin) but are excluded from the
    *  published page, the publish-readiness gate, and the lead image. */
   hidden?: boolean | null
+  /** Set when a human edits alt or caption. Regenerating captions skips these
+   *  by default — a re-run must never silently discard someone's corrections. */
+  edited?: boolean | null
   /** Stored responsive variants — only populated in the spike-#1 fallback
    *  (USE_TRANSFORM_URLS = false); srcset comes from transform URLs otherwise. */
   variants?: { width: number; path: string; url: string }[] | null

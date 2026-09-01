@@ -139,6 +139,26 @@ function buildPrompt(gallery: GalleryRow, ctx: TenantEnrichContext): string {
 
 /** Enrich one image (must have a processed master) and persist: alt,
  *  caption, slug-named master, status ready. Returns the patch applied. */
+/**
+ * Which images a "regenerate captions" run should rewrite.
+ *
+ * Excluded:
+ *  - hidden images (parked, and not on the published page)
+ *  - anything without a processed master, or mid-pipeline — reconcile's job
+ *  - images a human has edited, unless overwriteEdited is set. This is the
+ *    guarantee that a re-run cannot silently discard someone's own wording.
+ */
+export function selectReenrichTargets(
+  images: GalleryImage[],
+  overwriteEdited: boolean,
+): { targets: GalleryImage[]; skippedEdited: number } {
+  const candidates = images.filter(
+    (i) => !i.hidden && !!i.master_path && (i.status === 'ready' || i.status === 'processed'),
+  )
+  const targets = overwriteEdited ? candidates : candidates.filter((i) => !i.edited)
+  return { targets, skippedEdited: candidates.length - targets.length }
+}
+
 export async function enrichImage(
   gallery: GalleryRow,
   image: GalleryImage,

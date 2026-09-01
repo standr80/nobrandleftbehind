@@ -30,6 +30,12 @@ export async function PATCH(request: Request, { params }: Params) {
   if (typeof body.alt === 'string') patch.alt = body.alt.trim() || null
   if (typeof body.caption === 'string') patch.caption = body.caption.trim() || null
   if (typeof body.hidden === 'boolean') patch.hidden = body.hidden
+
+  // Mark the text as human-authored so a later "regenerate captions" run leaves
+  // it alone. Hiding an image is not an edit to its text, so it doesn't count.
+  if (typeof body.alt === 'string' || typeof body.caption === 'string') {
+    patch.edited = true
+  }
   if (!Object.keys(patch).length) {
     return NextResponse.json({ error: 'Nothing to update — send alt, caption and/or hidden' }, { status: 400 })
   }

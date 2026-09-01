@@ -38,6 +38,9 @@ export default function GalleryDetailsPanel({
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
+  const [regenerating, setRegenerating] = useState(false)
+  const [overwriteEdited, setOverwriteEdited] = useState(false)
+  const [regenResult, setRegenResult] = useState<string | null>(null)
 
   const dirty =
     title.trim() !== saved.title ||
@@ -89,6 +92,37 @@ export default function GalleryDetailsPanel({
       setError(e instanceof Error ? e.message : 'Save failed')
     } finally {
       setSaving(false)
+    }
+  }
+
+  async function regenerate() {
+    setRegenerating(true)
+    setError(null)
+    setRegenResult(null)
+    try {
+      const res = await fetch(`/api/galleries/${galleryId}/reenrich`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tenantId, overwriteEdited }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error ?? 'Could not regenerate captions')
+
+      const bits: string[] = []
+      if (data.regenerated) bits.push(`${data.regenerated} regenerated`)
+      if (data.failed) bits.push(`${data.failed} failed`)
+      if (data.skippedEdited) bits.push(`${data.skippedEdited} kept (edited by hand)`)
+      let msg = bits.length ? bits.join(' · ') : (data.message ?? 'Nothing to regenerate.')
+      if (data.urlsChanged) {
+        msg +=
+          ' — image addresses changed, so republish to update the live page.'
+      }
+      setRegenResult(msg)
+      router.refresh()
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not regenerate captions')
+    } finally {
+      setRegenerating(false)
     }
   }
 
@@ -189,6 +223,50 @@ export default function GalleryDetailsPanel({
       </div>
 
       {notice && <p className="text-sm text-amber-700">{notice}</p>}
+
+      <div className="border-t border-slate-200 pt-3 space-y-2">
+        <h3 className="text-sm font-semibold text-slate-900">Captions</h3>
+        <p className="text-xs text-slate-500">
+          Rewrite every image&apos;s alt text and caption using the title and
+          context above. Worth doing after improving the context — it is what
+          Bailey is shown when it looks at each photograph.
+        </p>
+        <label className="flex items-start gap-2 text-xs text-slate-600 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={overwriteEdited}
+            onChange={(e) => setOverwriteEdited(e.target.checked)}
+            className="mt-0.5"
+          />
+          <span>
+            Also overwrite captions I have edited by hand. Off by default, so a
+            re-run cannot discard your own wording.
+          </span>
+        </label>
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => void regenerate()}
+            disabled={regenerating || dirty}
+            className="px-3 py-1.5 rounded-lg border border-amber-600 text-amber-700 text-sm font-medium hover:bg-amber-50 disabled:opacity-50"
+          >
+            {regenerating ? 'Rewriting…' : 'Regenerate captions'}
+          </button>
+          {dirty && (
+            <span className="text-xs text-slate-400">
+              Save your changes first — the new context is what gets used.
+            </span>
+          )}
+        </div>
+        {regenResult && <p className="text-sm text-amber-700">{regenResult}</p>}
+        {isPublished && (
+          <p className="text-xs text-slate-400">
+            Regenerating renames each image file, so the live page keeps the old
+            captions and addresses until you republish.
+          </p>
+        )}
+      </div>
+
       {error && <p className="text-sm text-red-600">{error}</p>}
     </div>
   )
