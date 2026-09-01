@@ -19,6 +19,12 @@ export function rid(length = 12): string {
 
 export function generateSlug(text: string): string {
   return text
+    // Transliterate accents before the a-z filter, or they are simply deleted:
+    // "Noyelles-lès-Seclin" would slug to "noyelles-ls-seclin". NFD splits an
+    // accented character into base + combining mark, and the second replace
+    // drops the marks — è → e, ç → c, ü → u.
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
     .toLowerCase()
     .replace(/[^a-z0-9\s-]/g, '')
     .trim()

@@ -1,0 +1,195 @@
+'use client'
+
+import { useRouter } from 'next/navigation'
+import { useState } from 'react'
+
+interface Props {
+  tenantId: string
+  galleryId: string
+  initialTitle: string
+  initialSlug: string
+  initialContext: string | null
+  isPublished: boolean
+}
+
+/**
+ * Rename a gallery, and edit the context that feeds Bailey's vision prompt.
+ *
+ * The slug follows the title while the gallery is a draft — nothing is live, so
+ * there is no reason for the URL to fossilise whatever it was first called. Once
+ * published the slug is left alone unless deliberately changed, because changing
+ * it moves the live page and 404s any link already shared.
+ */
+export default function GalleryDetailsPanel({
+  tenantId,
+  galleryId,
+  initialTitle,
+  initialSlug,
+  initialContext,
+  isPublished,
+}: Props) {
+  const router = useRouter()
+  const [open, setOpen] = useState(false)
+  const [title, setTitle] = useState(initialTitle)
+  const [context, setContext] = useState(initialContext ?? '')
+  const [slug, setSlug] = useState(initialSlug)
+  const [editSlug, setEditSlug] = useState(false)
+  const [saved, setSaved] = useState({ title: initialTitle, context: initialContext ?? '', slug: initialSlug })
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [notice, setNotice] = useState<string | null>(null)
+
+  const dirty =
+    title.trim() !== saved.title ||
+    context.trim() !== (saved.context ?? '') ||
+    (editSlug && slug.trim() !== saved.slug)
+
+  async function save() {
+    if (!title.trim()) {
+      setError('A gallery title is required.')
+      return
+    }
+    setSaving(true)
+    setError(null)
+    setNotice(null)
+    try {
+      const res = await fetch(`/api/galleries/${galleryId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          tenantId,
+          title: title.trim(),
+          gallery_context: context.trim(),
+          ...(editSlug && slug.trim() !== saved.slug ? { slug: slug.trim() } : {}),
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error ?? 'Save failed')
+
+      const next = {
+        title: data.gallery?.title ?? title.trim(),
+        context: data.gallery?.gallery_context ?? '',
+        slug: data.gallery?.slug ?? slug,
+      }
+      setSaved(next)
+      setTitle(next.title)
+      setContext(next.context)
+      setSlug(next.slug)
+      setEditSlug(false)
+      if (data.slugChanged) {
+        setNotice(
+          isPublished
+            ? `Address changed to /${next.slug} — republish to move the live page. The old address will stop working.`
+            : `Address updated to /${next.slug}.`,
+        )
+      }
+      // The title is rendered by the server component above this panel.
+      router.refresh()
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Save failed')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  if (!open) {
+    return (
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className="text-sm text-amber-700 font-medium hover:underline mb-6"
+      >
+        Edit title &amp; context
+      </button>
+    )
+  }
+
+  return (
+    <div className="border border-slate-200 rounded-xl p-4 mb-6 space-y-3 bg-white">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h2 className="text-sm font-semibold text-slate-900">Gallery details</h2>
+          <p className="text-xs text-slate-500 mt-0.5">
+            The context is fed to Bailey when it writes alt text and captions — the
+            more specific, the better they get.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => setOpen(false)}
+          className="text-xs text-slate-400 hover:text-slate-600 shrink-0"
+        >
+          Close
+        </button>
+      </div>
+
+      <label className="block">
+        <span className="text-xs text-slate-500">Title</span>
+        <input
+          type="text"
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          className="mt-1 w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+        />
+      </label>
+
+      <label className="block">
+        <span className="text-xs text-slate-500">
+          Context — venue, occasion, location, date
+        </span>
+        <input
+          type="text"
+          value={context}
+          onChange={(e) => setContext(e.target.value)}
+          placeholder="e.g. Exchange visit to Noyelles-lès-Seclin, May 2026"
+          className="mt-1 w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+        />
+      </label>
+
+      <div>
+        <span className="text-xs text-slate-500">Address</span>
+        {editSlug ? (
+          <input
+            type="text"
+            value={slug}
+            onChange={(e) => setSlug(e.target.value)}
+            className="mt-1 w-full border border-slate-300 rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-amber-500"
+          />
+        ) : (
+          <p className="mt-1 text-sm text-slate-600 font-mono">
+            /{saved.slug}
+            <button
+              type="button"
+              onClick={() => setEditSlug(true)}
+              className="ml-3 font-sans text-xs text-amber-700 hover:underline"
+            >
+              Change
+            </button>
+          </p>
+        )}
+        <p className="text-xs text-slate-400 mt-1">
+          {isPublished
+            ? 'This gallery is published, so the address stays put when you rename it. Changing it moves the live page and breaks any link already shared.'
+            : 'Follows the title until the gallery is published.'}
+        </p>
+      </div>
+
+      <div className="flex items-center gap-3 pt-1">
+        <button
+          type="button"
+          onClick={() => void save()}
+          disabled={saving || !dirty}
+          className="px-4 py-2 rounded-lg bg-amber-600 text-white text-sm font-medium hover:bg-amber-700 disabled:opacity-40"
+        >
+          {saving ? 'Saving…' : 'Save details'}
+        </button>
+        {isPublished && dirty && (
+          <span className="text-xs text-slate-400">Republish below to put changes live.</span>
+        )}
+      </div>
+
+      {notice && <p className="text-sm text-amber-700">{notice}</p>}
+      {error && <p className="text-sm text-red-600">{error}</p>}
+    </div>
+  )
+}

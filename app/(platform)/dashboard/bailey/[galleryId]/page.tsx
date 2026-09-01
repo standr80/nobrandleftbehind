@@ -7,6 +7,7 @@ import { galleryPublicUrl } from '@/lib/bailey/constants'
 import { publicPostUrl } from '@/lib/content/api'
 import GalleryUploader from '@/components/bailey/GalleryUploader'
 import GalleryCopyPanel from '@/components/bailey/GalleryCopyPanel'
+import GalleryDetailsPanel from '@/components/bailey/GalleryDetailsPanel'
 
 interface Props {
   params: Promise<{ galleryId: string }>
@@ -68,9 +69,18 @@ export default async function GalleryPage({ params }: Props) {
       {gallery.gallery_context && (
         <p className="text-sm text-slate-500 mb-1">Context: {gallery.gallery_context}</p>
       )}
-      <p className="text-sm text-slate-500 mb-6">
+      <p className="text-sm text-slate-500 mb-3">
         Drop images below — up to 50 per gallery, 10MB each (jpg, png, webp).
       </p>
+      <GalleryDetailsPanel
+        key={`details-${gallery.id}`}
+        tenantId={workspace.tenantId}
+        galleryId={gallery.id}
+        initialTitle={gallery.title}
+        initialSlug={gallery.slug}
+        initialContext={gallery.gallery_context}
+        isPublished={gallery.status === 'published'}
+      />
       <GalleryCopyPanel
         key={`copy-${gallery.id}`}
         tenantId={workspace.tenantId}
