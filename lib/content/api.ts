@@ -148,9 +148,35 @@ function authorLinks(a: AuthorRow | null): AuthorLink[] {
     .map((l) => ({ label: String(l.label ?? '').trim(), url: String(l.url).trim() }))
 }
 
-function postUrl(domain: string, slug: string): string {
+/**
+ * Public path prefix per content type.
+ *
+ * `blog` stays `/blog` — existing consumers depend on it and changing it would
+ * break them. The others were simply wrong before: every post got `/blog/`,
+ * so a gallery reported a URL that 404s on a site serving it from /galleries.
+ */
+export const CONTENT_PATH_PREFIX: Record<string, string> = {
+  blog: 'blog',
+  faq: 'faq',
+  gallery: 'galleries',
+}
+
+/**
+ * Best-effort canonical URL for a post on the consumer's own site.
+ *
+ * It is a convention, not a contract: a consumer that routes differently should
+ * build its own URLs from `slug` and ignore this field. It exists so that
+ * consumers following the conventional layout — and NBLB's own dashboard, which
+ * links to the live page — have something to point at.
+ */
+export function publicPostUrl(
+  domain: string,
+  slug: string,
+  contentType?: string | null,
+): string {
   const clean = domain.replace(/^https?:\/\//, '').replace(/\/$/, '')
-  return `https://${clean}/blog/${slug}`
+  const prefix = CONTENT_PATH_PREFIX[contentType ?? 'blog'] ?? CONTENT_PATH_PREFIX.blog
+  return `https://${clean}/${prefix}/${slug}`
 }
 
 /** A row that is unpublished or soft-deleted becomes a tombstone. */
@@ -313,7 +339,7 @@ export function toSummary(p: RawPost, domain: string, fallbackAuthor: AuthorRow 
     content_type: p.content_type ?? 'blog',
     published_at: p.published_at ?? '',
     updated_at: p.updated_at ?? '',
-    url: postUrl(domain, p.slug ?? ''),
+    url: publicPostUrl(domain, p.slug ?? '', p.content_type),
   }
 }
 

@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { getActiveWorkspace } from '@/lib/workspace/active'
 import { getGallery, galleryImages } from '@/lib/bailey/galleries'
 import { galleryPublicUrl } from '@/lib/bailey/constants'
+import { publicPostUrl } from '@/lib/content/api'
 import GalleryUploader from '@/components/bailey/GalleryUploader'
 import GalleryCopyPanel from '@/components/bailey/GalleryCopyPanel'
 
@@ -42,6 +43,16 @@ export default async function GalleryPage({ params }: Props) {
     )
   }
 
+  // Where the published gallery can be viewed. Shopify tenants get the article
+  // URL stored at push time; everyone else publishes straight to the Content
+  // API, where there is no stored URL — so derive it from the tenant's domain,
+  // using the same helper the API uses, so the two never drift apart.
+  const publishedUrl =
+    gallery.shopify_article_url ??
+    (gallery.status === 'published' && workspace.tenant.domain
+      ? publicPostUrl(workspace.tenant.domain, gallery.slug, 'gallery')
+      : null)
+
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
   const images = galleryImages(gallery).map((img) => ({
     ...img,
@@ -77,7 +88,7 @@ export default async function GalleryPage({ params }: Props) {
         galleryTitle={gallery.title}
         galleryContext={gallery.gallery_context}
         galleryStatus={gallery.status}
-        publishedUrl={gallery.shopify_article_url}
+        publishedUrl={publishedUrl}
         consentAttested={Boolean(gallery.consent_attested_at)}
         initialImages={images}
       />

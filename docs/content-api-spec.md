@@ -112,7 +112,7 @@ CORS preflight, 204.
 | `author` | `created_by` | defaults "Clem" |
 | `published_at` | `published_at` | ISO-8601 |
 | `updated_at` | `updated_at` | ISO-8601 — drives `since` |
-| `url` | derived | canonical `https://{domain}/blog/{slug}` |
+| `url` | derived | best-effort canonical URL, path prefix by content type: `blog` → `/blog/`, `faq` → `/faq/`, `gallery` → `/galleries/`. A convention, not a contract — a consumer with its own routing should build URLs from `slug` and ignore this. |
 | `deleted` | derived | `true` only in tombstones |
 
 ### Post (single) — PostSummary plus:

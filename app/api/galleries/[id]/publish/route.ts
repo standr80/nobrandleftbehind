@@ -6,6 +6,7 @@ import { galleryImages, getGallery } from '@/lib/bailey/galleries'
 import { leadImage } from '@/lib/bailey/render'
 import { runShopifyPublish } from '@/lib/clem/shopify'
 import { triggerDeployHook } from '@/lib/clem/deployHook'
+import { publicPostUrl } from '@/lib/content/api'
 
 export const maxDuration = 120
 
@@ -75,10 +76,11 @@ export async function POST(request: Request, { params }: Params) {
   // gallery and then have nowhere to send it.
   const { data: tenantRow } = await db
     .from('tenants')
-    .select('cms_type')
+    .select('cms_type, domain')
     .eq('id', workspace.tenantId)
     .single()
-  const cmsType = (tenantRow as { cms_type?: string | null } | null)?.cms_type ?? null
+  const tenant = tenantRow as { cms_type?: string | null; domain?: string | null } | null
+  const cmsType = tenant?.cms_type ?? null
 
   // Git tenants publish by committing body_mdx to a repo. A gallery's content
   // is its gallery_images array, not its body — sending one down that path
@@ -107,14 +109,27 @@ export async function POST(request: Request, { params }: Params) {
 
   const { data: updated } = await db
     .from('blog_posts')
-    .select('status, shopify_article_url')
+    .select('status, slug, shopify_article_url')
     .eq('id', gallery.id)
     .single()
+  const row = updated as
+    | { status?: string | null; slug?: string | null; shopify_article_url?: string | null }
+    | null
+
+  // A direct publish produces no Shopify article, so there was previously
+  // nothing to return and the dashboard showed no link at all — the gallery
+  // published fine but appeared to vanish. Derive the live URL from the
+  // tenant's own domain instead.
+  const url =
+    row?.shopify_article_url ??
+    (tenant?.domain && row?.slug
+      ? publicPostUrl(tenant.domain, row.slug, 'gallery')
+      : null)
 
   return NextResponse.json({
     ok: true,
-    status: updated?.status ?? 'published',
-    url: updated?.shopify_article_url ?? null,
+    status: row?.status ?? 'published',
+    url,
   })
 }
 
