@@ -141,6 +141,25 @@ interface AuthorLink {
   url: string
 }
 
+/**
+ * `blog_posts.created_by` holds a Clerk user id on anything created through the
+ * dashboard. That is an internal identifier for our auth provider and has no
+ * business in a public, CORS-open response — but it was being used as the
+ * author-name fallback, so any tenant without an `authors` record published
+ * `"author": "user_2ab…"` to the world.
+ *
+ * Filtered by shape rather than dropped outright: older rows sometimes carry a
+ * real name in this column, and that is still worth surfacing.
+ */
+const CLERK_USER_ID = /^user_[A-Za-z0-9]+$/
+
+function publicAuthorName(createdBy: string | null | undefined): string | null {
+  if (!createdBy) return null
+  const name = createdBy.trim()
+  if (!name || CLERK_USER_ID.test(name)) return null
+  return name
+}
+
 function authorLinks(a: AuthorRow | null): AuthorLink[] {
   if (!a || !Array.isArray(a.links)) return []
   return (a.links as unknown[])
@@ -333,7 +352,7 @@ export function toSummary(p: RawPost, domain: string, fallbackAuthor: AuthorRow 
     hero_image_credit: p.hero_image_credit ?? '',
     // `author` stays a plain name string for backward compatibility; the
     // richer fields below carry the E-E-A-T signal (bio, credentials, sameAs).
-    author: (a && a.name) || p.created_by || 'Clem',
+    author: (a && a.name) || publicAuthorName(p.created_by) || 'Clem',
     author_title: a?.job_title ?? '',
     author_slug: a?.slug ?? '',
     content_type: p.content_type ?? 'blog',
