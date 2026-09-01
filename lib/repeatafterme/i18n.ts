@@ -102,9 +102,28 @@ export interface UiStrings {
   syncRestorePlaceholder: string;
   syncRestoreBtn: string;
 
+  // primary navigation (the Répétez / Écoutez / Library tab bar)
+  navLabel: string;
+  repetezNavLink: string;
+  repetezNavHint: string;
+  ecoutezNavHint: string;
+  libraryNavHint: string;
+  repetezIntro: string;
+  introHide: string;
+  introShow: string;
+
+  // section + sub-group headings on the drill page
+  settingsHeading: string;
+  groupLanguages: string;
+  groupPractice: string;
+  groupPlayback: string;
+  sessionHeading: string;
+  deckGetPhrases: string;
+  deckThisDeck: string;
+
   // Écoutez (listening mode)
   ecoutezNavLink: string;
-  ecoutezBackLink: string;
+  ecoutezSourceLabel: string;
   ecoutezIntro: string;
   ecoutezModeTopic: string;
   ecoutezModePaste: string;
@@ -127,7 +146,6 @@ export interface UiStrings {
 
   // Deck Library (pre-built decks)
   libraryNavLink: string;
-  libraryBackLink: string;
   libraryIntro: string;
   libraryLanguageLabel: string;
   libraryBrowseBtn: string;
@@ -263,8 +281,25 @@ const en: UiStrings = {
   syncRestorePlaceholder: "XXXX-XXXX-XXXX-XXXX-XXXX",
   syncRestoreBtn: "Restore",
 
+  navLabel: "Main sections",
+  repetezNavLink: "Répétez",
+  repetezNavHint: "Speak along",
+  ecoutezNavHint: "Listen",
+  libraryNavHint: "Ready-made",
+  repetezIntro: "Hear the prompt, say it aloud in your study language, then hear the answer. Load a deck below — or switch to Test mode to mark yourself.",
+  introHide: "Hide this note",
+  introShow: "Show the note about this page",
+
+  settingsHeading: "Settings",
+  groupLanguages: "Languages",
+  groupPractice: "Practice",
+  groupPlayback: "Playback",
+  sessionHeading: "This session",
+  deckGetPhrases: "Get phrases",
+  deckThisDeck: "This deck",
+
   ecoutezNavLink: "Écoutez",
-  ecoutezBackLink: "← Back to drills",
+  ecoutezSourceLabel: "Source",
   ecoutezIntro: "Listen to a short passage at your level, twice — slow, then natural — with vocab before and a recap after.",
   ecoutezModeTopic: "Topic",
   ecoutezModePaste: "Paste text to simplify",
@@ -286,7 +321,6 @@ const en: UiStrings = {
   ecoutezNewEpisode: "New episode",
 
   libraryNavLink: "Library",
-  libraryBackLink: "← Back to drills",
   libraryIntro: "Browse pre-built decks by language and topic, and add any of them straight to your own deck list — no typing or uploading required.",
   libraryLanguageLabel: "Language",
   libraryBrowseBtn: "Browse",
@@ -419,8 +453,25 @@ const fr: UiStrings = {
   syncRestorePlaceholder: "XXXX-XXXX-XXXX-XXXX-XXXX",
   syncRestoreBtn: "Restaurer",
 
+  navLabel: "Sections principales",
+  repetezNavLink: "Répétez",
+  repetezNavHint: "À voix haute",
+  ecoutezNavHint: "Écouter",
+  libraryNavHint: "Paquets prêts",
+  repetezIntro: "Écoutez la consigne, dites-la à voix haute dans votre langue d'étude, puis écoutez la réponse. Chargez un paquet ci-dessous — ou passez en mode Test pour vous noter.",
+  introHide: "Masquer cette note",
+  introShow: "Afficher la note sur cette page",
+
+  settingsHeading: "Réglages",
+  groupLanguages: "Langues",
+  groupPractice: "Entraînement",
+  groupPlayback: "Lecture",
+  sessionHeading: "Cette séance",
+  deckGetPhrases: "Ajouter des phrases",
+  deckThisDeck: "Ce paquet",
+
   ecoutezNavLink: "Écoutez",
-  ecoutezBackLink: "← Retour aux exercices",
+  ecoutezSourceLabel: "Source",
   ecoutezIntro: "Écoutez un court passage à votre niveau, deux fois — lentement, puis normalement — avec le vocabulaire avant et un résumé après.",
   ecoutezModeTopic: "Sujet",
   ecoutezModePaste: "Coller un texte à simplifier",
@@ -442,7 +493,6 @@ const fr: UiStrings = {
   ecoutezNewEpisode: "Nouvel épisode",
 
   libraryNavLink: "Bibliothèque",
-  libraryBackLink: "← Retour aux exercices",
   libraryIntro: "Parcourez des paquets prêts à l'emploi par langue et par thème, et ajoutez-les directement à vos paquets — sans rien taper ni importer.",
   libraryLanguageLabel: "Langue",
   libraryBrowseBtn: "Parcourir",
@@ -575,8 +625,25 @@ const es: UiStrings = {
   syncRestorePlaceholder: "XXXX-XXXX-XXXX-XXXX-XXXX",
   syncRestoreBtn: "Restaurar",
 
+  navLabel: "Secciones principales",
+  repetezNavLink: "Répétez",
+  repetezNavHint: "En voz alta",
+  ecoutezNavHint: "Escuchar",
+  libraryNavHint: "Mazos listos",
+  repetezIntro: "Escucha la frase, dila en voz alta en tu idioma de estudio y luego escucha la respuesta. Carga un mazo abajo — o cambia al modo Test para puntuarte.",
+  introHide: "Ocultar esta nota",
+  introShow: "Mostrar la nota de esta página",
+
+  settingsHeading: "Ajustes",
+  groupLanguages: "Idiomas",
+  groupPractice: "Práctica",
+  groupPlayback: "Reproducción",
+  sessionHeading: "Esta sesión",
+  deckGetPhrases: "Añadir frases",
+  deckThisDeck: "Este mazo",
+
   ecoutezNavLink: "Écoutez",
-  ecoutezBackLink: "← Volver a los ejercicios",
+  ecoutezSourceLabel: "Fuente",
   ecoutezIntro: "Escucha un texto breve a tu nivel, dos veces — lento y luego natural — con vocabulario antes y un resumen después.",
   ecoutezModeTopic: "Tema",
   ecoutezModePaste: "Pegar texto para simplificar",
@@ -598,7 +665,6 @@ const es: UiStrings = {
   ecoutezNewEpisode: "Nuevo episodio",
 
   libraryNavLink: "Biblioteca",
-  libraryBackLink: "← Volver a los ejercicios",
   libraryIntro: "Explora mazos ya preparados por idioma y tema, y añádelos directamente a tus propios mazos — sin escribir ni importar nada.",
   libraryLanguageLabel: "Idioma",
   libraryBrowseBtn: "Explorar",

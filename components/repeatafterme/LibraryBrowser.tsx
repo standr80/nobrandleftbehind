@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
+import AppNav from "@/components/repeatafterme/AppNav";
+import IntroCard from "@/components/repeatafterme/IntroCard";
 import { LANGS, type LangCode } from "@/lib/repeatafterme/langs";
 import { getStrings } from "@/lib/repeatafterme/i18n";
 import { getSettings, listDecks, saveDeckToLibrary } from "@/lib/repeatafterme/db";
@@ -80,14 +81,12 @@ export default function LibraryBrowser() {
         <span className="deck-label">{manifest ? t.libraryDeckCount(manifest.decks.length) : ""}</span>
       </header>
 
-      <main>
-        <Link href="/repeatafterme" className="hint" style={{ display: "inline-block", marginBottom: 10 }}>
-          {t.libraryBackLink}
-        </Link>
+      <AppNav native={native} />
 
-        <div className="card" style={{ minHeight: "auto", textAlign: "left", alignItems: "stretch" }}>
-          <div className="hint">{t.libraryIntro}</div>
-        </div>
+      <main>
+        <IntroCard id="library" native={native}>
+          <p>{t.libraryIntro}</p>
+        </IntroCard>
 
         <div className="panel" style={{ marginTop: 16 }}>
           <div className="row">

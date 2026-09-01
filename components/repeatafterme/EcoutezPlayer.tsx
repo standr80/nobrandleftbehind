@@ -2,6 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import AppNav from "@/components/repeatafterme/AppNav";
+import IntroCard from "@/components/repeatafterme/IntroCard";
 import { LANGS, type LangCode } from "@/lib/repeatafterme/langs";
 import { getStrings } from "@/lib/repeatafterme/i18n";
 import { getSettings, saveDeckToLibrary } from "@/lib/repeatafterme/db";
@@ -182,14 +184,12 @@ export default function EcoutezPlayer() {
         </span>
       </header>
 
-      <main>
-        <Link href="/repeatafterme" className="hint" style={{ display: "inline-block", marginBottom: 10 }}>
-          {t.ecoutezBackLink}
-        </Link>
+      <AppNav native={native} />
 
-        <div className="card" style={{ minHeight: "auto", textAlign: "left", alignItems: "stretch" }}>
-          <div className="hint">{t.ecoutezIntro}</div>
-        </div>
+      <main>
+        <IntroCard id="ecoutez" native={native}>
+          <p>{t.ecoutezIntro}</p>
+        </IntroCard>
 
         {phase === "setup" && (
           <>
@@ -203,7 +203,7 @@ export default function EcoutezPlayer() {
                 </div>
               </div>
               <div className="row">
-                <label>{t.deckHeading}</label>
+                <label>{t.ecoutezSourceLabel}</label>
                 <div className="seg">
                   <button className={mode === "topic" ? "on" : ""} onClick={() => setMode("topic")}>{t.ecoutezModeTopic}</button>
                   <button className={mode === "paste" ? "on" : ""} onClick={() => setMode("paste")}>{t.ecoutezModePaste}</button>
@@ -271,8 +271,8 @@ export default function EcoutezPlayer() {
             {phase === "complete" && (
               <>
                 <h2>{t.ecoutezSummaryHeading}</h2>
-                <div className="card" style={{ minHeight: "auto", textAlign: "left", alignItems: "stretch" }}>
-                  <div className="en-line" style={{ fontSize: 16 }}>{episode.summary}</div>
+                <div className="card info-card">
+                  <div className="en-line" style={{ fontSize: 16, color: "var(--ink)" }}>{episode.summary}</div>
                 </div>
 
                 {episode.questions.length > 0 && (
