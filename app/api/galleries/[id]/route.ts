@@ -67,6 +67,7 @@ export async function PATCH(request: Request, { params }: Params) {
   const patch: {
     title?: string
     slug?: string
+    gallery_show_captions?: boolean
     gallery_context?: string | null
     body_mdx?: string | null
     meta_description?: string | null
@@ -82,6 +83,9 @@ export async function PATCH(request: Request, { params }: Params) {
   }
   if (typeof body.gallery_context === 'string') {
     patch.gallery_context = body.gallery_context.trim() || null
+  }
+  if (typeof body.gallery_show_captions === 'boolean') {
+    patch.gallery_show_captions = body.gallery_show_captions
   }
   if (typeof body.body_mdx === 'string') patch.body_mdx = body.body_mdx.trim() || null
   if (typeof body.meta_description === 'string') patch.meta_description = body.meta_description.trim() || null
@@ -122,7 +126,7 @@ export async function PATCH(request: Request, { params }: Params) {
       .update(attempt)
       .eq('id', gallery.id)
       .eq('tenant_id', workspace.tenantId)
-      .select('title, slug, gallery_context, status')
+      .select('title, slug, gallery_context, gallery_show_captions, status')
       .single()
 
     if (!error && data) {

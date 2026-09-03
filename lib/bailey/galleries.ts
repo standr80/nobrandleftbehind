@@ -29,7 +29,14 @@ export function generateSlug(text: string): string {
     .replace(/[^a-z0-9\s-]/g, '')
     .trim()
     .replace(/\s+/g, '-')
+    // Collapse runs of hyphens: a title like "Visit to the UK - Farewell
+    // Brunch" turns the surrounding spaces into hyphens too and would
+    // otherwise slug to "...uk---farewell-brunch".
+    .replace(/-{2,}/g, '-')
     .slice(0, 80)
+    // Trim any hyphen left dangling at either end, including one exposed by
+    // the slice above.
+    .replace(/^-+|-+$/g, '')
 }
 
 /** Idempotently create the gallery bucket: public read, 10MB cap, image
@@ -46,7 +53,7 @@ export async function ensureGalleryBucket(): Promise<void> {
 }
 
 const GALLERY_COLUMNS =
-  'id, tenant_id, title, slug, status, content_type, cluster_id, body_mdx, meta_description, tags, gallery_images, gallery_context, consent_attested_by, consent_attested_at, shopify_article_url, created_at, updated_at'
+  'id, tenant_id, title, slug, status, content_type, cluster_id, body_mdx, meta_description, tags, gallery_images, gallery_context, gallery_show_captions, consent_attested_by, consent_attested_at, shopify_article_url, created_at, updated_at'
 
 export interface GalleryRow {
   id: string
@@ -61,6 +68,7 @@ export interface GalleryRow {
   tags: string[] | null
   gallery_images: GalleryImage[] | null
   gallery_context: string | null
+  gallery_show_captions: boolean | null
   consent_attested_by: string | null
   consent_attested_at: string | null
   shopify_article_url: string | null

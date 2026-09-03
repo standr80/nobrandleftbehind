@@ -43,6 +43,7 @@ export async function PATCH(request: Request) {
     ideogram_api_key?: string | null
     image_gen_enabled?: boolean | null
     deploy_hook_url?: string | null
+    gallery_captions_default?: boolean | null
     internal_links?: import('@/lib/supabase/types').Json | null
     shopify_shop_domain?: string | null
     shopify_client_id?: string | null
@@ -62,7 +63,7 @@ export async function PATCH(request: Request) {
     'cms_type', 'git_repo', 'git_branch', 'git_blog_path',
     'publish_cadence', 'publish_days', 'publish_time', 'post_cadence_active',
     'white_label_domain', 'blog_theme', 'theme_extract_url', 'blog_footer',
-    'ideogram_api_key', 'image_gen_enabled', 'deploy_hook_url', 'internal_links',
+    'ideogram_api_key', 'image_gen_enabled', 'deploy_hook_url', 'gallery_captions_default', 'internal_links',
     'shopify_shop_domain', 'shopify_client_id', 'shopify_client_secret',
     'shopify_access_token', 'shopify_blog_id', 'shopify_faq_blog_id', 'shopify_gallery_blog_id',
     'shopify_api_version', 'shopify_store_url',

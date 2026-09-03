@@ -79,6 +79,7 @@ export default async function GalleryPage({ params }: Props) {
         initialTitle={gallery.title}
         initialSlug={gallery.slug}
         initialContext={gallery.gallery_context}
+        initialShowCaptions={gallery.gallery_show_captions !== false}
         isPublished={gallery.status === 'published'}
       />
       <GalleryCopyPanel

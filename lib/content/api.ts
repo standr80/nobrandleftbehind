@@ -98,7 +98,7 @@ export const SUMMARY_COLUMNS =
  *  responses. `gallery_images` is deliberately NOT in SUMMARY_COLUMNS: the
  *  arrays are large, and a listing needs only the cover image, which galleries
  *  now stamp onto `hero_image_url` at publish time. */
-export const POST_COLUMNS = `${SUMMARY_COLUMNS}, body_mdx, faq_items, gallery_images`
+export const POST_COLUMNS = `${SUMMARY_COLUMNS}, body_mdx, faq_items, gallery_images, gallery_show_captions`
 
 export interface RawPost {
   id: string
@@ -119,6 +119,7 @@ export interface RawPost {
   body_mdx?: string | null
   faq_items?: unknown
   gallery_images?: unknown
+  gallery_show_captions?: boolean | null
   author?: AuthorRow | AuthorRow[] | null
 }
 
@@ -387,6 +388,10 @@ export function toPost(p: RawPost, domain: string, bodyHtml: string, fallbackAut
           gallery: {
             images: galleryImages,
             lead_image: galleryImages[0]?.url ?? null,
+            // Whether the consumer should render captions under each image.
+            // The text is returned either way — it still feeds alt text,
+            // structured data and search even when it isn't displayed.
+            show_captions: p.gallery_show_captions !== false,
           },
         }
       : {}),

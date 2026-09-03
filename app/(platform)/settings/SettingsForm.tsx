@@ -27,6 +27,7 @@ interface Tenant {
   target_audience: string | null
   forbidden_words: string[] | null
   cms_type: string | null
+  gallery_captions_default?: boolean | null
   git_repo: string | null
   git_branch: string | null
   git_blog_path: string | null
@@ -136,6 +137,7 @@ export default function SettingsForm({
   // ── Image generation state ─────────────────────────────────────
   const [imageGenEnabled, setImageGenEnabled] = useState(tenant.image_gen_enabled ?? false)
   const [deployHookUrl, setDeployHookUrl] = useState(tenant.deploy_hook_url ?? '')
+  const [galleryCaptions, setGalleryCaptions] = useState(tenant.gallery_captions_default !== false)
   const [internalLinks, setInternalLinks] = useState<InternalLink[]>(
     Array.isArray(tenant.internal_links) ? tenant.internal_links : [],
   )
@@ -884,6 +886,39 @@ export default function SettingsForm({
                   {savingFooter ? 'Saving…' : 'Save footer'}
                 </button>
               </div>
+
+              {/* ── Gallery captions (Bailey) ── */}
+              {isAdmin && (
+                <div className="pt-2 border-t border-slate-100 mt-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <div>
+                      <p className="text-sm font-medium text-slate-700">Show gallery captions by default</p>
+                      <p className="text-xs text-slate-400 mt-0.5">
+                        Applies to newly created Bailey galleries. Turn it off for a
+                        site that doesn&apos;t use captions — the text is still written
+                        and still feeds alt text and search, it just isn&apos;t
+                        displayed. Existing galleries keep their own setting.
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        const next = !galleryCaptions
+                        setGalleryCaptions(next)
+                        await fetch('/api/tenant', {
+                          method: 'PATCH',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ gallery_captions_default: next }),
+                        })
+                        router.refresh()
+                      }}
+                      className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ${galleryCaptions ? 'bg-indigo-600' : 'bg-slate-200'}`}
+                    >
+                      <span className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform duration-200 ${galleryCaptions ? 'translate-x-5' : 'translate-x-0'}`} />
+                    </button>
+                  </div>
+                </div>
+              )}
 
               {/* ── Image generation ── */}
               {isAdmin && (

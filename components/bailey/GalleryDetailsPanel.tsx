@@ -9,6 +9,7 @@ interface Props {
   initialTitle: string
   initialSlug: string
   initialContext: string | null
+  initialShowCaptions: boolean
   isPublished: boolean
 }
 
@@ -26,6 +27,7 @@ export default function GalleryDetailsPanel({
   initialTitle,
   initialSlug,
   initialContext,
+  initialShowCaptions,
   isPublished,
 }: Props) {
   const router = useRouter()
@@ -41,6 +43,8 @@ export default function GalleryDetailsPanel({
   const [regenerating, setRegenerating] = useState(false)
   const [overwriteEdited, setOverwriteEdited] = useState(false)
   const [regenResult, setRegenResult] = useState<string | null>(null)
+  const [showCaptions, setShowCaptions] = useState(initialShowCaptions)
+  const [savingCaptions, setSavingCaptions] = useState(false)
 
   const dirty =
     title.trim() !== saved.title ||
@@ -92,6 +96,27 @@ export default function GalleryDetailsPanel({
       setError(e instanceof Error ? e.message : 'Save failed')
     } finally {
       setSaving(false)
+    }
+  }
+
+  async function toggleCaptions(next: boolean) {
+    setShowCaptions(next)
+    setSavingCaptions(true)
+    setError(null)
+    try {
+      const res = await fetch(`/api/galleries/${galleryId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tenantId, gallery_show_captions: next }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error ?? 'Could not save')
+      router.refresh()
+    } catch (e) {
+      setShowCaptions(!next) // put the switch back where it was
+      setError(e instanceof Error ? e.message : 'Could not save')
+    } finally {
+      setSavingCaptions(false)
     }
   }
 
@@ -226,6 +251,25 @@ export default function GalleryDetailsPanel({
 
       <div className="border-t border-slate-200 pt-3 space-y-2">
         <h3 className="text-sm font-semibold text-slate-900">Captions</h3>
+
+        <label className="flex items-start gap-2 text-sm text-slate-700 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={showCaptions}
+            disabled={savingCaptions}
+            onChange={(e) => void toggleCaptions(e.target.checked)}
+            className="mt-0.5"
+          />
+          <span>
+            Show captions under each image on the published page
+            <span className="block text-xs text-slate-500">
+              Turning this off keeps the caption text — it still feeds alt text,
+              structured data and search — it just isn&apos;t displayed. Set the
+              default for new galleries in Settings.
+            </span>
+          </span>
+        </label>
+
         <p className="text-xs text-slate-500">
           Rewrite every image&apos;s alt text and caption using the title and
           context above. Worth doing after improving the context — it is what

@@ -62,6 +62,17 @@ export async function POST(request: Request) {
   const db = createAdminClient()
   const baseSlug = generateSlug(title) || `gallery-${rid(6)}`
 
+  // New galleries inherit the tenant's caption preference, so a site that never
+  // shows captions is configured once rather than switched on every gallery.
+  const { data: tenantRow } = await db
+    .from('tenants')
+    .select('gallery_captions_default')
+    .eq('id', workspace.tenantId)
+    .maybeSingle()
+  const showCaptions =
+    (tenantRow as { gallery_captions_default?: boolean | null } | null)
+      ?.gallery_captions_default ?? true
+
   // Try the clean slug first; on a per-tenant collision, suffix a short id.
   for (const slug of [baseSlug, `${baseSlug}-${rid(4).toLowerCase()}`]) {
     const { data, error } = await db
@@ -76,6 +87,7 @@ export async function POST(request: Request) {
         created_by: userId,
         gallery_images: [],
         gallery_context: context,
+        gallery_show_captions: showCaptions,
       })
       .select('id, title, slug, status, gallery_context, created_at')
       .single()

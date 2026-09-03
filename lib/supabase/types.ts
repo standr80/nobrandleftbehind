@@ -76,6 +76,7 @@ export type Database = {
           faq_items: Json | null
           gallery_images: Json | null
           gallery_context: string | null
+          gallery_show_captions: boolean | null
           consent_attested_by: string | null
           consent_attested_at: string | null
           last_refreshed_at: string | null
@@ -121,6 +122,7 @@ export type Database = {
           faq_items?: Json | null
           gallery_images?: Json | null
           gallery_context?: string | null
+          gallery_show_captions?: boolean | null
           consent_attested_by?: string | null
           consent_attested_at?: string | null
           last_refreshed_at?: string | null
@@ -166,6 +168,7 @@ export type Database = {
           faq_items?: Json | null
           gallery_images?: Json | null
           gallery_context?: string | null
+          gallery_show_captions?: boolean | null
           consent_attested_by?: string | null
           consent_attested_at?: string | null
           last_refreshed_at?: string | null
@@ -1039,6 +1042,7 @@ export type Database = {
           public_slug: string | null
           content_api_key: string | null
           deploy_hook_url: string | null
+          gallery_captions_default: boolean | null
           internal_links: Json | null
           publish_cadence: string | null
           publish_days: string[] | null
@@ -1089,6 +1093,7 @@ export type Database = {
           public_slug?: string | null
           content_api_key?: string | null
           deploy_hook_url?: string | null
+          gallery_captions_default?: boolean | null
           internal_links?: Json | null
           publish_cadence?: string | null
           publish_days?: string[] | null
@@ -1139,6 +1144,7 @@ export type Database = {
           public_slug?: string | null
           content_api_key?: string | null
           deploy_hook_url?: string | null
+          gallery_captions_default?: boolean | null
           internal_links?: Json | null
           publish_cadence?: string | null
           publish_days?: string[] | null

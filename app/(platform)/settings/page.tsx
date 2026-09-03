@@ -61,6 +61,7 @@ export default async function SettingsPage() {
           ideogram_api_key: (tenant as unknown as { ideogram_api_key: string | null }).ideogram_api_key ?? null,
           image_gen_enabled: (tenant as unknown as { image_gen_enabled: boolean | null }).image_gen_enabled ?? null,
           deploy_hook_url: (tenant as unknown as { deploy_hook_url: string | null }).deploy_hook_url ?? null,
+          gallery_captions_default: (tenant as unknown as { gallery_captions_default: boolean | null }).gallery_captions_default ?? null,
           internal_links: (tenant as unknown as { internal_links: { url: string; label?: string; description?: string; must_link?: boolean }[] | null }).internal_links ?? null,
           shopify_shop_domain: (tenant as unknown as { shopify_shop_domain: string | null }).shopify_shop_domain ?? null,
           shopify_client_id: (tenant as unknown as { shopify_client_id: string | null }).shopify_client_id ?? null,
