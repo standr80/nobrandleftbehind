@@ -21,7 +21,7 @@ interface Props {
  * published the slug is left alone unless deliberately changed, because changing
  * it moves the live page and 404s any link already shared.
  */
-export default function GalleryDetailsPanel({
+export default function GallerySettingsPanel({
   tenantId,
   galleryId,
   initialTitle,
@@ -158,7 +158,7 @@ export default function GalleryDetailsPanel({
         onClick={() => setOpen(true)}
         className="text-sm text-amber-700 font-medium hover:underline mb-6"
       >
-        Edit title &amp; context
+        Gallery settings
       </button>
     )
   }
@@ -167,7 +167,7 @@ export default function GalleryDetailsPanel({
     <div className="border border-slate-200 rounded-xl p-4 mb-6 space-y-3 bg-white">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h2 className="text-sm font-semibold text-slate-900">Gallery details</h2>
+          <h2 className="text-sm font-semibold text-slate-900">Gallery settings</h2>
           <p className="text-xs text-slate-500 mt-0.5">
             The context is fed to Bailey when it writes alt text and captions — the
             more specific, the better they get.
