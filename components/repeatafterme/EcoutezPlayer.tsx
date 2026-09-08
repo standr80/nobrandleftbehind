@@ -5,7 +5,7 @@ import Link from "next/link";
 import AppNav from "@/components/repeatafterme/AppNav";
 import IntroCard from "@/components/repeatafterme/IntroCard";
 import { LANGS, type LangCode } from "@/lib/repeatafterme/langs";
-import { getStrings } from "@/lib/repeatafterme/i18n";
+import { getStrings, aiErrorText } from "@/lib/repeatafterme/i18n";
 import { getSettings, saveDeckToLibrary } from "@/lib/repeatafterme/db";
 import { loadAiSettings } from "@/lib/repeatafterme/aiSettings";
 import { buildEcoutezPrompt } from "@/lib/repeatafterme/ecoutezPrompt";
@@ -109,7 +109,10 @@ export default function EcoutezPlayer() {
         body: JSON.stringify({ provider: ai.provider, apiKey: ai.apiKey, prompt }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+      if (!res.ok) {
+        setErr(aiErrorText(t, data.kind, t.statusEcoutezGenerationFailed(data.error || `HTTP ${res.status}`)));
+        return;
+      }
       const payload = extractEcoutezPayload(data.text);
       if (!payload) throw new Error(t.statusGenerationEmptyResponse);
       setEpisode(payload);

@@ -1,4 +1,5 @@
 import type { LangCode } from "./langs";
+import type { AiErrorKind } from "./providers";
 
 // Localised name of each LangCode, as it should read in each UI language — used to
 // interpolate into phrases like "Your turn — say it in {language}".
@@ -178,6 +179,15 @@ export interface UiStrings {
   statusSavedDeck: (name: string) => string;
   statusGenerating: (deckName: string) => string;
   statusGenerationFailed: (msg: string) => string;
+
+  // AI failures, by kind — see AiErrorKind in providers.ts. These replace dumping the
+  // vendor's raw JSON at the user.
+  aiErrNoKey: string;
+  aiErrAuth: string;
+  aiErrRateLimit: string;
+  aiErrQuota: string;
+  aiErrProvider: string;
+  aiErrNetwork: string;
   statusAiSettingsSaved: string;
   statusAiSettingsSavedNoKey: string;
   statusKeyForgotten: string;
@@ -350,6 +360,13 @@ const en: UiStrings = {
   statusSavedDeck: (name) => `Saved "${name}" to your decks.`,
   statusGenerating: (deckName) => `Generating: ${deckName}…`,
   statusGenerationFailed: (msg) => `Generation failed: ${msg}`,
+
+  aiErrNoKey: "No API key yet — add one in AI Settings and try again.",
+  aiErrAuth: "Your API key was rejected. It may have expired, been revoked, or been pasted incompletely — add a fresh one in AI Settings.",
+  aiErrRateLimit: "Your AI provider is rate-limiting you. Wait a moment, then try again.",
+  aiErrQuota: "Your AI account is out of credit. Top it up with your provider, then try again.",
+  aiErrProvider: "Your AI provider had a problem at their end. Try again in a minute.",
+  aiErrNetwork: "Couldn't reach your AI provider. Check your connection and try again.",
   statusAiSettingsSaved: "AI settings saved.",
   statusAiSettingsSavedNoKey: "AI settings saved — no key set, Generate stays off until you add one.",
   statusKeyForgotten: "API key forgotten.",
@@ -522,6 +539,13 @@ const fr: UiStrings = {
   statusSavedDeck: (name) => `« ${name} » enregistré dans vos paquets.`,
   statusGenerating: (deckName) => `Génération : ${deckName}…`,
   statusGenerationFailed: (msg) => `Échec de la génération : ${msg}`,
+
+  aiErrNoKey: "Aucune clé API — ajoutez-en une dans Réglages IA, puis réessayez.",
+  aiErrAuth: "Votre clé API a été refusée. Elle a peut-être expiré, été révoquée, ou été collée de façon incomplète — ajoutez-en une nouvelle dans Réglages IA.",
+  aiErrRateLimit: "Votre fournisseur d'IA limite vos requêtes. Patientez un instant, puis réessayez.",
+  aiErrQuota: "Votre compte IA n'a plus de crédit. Rechargez-le chez votre fournisseur, puis réessayez.",
+  aiErrProvider: "Votre fournisseur d'IA rencontre un problème de son côté. Réessayez dans une minute.",
+  aiErrNetwork: "Impossible de joindre votre fournisseur d'IA. Vérifiez votre connexion et réessayez.",
   statusAiSettingsSaved: "Réglages IA enregistrés.",
   statusAiSettingsSavedNoKey: "Réglages IA enregistrés — aucune clé définie, Générer reste désactivé tant que vous n'en ajoutez pas une.",
   statusKeyForgotten: "Clé API oubliée.",
@@ -694,6 +718,13 @@ const es: UiStrings = {
   statusSavedDeck: (name) => `"${name}" guardado en tus mazos.`,
   statusGenerating: (deckName) => `Generando: ${deckName}…`,
   statusGenerationFailed: (msg) => `Error al generar: ${msg}`,
+
+  aiErrNoKey: "Aún no hay clave API — añade una en Ajustes de IA y vuelve a intentarlo.",
+  aiErrAuth: "Tu clave API fue rechazada. Puede haber caducado, haber sido revocada o haberse pegado incompleta — añade una nueva en Ajustes de IA.",
+  aiErrRateLimit: "Tu proveedor de IA está limitando tus peticiones. Espera un momento y vuelve a intentarlo.",
+  aiErrQuota: "Tu cuenta de IA se ha quedado sin crédito. Recárgala con tu proveedor y vuelve a intentarlo.",
+  aiErrProvider: "Tu proveedor de IA tiene un problema por su parte. Inténtalo de nuevo en un minuto.",
+  aiErrNetwork: "No se pudo contactar con tu proveedor de IA. Comprueba tu conexión y vuelve a intentarlo.",
   statusAiSettingsSaved: "Ajustes de IA guardados.",
   statusAiSettingsSavedNoKey: "Ajustes de IA guardados — sin clave definida, Generar seguirá desactivado hasta que añadas una.",
   statusKeyForgotten: "Clave API olvidada.",
@@ -711,6 +742,28 @@ const es: UiStrings = {
 };
 
 const DICTS: Record<LangCode, UiStrings> = { en, fr, es };
+
+/** Turns a failure kind from the generate route into something worth reading. Falls
+ *  back to the vendor's own message only for "unknown" — everything the app can
+ *  recognise gets advice on what to actually do about it. */
+export function aiErrorText(t: UiStrings, kind: AiErrorKind | undefined, fallback: string): string {
+  switch (kind) {
+    case "no_key":
+      return t.aiErrNoKey;
+    case "auth":
+      return t.aiErrAuth;
+    case "rate_limit":
+      return t.aiErrRateLimit;
+    case "quota":
+      return t.aiErrQuota;
+    case "provider":
+      return t.aiErrProvider;
+    case "network":
+      return t.aiErrNetwork;
+    default:
+      return fallback;
+  }
+}
 
 export function getStrings(uiLang: LangCode): UiStrings {
   return DICTS[uiLang];

@@ -6,7 +6,7 @@ import AppNav from "@/components/repeatafterme/AppNav";
 import IntroCard from "@/components/repeatafterme/IntroCard";
 import { RepetezEngine } from "@/lib/repeatafterme/engine";
 import { LANGS, LANG_ORDER, availableTargets } from "@/lib/repeatafterme/langs";
-import { getStrings } from "@/lib/repeatafterme/i18n";
+import { getStrings, aiErrorText } from "@/lib/repeatafterme/i18n";
 import { parseLines, deckToCsv, extractPairs } from "@/lib/repeatafterme/deckParsing";
 import {
   getSettings,
@@ -36,7 +36,7 @@ import {
 } from "@/lib/repeatafterme/db";
 import { loadAiSettings, saveAiSettings, type AiSettings } from "@/lib/repeatafterme/aiSettings";
 import { buildDeckGenPrompt } from "@/lib/repeatafterme/genPrompt";
-import type { AiProvider } from "@/lib/repeatafterme/providers";
+import type { AiProvider, AiErrorKind } from "@/lib/repeatafterme/providers";
 import { applyReview, todayIso, hashContent } from "@/lib/repeatafterme/srs";
 import { generateMagicKey, sha256Hex, encryptPayload, decryptPayload } from "@/lib/repeatafterme/vault";
 import { loadMagicKey, saveMagicKey, clearMagicKey } from "@/lib/repeatafterme/syncSettings";
@@ -128,10 +128,13 @@ export default function Player() {
   function handleGoToBookmark() {
     if (bookmarkDeckIndex !== null) engine.goToDeckIndex(bookmarkDeckIndex);
   }
-  function openAiSettings() {
+  function revealAiSettings(open: boolean) {
     setAiDraftProvider(aiSettings.provider);
     setAiDraftApiKey(aiSettings.apiKey);
-    setAiSettingsOpen((v) => !v);
+    setAiSettingsOpen(open);
+  }
+  function openAiSettings() {
+    revealAiSettings(!aiSettingsOpen);
   }
   function handleSaveAiSettings() {
     const next: AiSettings = { provider: aiDraftProvider, apiKey: aiDraftApiKey.trim() };
@@ -388,7 +391,14 @@ export default function Player() {
         body: JSON.stringify({ provider: aiSettings.provider, apiKey: aiSettings.apiKey, prompt }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+      if (!res.ok) {
+        const kind = data.kind as AiErrorKind | undefined;
+        // A missing or rejected key is fixable right here, so put the field in front
+        // of them rather than making them go and find it.
+        if (kind === "auth" || kind === "no_key") revealAiSettings(true);
+        engine.setStatus(aiErrorText(t, kind, t.statusGenerationFailed(data.error || `HTTP ${res.status}`)), true);
+        return;
+      }
       const rows = extractPairs(data.text);
       if (!rows.length) throw new Error(t.statusGenerationEmptyResponse);
       engine.loadDeck(rows, "AI: " + deckName);
