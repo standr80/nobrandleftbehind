@@ -6,7 +6,7 @@ import type { SrsState } from "./srs";
 // Everything here is local-first: nothing in this file talks to the network.
 // (Sprint 5's zero-knowledge sync layers on top of this, it doesn't replace it.)
 
-const DB_NAME = "repeatafterme";
+export const DB_NAME = "repeatafterme";
 const DB_VERSION = 2;
 
 const STORE_DECKS = "decks";
@@ -44,8 +44,14 @@ export interface SrsRecord extends SrsState {
   pair: Pair;
 }
 
+// One shared connection per tab, rather than a fresh one on every call. Two reasons:
+// it stops handles accumulating over a session, and — the one that matters — an open
+// handle blocks indexedDB.deleteDatabase(), which "Reset this device" needs (reset.ts).
+let dbPromise: Promise<IDBDatabase> | null = null;
+
 function openDb(): Promise<IDBDatabase> {
-  return new Promise((resolve, reject) => {
+  if (dbPromise) return dbPromise;
+  dbPromise = new Promise<IDBDatabase>((resolve, reject) => {
     if (typeof indexedDB === "undefined") {
       reject(new Error("IndexedDB unavailable"));
       return;
@@ -66,9 +72,31 @@ function openDb(): Promise<IDBDatabase> {
         db.createObjectStore(STORE_SRS, { keyPath: "itemKey" });
       }
     };
-    req.onsuccess = () => resolve(req.result);
+    req.onsuccess = () => {
+      const db = req.result;
+      // Another tab deleting the database asks us to let go of ours; holding on
+      // would block it indefinitely.
+      db.onversionchange = () => {
+        db.close();
+        dbPromise = null;
+      };
+      resolve(db);
+    };
     req.onerror = () => reject(req.error);
   });
+  // A failed open shouldn't poison every later call.
+  dbPromise.catch(() => {
+    dbPromise = null;
+  });
+  return dbPromise;
+}
+
+/** Drops this tab's connection so a delete isn't blocked by it. Any later call in
+ *  this module transparently reopens. */
+export function closeDb(): void {
+  const pending = dbPromise;
+  dbPromise = null;
+  pending?.then((db) => db.close()).catch(() => {});
 }
 
 function tx<T>(db: IDBDatabase, store: string, mode: IDBTransactionMode, run: (s: IDBObjectStore) => IDBRequest<T>): Promise<T> {

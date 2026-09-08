@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import Link from "next/link";
 import AppNav from "@/components/repeatafterme/AppNav";
 import IntroCard from "@/components/repeatafterme/IntroCard";
@@ -40,6 +40,7 @@ import type { AiProvider, AiErrorKind } from "@/lib/repeatafterme/providers";
 import { applyReview, todayIso, hashContent } from "@/lib/repeatafterme/srs";
 import { generateMagicKey, sha256Hex, encryptPayload, decryptPayload } from "@/lib/repeatafterme/vault";
 import { loadMagicKey, saveMagicKey, clearMagicKey } from "@/lib/repeatafterme/syncSettings";
+import { resetDevice } from "@/lib/repeatafterme/reset";
 
 const SYNC_SALT = "repeatafterme-v1";
 
@@ -95,6 +96,13 @@ export default function Player() {
   const [syncKeyRevealed, setSyncKeyRevealed] = useState(false);
   const [syncBusy, setSyncBusy] = useState(false);
   const [syncRestoreValue, setSyncRestoreValue] = useState("");
+  // Accordion: at most one of My Decks / Settings / Save & Sync open at a time, so the
+  // page below the transport controls stays short enough to take in at a glance.
+  const [openSection, setOpenSection] = useState<SectionId | null>(null);
+  const toggleSection = (id: SectionId) => setOpenSection((cur) => (cur === id ? null : id));
+
+  const [resetArmed, setResetArmed] = useState(false);
+  const [resetBusy, setResetBusy] = useState(false);
 
   function refreshSavedDecks() {
     listDecks().then(setSavedDecks);
@@ -422,6 +430,14 @@ export default function Player() {
     setRenamingId(null);
   }
 
+  async function handleReset() {
+    setResetBusy(true);
+    await resetDevice();
+    // A full reload rather than unpicking React state by hand: the engine, the deck,
+    // the settings and the intro flags all read their storage once, at mount.
+    window.location.reload();
+  }
+
   return (
     <div className="repeatafterme">
       <div className="tricolore"><span></span><span></span><span></span></div>
@@ -430,7 +446,10 @@ export default function Player() {
           {L.title}
           <em>.</em>
         </h1>
-        <span className="deck-label">{snap.deckLabel}</span>
+        <span className="deck-label">
+          <span className="deck-label-caption">{t.activeDeckLabel}</span>
+          {snap.deckLabel}
+        </span>
       </header>
 
       <AppNav native={native} />
@@ -527,102 +546,43 @@ export default function Player() {
           </>
         )}
 
-        <details className="section" open>
-          <summary>{t.settingsHeading}</summary>
-
-          <div className="subhead">{t.groupLanguages}</div>
-          <div className="panel">
-            <div className="row">
-              <label>{t.nativeLanguage}</label>
-              <div className="seg">
-                {LANG_ORDER.map((code) => (
-                  <button key={code} className={native === code ? "on" : ""} onClick={() => native !== code && engine.setNativeLang(code)}>
-                    {LANGS[code].short}
-                  </button>
+        <Section id="decks" title={t.myDecksHeading} note={savedDecks.length || undefined} openSection={openSection} onToggle={toggleSection}>
+          {savedDecks.length > 0 && (
+            <>
+              <div className="subhead">{t.yourDecks}</div>
+              <div className="panel">
+                {savedDecks.map((deck) => (
+                  <div className="row" key={deck.id}>
+                    {renamingId === deck.id ? (
+                      <input
+                        type="text"
+                        value={renameValue}
+                        autoFocus
+                        onChange={(e) => setRenameValue(e.target.value)}
+                        onBlur={commitRename}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") commitRename();
+                          if (e.key === "Escape") setRenamingId(null);
+                        }}
+                        style={{ maxWidth: 220 }}
+                      />
+                    ) : (
+                      <label onClick={() => startRename(deck)} style={{ cursor: "text" }}>
+                        {deck.label}
+                        <span className="hint">
+                          {LANGS[deck.nativeLang].short} → {LANGS[deck.targetLang].short} · {deck.pairs.length}
+                        </span>
+                      </label>
+                    )}
+                    <div className="gen-row">
+                      <button className="chip primary" onClick={() => handleLoadSaved(deck)}>{t.load}</button>
+                      <button className="chip" onClick={() => handleDeleteSaved(deck.id)}>{t.delete}</button>
+                    </div>
+                  </div>
                 ))}
               </div>
-            </div>
-            <div className="row">
-              <label>{t.language}</label>
-              <div className="seg">
-                {availableTargets(native).map((code) => (
-                  <button key={code} className={target === code ? "on" : ""} onClick={() => target !== code && engine.setTargetLang(code)}>
-                    {LANGS[code].short}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <div className="row">
-              <label>{t.direction}</label>
-              <div className="seg">
-                <button className={snap.settings.dir === "EF" ? "on" : ""} onClick={() => engine.setDir("EF")}>
-                  {LANGS[native].short} → {LANGS[target].short}
-                </button>
-                <button className={snap.settings.dir === "FE" ? "on" : ""} onClick={() => engine.setDir("FE")}>
-                  {LANGS[target].short} → {LANGS[native].short}
-                </button>
-              </div>
-            </div>
-          </div>
-
-          <div className="subhead">{t.groupPractice}</div>
-          <div className="panel">
-            <div className="row">
-              <label>
-                {t.mode}<span className="hint">{t.modeHint}</span>
-              </label>
-              <div className="seg">
-                <button className={snap.settings.mode === "drill" ? "on" : ""} onClick={() => engine.setMode("drill")}>{t.drill}</button>
-                <button className={snap.settings.mode === "test" ? "on" : ""} onClick={() => engine.setMode("test")}>{t.test}</button>
-              </div>
-            </div>
-            {snap.settings.mode === "drill" && (
-              <div className="row">
-                <label>
-                  {t.autoplay}<span className="hint">{t.autoplayHint}</span>
-                </label>
-                <Toggle on={snap.settings.autoplay} onClick={() => engine.toggleAutoplay()} />
-              </div>
-            )}
-            <div className="row">
-              <label>
-                {t.thinkingTime}<span className="hint">{t.thinkingTimeHint}</span>
-              </label>
-              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <input type="range" min={0.5} max={3} step={0.25} value={snap.settings.pause} onChange={(e) => engine.setPause(+e.target.value)} />
-                <span className="val">{snap.settings.pause}×</span>
-              </div>
-            </div>
-            <div className="row">
-              <label>{t.speechSpeed}</label>
-              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <input type="range" min={0.6} max={1.2} step={0.05} value={snap.settings.rate} onChange={(e) => engine.setRate(+e.target.value)} />
-                <span className="val">{snap.settings.rate}×</span>
-              </div>
-            </div>
-          </div>
-
-          <div className="subhead">{t.groupPlayback}</div>
-          <div className="panel">
-            <div className="row">
-              <label>{t.shuffle}</label>
-              <Toggle on={snap.settings.shuffle} onClick={() => engine.toggleShuffle()} />
-            </div>
-            <div className="row">
-              <label>{t.loopDeck}</label>
-              <Toggle on={snap.settings.loop} onClick={() => engine.toggleLoop()} />
-            </div>
-            <div className="row">
-              <label>
-                {t.showText}<span className="hint">{t.showTextHint}</span>
-              </label>
-              <Toggle on={snap.settings.showText} onClick={() => engine.toggleShowText()} />
-            </div>
-          </div>
-        </details>
-
-        <details className="section" open>
-          <summary>{t.deckHeading}</summary>
+            </>
+          )}
 
           <div className="subhead">{t.deckGetPhrases}</div>
           <div className="deck-actions">
@@ -715,7 +675,7 @@ export default function Player() {
             </div>
           </div>
 
-          <div className="subhead">{t.deckThisDeck}</div>
+          <div className="subhead">{t.activeDeckLabel}</div>
           <div className="deck-actions">
             <button className="chip" onClick={openSaveBox}>{t.saveCurrentDeck}</button>
             <button className="chip" onClick={handleDownload}>{t.downloadDeck}</button>
@@ -727,52 +687,101 @@ export default function Player() {
               <button className="chip" onClick={() => setSaveBoxOpen(false)}>{t.cancel}</button>
             </div>
           </div>
-        </details>
+        </Section>
 
-        <div className={"status" + (snap.statusErr ? " err" : "")}>{snap.status}</div>
-
-        {savedDecks.length > 0 && (
-          <details className="section" open>
-            <summary>
-              {t.yourDecks}
-              <span className="summary-note">{savedDecks.length}</span>
-            </summary>
-            <div className="panel">
-              {savedDecks.map((deck) => (
-                <div className="row" key={deck.id}>
-                  {renamingId === deck.id ? (
-                    <input
-                      type="text"
-                      value={renameValue}
-                      autoFocus
-                      onChange={(e) => setRenameValue(e.target.value)}
-                      onBlur={commitRename}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") commitRename();
-                        if (e.key === "Escape") setRenamingId(null);
-                      }}
-                      style={{ maxWidth: 220 }}
-                    />
-                  ) : (
-                    <label onClick={() => startRename(deck)} style={{ cursor: "text" }}>
-                      {deck.label}
-                      <span className="hint">
-                        {LANGS[deck.nativeLang].short} → {LANGS[deck.targetLang].short} · {deck.pairs.length}
-                      </span>
-                    </label>
-                  )}
-                  <div className="gen-row">
-                    <button className="chip primary" onClick={() => handleLoadSaved(deck)}>{t.load}</button>
-                    <button className="chip" onClick={() => handleDeleteSaved(deck.id)}>{t.delete}</button>
-                  </div>
-                </div>
-              ))}
+        <Section id="settings" title={t.settingsHeading} openSection={openSection} onToggle={toggleSection}>
+          <div className="subhead">{t.groupLanguages}</div>
+          <div className="panel">
+            <div className="row">
+              <label>{t.nativeLanguage}</label>
+              <div className="seg">
+                {LANG_ORDER.map((code) => (
+                  <button key={code} className={native === code ? "on" : ""} onClick={() => native !== code && engine.setNativeLang(code)}>
+                    {LANGS[code].short}
+                  </button>
+                ))}
+              </div>
             </div>
-          </details>
-        )}
+            <div className="row">
+              <label>{t.language}</label>
+              <div className="seg">
+                {availableTargets(native).map((code) => (
+                  <button key={code} className={target === code ? "on" : ""} onClick={() => target !== code && engine.setTargetLang(code)}>
+                    {LANGS[code].short}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="row">
+              <label>{t.direction}</label>
+              <div className="seg">
+                <button className={snap.settings.dir === "EF" ? "on" : ""} onClick={() => engine.setDir("EF")}>
+                  {LANGS[native].short} → {LANGS[target].short}
+                </button>
+                <button className={snap.settings.dir === "FE" ? "on" : ""} onClick={() => engine.setDir("FE")}>
+                  {LANGS[target].short} → {LANGS[native].short}
+                </button>
+              </div>
+            </div>
+          </div>
 
-        <details className="section">
-          <summary>{t.saveAndSync}</summary>
+          <div className="subhead">{t.groupPractice}</div>
+          <div className="panel">
+            <div className="row">
+              <label>
+                {t.mode}<span className="hint">{t.modeHint}</span>
+              </label>
+              <div className="seg">
+                <button className={snap.settings.mode === "drill" ? "on" : ""} onClick={() => engine.setMode("drill")}>{t.drill}</button>
+                <button className={snap.settings.mode === "test" ? "on" : ""} onClick={() => engine.setMode("test")}>{t.test}</button>
+              </div>
+            </div>
+            {snap.settings.mode === "drill" && (
+              <div className="row">
+                <label>
+                  {t.autoplay}<span className="hint">{t.autoplayHint}</span>
+                </label>
+                <Toggle on={snap.settings.autoplay} onClick={() => engine.toggleAutoplay()} />
+              </div>
+            )}
+            <div className="row">
+              <label>
+                {t.thinkingTime}<span className="hint">{t.thinkingTimeHint}</span>
+              </label>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <input type="range" min={0.5} max={3} step={0.25} value={snap.settings.pause} onChange={(e) => engine.setPause(+e.target.value)} />
+                <span className="val">{snap.settings.pause}×</span>
+              </div>
+            </div>
+            <div className="row">
+              <label>{t.speechSpeed}</label>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <input type="range" min={0.6} max={1.2} step={0.05} value={snap.settings.rate} onChange={(e) => engine.setRate(+e.target.value)} />
+                <span className="val">{snap.settings.rate}×</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="subhead">{t.groupPlayback}</div>
+          <div className="panel">
+            <div className="row">
+              <label>{t.shuffle}</label>
+              <Toggle on={snap.settings.shuffle} onClick={() => engine.toggleShuffle()} />
+            </div>
+            <div className="row">
+              <label>{t.loopDeck}</label>
+              <Toggle on={snap.settings.loop} onClick={() => engine.toggleLoop()} />
+            </div>
+            <div className="row">
+              <label>
+                {t.showText}<span className="hint">{t.showTextHint}</span>
+              </label>
+              <Toggle on={snap.settings.showText} onClick={() => engine.toggleShowText()} />
+            </div>
+          </div>
+        </Section>
+
+        <Section id="sync" title={t.saveAndSync} openSection={openSection} onToggle={toggleSection}>
           <div className="stack">
             {!syncMagicKey ? (
               <>
@@ -812,12 +821,67 @@ export default function Player() {
             <div className="gen-row">
               <button className="chip primary" onClick={handleRestore} disabled={syncBusy}>{t.syncRestoreBtn}</button>
             </div>
+
+            <div className="danger-zone">
+              <label>{t.resetLabel}</label>
+              <div className="hint">{t.resetHint}</div>
+              <div className="gen-row">
+                {resetArmed ? (
+                  <>
+                    <button className="chip danger-solid" onClick={handleReset} disabled={resetBusy}>
+                      {resetBusy ? t.resetBusy : t.resetConfirmBtn}
+                    </button>
+                    <button className="chip" onClick={() => setResetArmed(false)} disabled={resetBusy}>{t.cancel}</button>
+                  </>
+                ) : (
+                  <button className="chip danger" onClick={() => setResetArmed(true)}>{t.resetBtn}</button>
+                )}
+              </div>
+            </div>
           </div>
-        </details>
+        </Section>
+
+        <div className={"status" + (snap.statusErr ? " err" : "")}>{snap.status}</div>
+
       </main>
 
       <footer>{t.footer}</footer>
     </div>
+  );
+}
+
+type SectionId = "decks" | "settings" | "sync";
+
+function Section({
+  id,
+  title,
+  note,
+  openSection,
+  onToggle,
+  children,
+}: {
+  id: SectionId;
+  title: string;
+  note?: ReactNode;
+  openSection: SectionId | null;
+  onToggle: (id: SectionId) => void;
+  children: ReactNode;
+}) {
+  return (
+    <details className="section" open={openSection === id}>
+      <summary
+        onClick={(e) => {
+          // Controlled by React, so stop <details> toggling itself — opening one
+          // section has to close whichever other one was open.
+          e.preventDefault();
+          onToggle(id);
+        }}
+      >
+        {title}
+        {note != null && <span className="summary-note">{note}</span>}
+      </summary>
+      {children}
+    </details>
   );
 }
 

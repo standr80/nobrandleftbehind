@@ -22,7 +22,15 @@
 .repeatafterme header{ padding:14px 20px 10px; display:flex; align-items:baseline; justify-content:space-between; }
 .repeatafterme header h1{ font-family:var(--serif); font-size:20px; font-weight:700; letter-spacing:.2px; margin:0; }
 .repeatafterme header h1 em{ color:var(--blue); font-style:italic; }
-.repeatafterme .deck-label{ font-size:12px; color:var(--muted); font-weight:500; }
+.repeatafterme .deck-label{
+  font-size:12px; color:var(--muted); font-weight:500;
+  display:flex; flex-direction:column; align-items:flex-end;
+  text-align:right; line-height:1.35; max-width:62%;
+}
+/* Names the player area as the one the chosen deck loads into. */
+.repeatafterme .deck-label-caption{
+  font-size:10px; letter-spacing:.12em; text-transform:uppercase; font-weight:600; opacity:.8;
+}
 
 .repeatafterme main{ flex:1; display:flex; flex-direction:column; padding:8px 16px 16px; max-width:560px; width:100%; margin:0 auto; }
 
@@ -79,6 +87,13 @@
 
 .repeatafterme .panel{ margin-top:16px; background:var(--card); border:1px solid var(--line); border-radius:14px; overflow:hidden; }
 .repeatafterme .row{ display:flex; align-items:center; justify-content:space-between; gap:12px; padding:12px 16px; border-bottom:1px solid var(--line); font-size:14px; }
+/* Longer translations (French "Entraînement / Test") overflowed the row and clipped
+   the control. The label absorbs the squeeze by wrapping its own text — note this is
+   deliberately not flex-wrap on the row, which would drop controls onto a second line
+   long before it was necessary. */
+.repeatafterme .row > label{ flex:1 1 auto; min-width:0; }
+.repeatafterme .row > *:not(label){ flex:0 0 auto; }
+.repeatafterme .row .seg button{ white-space:nowrap; }
 .repeatafterme .row:last-child{ border-bottom:none; }
 .repeatafterme .row label{ font-weight:500; }
 .repeatafterme .row .hint{ display:block; font-size:11px; color:var(--muted); font-weight:400; margin-top:2px; }
@@ -185,11 +200,17 @@
 .repeatafterme .intro-restore .intro-btn svg{ width:18px; height:18px; }
 
 /* ---- collapsible sections + sub-group labels ---- */
-.repeatafterme .section{ margin-top:20px; }
+.repeatafterme .section{ margin-top:10px; }
+.repeatafterme .section:first-of-type{ margin-top:20px; }
 .repeatafterme .section > summary{
   cursor:pointer; list-style:none; display:flex; align-items:center; gap:8px;
-  font-family:var(--serif); font-size:16px; font-weight:700; padding:6px 4px;
+  font-family:var(--serif); font-size:16px; font-weight:700;
+  padding:14px 16px; min-height:52px;
+  background:var(--card); border:1px solid var(--line); border-radius:12px;
 }
+.repeatafterme .section[open] > summary{ background:var(--ink); border-color:var(--ink); color:#fff; }
+.repeatafterme .section[open] > summary::after{ color:rgba(255,255,255,.7); }
+.repeatafterme .section[open] > summary .summary-note{ color:rgba(255,255,255,.7); }
 .repeatafterme .section > summary::-webkit-details-marker{ display:none; }
 .repeatafterme .section > summary::after{
   content:"▾"; margin-left:auto; font-size:11px; color:var(--muted);
@@ -204,6 +225,7 @@
   color:var(--muted); margin:16px 4px 6px;
 }
 .repeatafterme .subhead:first-child{ margin-top:6px; }
+.repeatafterme .section[open] > summary{ margin-bottom:4px; }
 
 /* Vertical stack used where a group of controls is always visible (i.e. already
    inside a <details>) — the .paste-box/.gen-box pattern is for the show/hide ones. */
@@ -218,3 +240,12 @@
 /* .hint is otherwise only styled inside a settings .row */
 .repeatafterme .stack > .hint{ font-size:12px; line-height:1.5; color:var(--muted); }
 .repeatafterme .stack > label{ font-size:14px; font-weight:500; }
+
+/* ---- destructive actions (Reset this device) ---- */
+.repeatafterme .danger-zone{
+  display:flex; flex-direction:column; gap:8px;
+  border-top:1px solid var(--line); margin-top:6px; padding-top:14px;
+}
+.repeatafterme .danger-zone > .hint{ font-size:12px; line-height:1.5; color:var(--muted); }
+.repeatafterme .chip.danger{ color:var(--red); border-color:#E3C1BD; }
+.repeatafterme .chip.danger-solid{ background:var(--red); border-color:var(--red); color:#fff; }

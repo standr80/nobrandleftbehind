@@ -48,7 +48,8 @@ export interface UiStrings {
   showTextHint: string;
 
   // deck section
-  deckHeading: string;
+  myDecksHeading: string;
+  activeDeckLabel: string;
   uploadCsv: string;
   pastePhrases: string;
   aiSettingsBtn: string;
@@ -103,6 +104,13 @@ export interface UiStrings {
   syncRestorePlaceholder: string;
   syncRestoreBtn: string;
 
+  // reset this device (destructive — lives at the bottom of Save & Sync)
+  resetLabel: string;
+  resetHint: string;
+  resetBtn: string;
+  resetConfirmBtn: string;
+  resetBusy: string;
+
   // primary navigation (the Répétez / Écoutez / Library tab bar)
   navLabel: string;
   repetezNavLink: string;
@@ -120,7 +128,6 @@ export interface UiStrings {
   groupPlayback: string;
   sessionHeading: string;
   deckGetPhrases: string;
-  deckThisDeck: string;
 
   // Écoutez (listening mode)
   ecoutezNavLink: string;
@@ -239,7 +246,8 @@ const en: UiStrings = {
   showText: "Show text",
   showTextHint: "Off = audio only",
 
-  deckHeading: "Deck",
+  myDecksHeading: "My Decks",
+  activeDeckLabel: "Active deck",
   uploadCsv: "Upload CSV",
   pastePhrases: "Paste phrases",
   aiSettingsBtn: "AI Settings",
@@ -291,6 +299,12 @@ const en: UiStrings = {
   syncRestorePlaceholder: "XXXX-XXXX-XXXX-XXXX-XXXX",
   syncRestoreBtn: "Restore",
 
+  resetLabel: "Reset this device",
+  resetHint: "Wipes the saved decks, settings, scores, review schedule, API key and this key from this browser, so the app comes back as a first-time visitor sees it. Your synced copy is not deleted — restore it with the key above. Write the key down first: without it, the synced copy can never be recovered.",
+  resetBtn: "Reset…",
+  resetConfirmBtn: "Yes, wipe this device",
+  resetBusy: "Wiping…",
+
   navLabel: "Main sections",
   repetezNavLink: "Répétez",
   repetezNavHint: "Speak along",
@@ -305,8 +319,7 @@ const en: UiStrings = {
   groupPractice: "Practice",
   groupPlayback: "Playback",
   sessionHeading: "This session",
-  deckGetPhrases: "Get phrases",
-  deckThisDeck: "This deck",
+  deckGetPhrases: "Add phrases",
 
   ecoutezNavLink: "Écoutez",
   ecoutezSourceLabel: "Source",
@@ -418,7 +431,8 @@ const fr: UiStrings = {
   showText: "Afficher le texte",
   showTextHint: "Désactivé = audio seul",
 
-  deckHeading: "Paquet",
+  myDecksHeading: "Mes paquets",
+  activeDeckLabel: "Paquet actif",
   uploadCsv: "Importer un CSV",
   pastePhrases: "Coller des phrases",
   aiSettingsBtn: "Réglages IA",
@@ -470,6 +484,12 @@ const fr: UiStrings = {
   syncRestorePlaceholder: "XXXX-XXXX-XXXX-XXXX-XXXX",
   syncRestoreBtn: "Restaurer",
 
+  resetLabel: "Réinitialiser cet appareil",
+  resetHint: "Efface les paquets enregistrés, les réglages, les scores, le planning de révision, la clé API et cette clé de ce navigateur : l'app revient telle qu'un nouveau visiteur la découvre. Votre copie synchronisée n'est pas supprimée — restaurez-la avec la clé ci-dessus. Notez-la d'abord : sans elle, cette copie est définitivement irrécupérable.",
+  resetBtn: "Réinitialiser…",
+  resetConfirmBtn: "Oui, tout effacer",
+  resetBusy: "Effacement…",
+
   navLabel: "Sections principales",
   repetezNavLink: "Répétez",
   repetezNavHint: "À voix haute",
@@ -485,7 +505,6 @@ const fr: UiStrings = {
   groupPlayback: "Lecture",
   sessionHeading: "Cette séance",
   deckGetPhrases: "Ajouter des phrases",
-  deckThisDeck: "Ce paquet",
 
   ecoutezNavLink: "Écoutez",
   ecoutezSourceLabel: "Source",
@@ -597,7 +616,8 @@ const es: UiStrings = {
   showText: "Mostrar texto",
   showTextHint: "Desactivado = solo audio",
 
-  deckHeading: "Mazo",
+  myDecksHeading: "Mis mazos",
+  activeDeckLabel: "Mazo activo",
   uploadCsv: "Subir CSV",
   pastePhrases: "Pegar frases",
   aiSettingsBtn: "Ajustes de IA",
@@ -649,6 +669,12 @@ const es: UiStrings = {
   syncRestorePlaceholder: "XXXX-XXXX-XXXX-XXXX-XXXX",
   syncRestoreBtn: "Restaurar",
 
+  resetLabel: "Restablecer este dispositivo",
+  resetHint: "Borra los mazos guardados, los ajustes, las puntuaciones, el calendario de repaso, la clave API y esta clave de este navegador: la app vuelve a como la ve quien entra por primera vez. Tu copia sincronizada no se borra — restáurala con la clave de arriba. Anótala antes: sin ella, esa copia no se puede recuperar nunca.",
+  resetBtn: "Restablecer…",
+  resetConfirmBtn: "Sí, borrar este dispositivo",
+  resetBusy: "Borrando…",
+
   navLabel: "Secciones principales",
   repetezNavLink: "Répétez",
   repetezNavHint: "En voz alta",
@@ -664,7 +690,6 @@ const es: UiStrings = {
   groupPlayback: "Reproducción",
   sessionHeading: "Esta sesión",
   deckGetPhrases: "Añadir frases",
-  deckThisDeck: "Este mazo",
 
   ecoutezNavLink: "Écoutez",
   ecoutezSourceLabel: "Fuente",
