@@ -1,12 +1,20 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import AppNav from "@/components/repeatafterme/AppNav";
 import IntroCard from "@/components/repeatafterme/IntroCard";
 import { LANGS, type LangCode } from "@/lib/repeatafterme/langs";
 import { getStrings } from "@/lib/repeatafterme/i18n";
 import { getSettings, listDecks, saveDeckToLibrary } from "@/lib/repeatafterme/db";
-import { LIBRARIES, libraryStableId, type LibraryManifest, type LibraryDeckMeta } from "@/lib/repeatafterme/libraryData";
+import {
+  LIBRARIES,
+  PODCAST_LIBRARIES,
+  libraryStableId,
+  type LibraryManifest,
+  type LibraryDeckMeta,
+  type PodcastManifest,
+  type PodcastEpisodeMeta,
+} from "@/lib/repeatafterme/libraryData";
 import { buildLibraryTree, type LibraryTreeNode } from "@/lib/repeatafterme/libraryTree";
 
 type Strings = ReturnType<typeof getStrings>;
@@ -26,6 +34,9 @@ export default function LibraryBrowser() {
 
   const [addedIds, setAddedIds] = useState<Set<string>>(new Set());
   const [status, setStatus] = useState("");
+
+  const podcastLibrary = useMemo(() => PODCAST_LIBRARIES.find((l) => l.targetLang === targetLang) ?? null, [targetLang]);
+  const [podcasts, setPodcasts] = useState<PodcastManifest | null>(null);
 
   useEffect(() => {
     getSettings().then((s) => {
@@ -55,6 +66,39 @@ export default function LibraryBrowser() {
       .catch(() => setManifestError(true))
       .finally(() => setManifestLoading(false));
   }, [activeLibraryId]);
+
+  useEffect(() => {
+    if (!podcastLibrary) {
+      setPodcasts(null);
+      return;
+    }
+    let cancelled = false;
+    fetch(podcastLibrary.manifestUrl)
+      .then((res) => {
+        if (!res.ok) throw new Error(String(res.status));
+        return res.json();
+      })
+      .then((data: PodcastManifest) => !cancelled && setPodcasts(data))
+      // A missing or broken podcast manifest shouldn't take the deck library down
+      // with it — the section just doesn't render.
+      .catch(() => !cancelled && setPodcasts(null));
+    return () => {
+      cancelled = true;
+    };
+  }, [podcastLibrary]);
+
+  async function handleAddEpisode(libraryId: string, episode: PodcastEpisodeMeta) {
+    await saveDeckToLibrary({
+      id: libraryStableId(libraryId, episode.id),
+      label: episode.title,
+      nativeLang: episode.nativeLang,
+      targetLang: episode.targetLang,
+      pairs: episode.pairs,
+      sourceUrl: episode.url,
+    });
+    refreshAdded();
+    setStatus(t.statusLibraryDeckAdded(episode.title));
+  }
 
   async function handleAdd(libraryId: string, deck: LibraryDeckMeta) {
     await saveDeckToLibrary({
@@ -125,6 +169,40 @@ export default function LibraryBrowser() {
               </div>
             ))}
           </div>
+        )}
+
+        {podcasts && podcasts.episodes.length > 0 && (
+          <>
+            <h2>{t.podcastsHeading}</h2>
+            <div className="hint" style={{ margin: "0 4px 8px" }}>{t.podcastsIntro}</div>
+            <div className="lib-tree">
+              {podcasts.episodes.map((ep) => {
+                const added = addedIds.has(libraryStableId(podcasts.id, ep.id));
+                return (
+                  <div className="podcast-row" key={ep.id}>
+                    <div className="podcast-meta">
+                      <span className="deck-name">{ep.title}</span>
+                      <span className="grp-count">
+                        {ep.show ? `${ep.show} · ` : ""}
+                        {t.libraryWordCount(ep.pairs.length)}
+                      </span>
+                    </div>
+                    <div className="podcast-actions">
+                      <a className="chip" href={ep.url} target="_blank" rel="noopener noreferrer">
+                        {t.podcastListen}
+                      </a>
+                      <button
+                        className={"chip" + (added ? "" : " primary")}
+                        onClick={() => handleAddEpisode(podcasts.id, ep)}
+                      >
+                        {added ? t.libraryAddedBtn : t.libraryAddBtn}
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </>
         )}
 
         {manifestLoading && <div className="status">{t.libraryLoading}</div>}

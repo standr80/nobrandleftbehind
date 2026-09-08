@@ -249,3 +249,27 @@
 .repeatafterme .danger-zone > .hint{ font-size:12px; line-height:1.5; color:var(--muted); }
 .repeatafterme .chip.danger{ color:var(--red); border-color:#E3C1BD; }
 .repeatafterme .chip.danger-solid{ background:var(--red); border-color:var(--red); color:#fff; }
+
+/* ---- podcasts ---- */
+/* An episode row carries a Listen link as well as Add, so it needs more room than the
+   library's plain deck rows — title above, actions below on a narrow screen. */
+.repeatafterme .podcast-row{
+  display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap;
+  background:var(--card); border:1px solid var(--line); border-radius:12px;
+  padding:12px 14px; font-size:13px;
+}
+.repeatafterme .podcast-meta{ flex:1 1 180px; min-width:0; }
+.repeatafterme .podcast-meta .deck-name{ font-weight:500; display:block; line-height:1.35; }
+.repeatafterme .podcast-meta .grp-count{ display:block; margin-top:2px; }
+.repeatafterme .podcast-actions{ display:flex; gap:8px; flex:0 0 auto; }
+
+/* "Listen" next to a loaded episode deck — in the header and on its saved-deck row */
+.repeatafterme .deck-source{
+  display:inline-flex; align-items:center; gap:4px;
+  font-size:11px; font-weight:600; color:var(--blue); text-decoration:none;
+  letter-spacing:.04em; text-transform:uppercase;
+}
+.repeatafterme .deck-source::before{ content:"▶"; font-size:8px; }
+.repeatafterme .deck-source:hover{ text-decoration:underline; }
+.repeatafterme header .deck-source{ margin-top:2px; }
+.repeatafterme .row label .deck-source{ margin-top:3px; }

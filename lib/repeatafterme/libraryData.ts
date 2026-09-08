@@ -11,6 +11,10 @@ export interface LibraryDeckMeta {
   nativeLang: LangCode;
   targetLang: LangCode;
   pairs: Pair[];
+  /** Where this deck's content came from, if it has a home worth linking to — a
+   *  podcast episode, for now. Carried into the learner's own deck record so the
+   *  drill page can offer "listen again" next to the vocabulary. */
+  sourceUrl?: string;
 }
 
 export interface LibraryManifest {
@@ -54,6 +58,46 @@ export const LIBRARIES: LibraryMeta[] = [
     manifestUrl: "/repeatafterme/library/fr-alevel-aqa.json",
     deckCount: 14,
     wordCount: 4242,
+  },
+];
+
+// ---------- podcasts ----------
+// An episode is a deck with somewhere to listen. Kept separate from LibraryManifest
+// rather than folded in as another taxonomy branch: browsing episodes is a flat list
+// with a Listen link, not a tree of themes and tiers, and the point of the feature is
+// the round trip — listen, drill the vocabulary, listen again.
+
+export interface PodcastEpisodeMeta {
+  id: string;
+  title: string;
+  show?: string;
+  url: string;
+  nativeLang: LangCode;
+  targetLang: LangCode;
+  pairs: Pair[];
+}
+
+export interface PodcastManifest {
+  id: string;
+  title: string;
+  nativeLang: LangCode;
+  targetLang: LangCode;
+  episodes: PodcastEpisodeMeta[];
+}
+
+export interface PodcastLibraryMeta {
+  id: string;
+  title: string;
+  targetLang: LangCode;
+  manifestUrl: string;
+}
+
+export const PODCAST_LIBRARIES: PodcastLibraryMeta[] = [
+  {
+    id: "fr-podcasts",
+    title: "French podcasts",
+    targetLang: "fr",
+    manifestUrl: "/repeatafterme/library/fr-podcasts.json",
   },
 ];
 

@@ -22,6 +22,10 @@ export interface SavedDeck {
   pairs: Pair[];
   createdAt: number;
   updatedAt: number;
+  /** Optional link back to where the content came from — a podcast episode. Older
+   *  records simply don't have it; no migration needed, and it rides along in the
+   *  sync payload with the rest of the record. */
+  sourceUrl?: string;
 }
 
 export interface ScoreRecord {
@@ -131,8 +135,9 @@ export async function saveKv<T>(key: string, value: T): Promise<void> {
 export const getSettings = () => loadKv<Settings>("settings");
 export const saveSettings = (settings: Settings) => saveKv("settings", settings);
 
-export const getLastDeck = () => loadKv<{ label: string; pairs: Pair[] }>("lastDeck");
-export const saveLastDeck = (label: string, pairs: Pair[]) => saveKv("lastDeck", { label, pairs });
+export const getLastDeck = () => loadKv<{ label: string; pairs: Pair[]; sourceUrl?: string }>("lastDeck");
+export const saveLastDeck = (label: string, pairs: Pair[], sourceUrl?: string) =>
+  saveKv("lastDeck", { label, pairs, ...(sourceUrl ? { sourceUrl } : {}) });
 
 // ---------- last position + bookmark ----------
 // Both keyed by deckKey (a content hash — see srs.ts's hashContent(), same technique
@@ -183,6 +188,7 @@ export async function saveDeckToLibrary(deck: Omit<SavedDeck, "id" | "createdAt"
     pairs: deck.pairs,
     createdAt: existing?.createdAt ?? now,
     updatedAt: now,
+    ...(deck.sourceUrl ? { sourceUrl: deck.sourceUrl } : {}),
   };
   await tx(db, STORE_DECKS, "readwrite", (s) => s.put(record));
   return record;

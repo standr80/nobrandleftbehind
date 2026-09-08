@@ -101,6 +101,16 @@ export default function Player() {
   const [openSection, setOpenSection] = useState<SectionId | null>(null);
   const toggleSection = (id: SectionId) => setOpenSection((cur) => (cur === id ? null : id));
 
+  // The active deck's "listen again" link, when it came from a podcast episode. Held
+  // in a ref as well as state because onDeckOrSettingsChange is registered once in a
+  // mount effect and would otherwise persist a stale value alongside the deck.
+  const [activeSourceUrl, setActiveSourceUrl] = useState<string | null>(null);
+  const activeSourceUrlRef = useRef<string | null>(null);
+  function setActiveSource(url: string | null) {
+    activeSourceUrlRef.current = url;
+    setActiveSourceUrl(url);
+  }
+
   const [resetArmed, setResetArmed] = useState(false);
   const [resetBusy, setResetBusy] = useState(false);
 
@@ -271,7 +281,7 @@ export default function Player() {
       const snapshot = engine.getSnapshot();
       void saveSettings(snapshot.settings);
       const current = engine.getCurrentDeck();
-      void saveLastDeck(snapshot.deckLabel, current.pairs);
+      void saveLastDeck(snapshot.deckLabel, current.pairs, activeSourceUrlRef.current ?? undefined);
       refreshBookmark();
     };
     engine.onTestComplete = (result) => {
@@ -300,6 +310,7 @@ export default function Player() {
       if (settings || lastDeck) {
         const deckIndex = lastDeck && lastPos && lastPos.deckKey === hashContent(lastDeck.pairs) ? lastPos.deckIndex : undefined;
         engine.hydrate({ settings, deck: lastDeck, deckIndex });
+        setActiveSource(lastDeck?.sourceUrl ?? null);
       }
       refreshBookmark();
     });
@@ -336,7 +347,10 @@ export default function Player() {
     const f = e.target.files?.[0];
     if (!f) return;
     const r = new FileReader();
-    r.onload = () => engine.loadDeck(parseLines(String(r.result)), f.name);
+    r.onload = () => {
+      setActiveSource(null);
+      engine.loadDeck(parseLines(String(r.result)), f.name);
+    };
     r.readAsText(f);
     e.target.value = "";
   }
@@ -364,6 +378,7 @@ export default function Player() {
     engine.setStatus(t.statusSavedDeck(label));
   }
   function handleLoadSaved(deck: SavedDeck) {
+    setActiveSource(deck.sourceUrl ?? null);
     engine.loadSavedDeck(deck.pairs, deck.label, deck.nativeLang, deck.targetLang);
   }
   async function handleStartDueQueue() {
@@ -372,6 +387,8 @@ export default function Player() {
       engine.setStatus(t.statusNothingDue);
       return;
     }
+    // A due queue is drawn from across decks, so no single source applies.
+    setActiveSource(null);
     engine.loadDueQueue(items, t.dueQueueLabel(items.length));
   }
   async function handleDeleteSaved(id: string) {
@@ -409,6 +426,7 @@ export default function Player() {
       }
       const rows = extractPairs(data.text);
       if (!rows.length) throw new Error(t.statusGenerationEmptyResponse);
+      setActiveSource(null);
       engine.loadDeck(rows, "AI: " + deckName);
       setGenOpen(false);
     } catch (err) {
@@ -449,6 +467,11 @@ export default function Player() {
         <span className="deck-label">
           <span className="deck-label-caption">{t.activeDeckLabel}</span>
           {snap.deckLabel}
+          {activeSourceUrl && (
+            <a className="deck-source" href={activeSourceUrl} target="_blank" rel="noopener noreferrer">
+              {t.podcastListen}
+            </a>
+          )}
         </span>
       </header>
 
@@ -567,11 +590,23 @@ export default function Player() {
                         style={{ maxWidth: 220 }}
                       />
                     ) : (
-                      <label onClick={() => startRename(deck)} style={{ cursor: "text" }}>
-                        {deck.label}
+                      <label>
+                        <span onClick={() => startRename(deck)} style={{ cursor: "text" }}>
+                          {deck.label}
+                        </span>
                         <span className="hint">
                           {LANGS[deck.nativeLang].short} → {LANGS[deck.targetLang].short} · {deck.pairs.length}
                         </span>
+                        {deck.sourceUrl && (
+                          <a
+                            className="deck-source"
+                            href={deck.sourceUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                          >
+                            {t.podcastListen}
+                          </a>
+                        )}
                       </label>
                     )}
                     <div className="gen-row">
@@ -611,6 +646,7 @@ export default function Player() {
               <button
                 className="chip primary"
                 onClick={() => {
+                  setActiveSource(null);
                   engine.loadDeck(parseLines(pasteText), "Pasted deck");
                   setPasteOpen(false);
                 }}

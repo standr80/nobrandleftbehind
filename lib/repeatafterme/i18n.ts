@@ -165,6 +165,12 @@ export interface UiStrings {
   libraryAddedBtn: string;
   libraryMixedGroup: string;
 
+  // podcasts (library section + the "listen again" link on a loaded episode deck)
+  podcastsHeading: string;
+  podcastsIntro: string;
+  podcastListen: string;
+  podcastEpisodeCount: (n: number) => string;
+
   // session stats
   statsStreak: (n: number) => string;
   statsMinutesToday: (n: number) => string;
@@ -355,6 +361,11 @@ const en: UiStrings = {
   libraryAddedBtn: "✓ Added",
   libraryMixedGroup: "Mixed (smaller categories combined)",
 
+  podcastsHeading: "Podcasts",
+  podcastsIntro: "Listen to an episode, add its vocabulary as a deck, then drill it and listen again — the link stays with the deck.",
+  podcastListen: "Listen",
+  podcastEpisodeCount: (n) => `${n} ${n === 1 ? "episode" : "episodes"}`,
+
   statsStreak: (n) => `🔥 ${n}-day streak`,
   statsMinutesToday: (n) => `${n} min today`,
 
@@ -540,6 +551,11 @@ const fr: UiStrings = {
   libraryAddedBtn: "✓ Ajouté",
   libraryMixedGroup: "Mixte (petites catégories regroupées)",
 
+  podcastsHeading: "Podcasts",
+  podcastsIntro: "Écoutez un épisode, ajoutez son vocabulaire comme paquet, travaillez-le puis réécoutez — le lien reste attaché au paquet.",
+  podcastListen: "Écouter",
+  podcastEpisodeCount: (n) => `${n} ${n === 1 ? "épisode" : "épisodes"}`,
+
   statsStreak: (n) => `🔥 Série de ${n} jour${n === 1 ? "" : "s"}`,
   statsMinutesToday: (n) => `${n} min aujourd'hui`,
 
@@ -724,6 +740,11 @@ const es: UiStrings = {
   libraryAddBtn: "Añadir a mis mazos",
   libraryAddedBtn: "✓ Añadido",
   libraryMixedGroup: "Mixto (categorías pequeñas combinadas)",
+
+  podcastsHeading: "Pódcasts",
+  podcastsIntro: "Escucha un episodio, añade su vocabulario como mazo, practícalo y vuelve a escuchar — el enlace se queda con el mazo.",
+  podcastListen: "Escuchar",
+  podcastEpisodeCount: (n) => `${n} ${n === 1 ? "episodio" : "episodios"}`,
 
   statsStreak: (n) => `🔥 Racha de ${n} día${n === 1 ? "" : "s"}`,
   statsMinutesToday: (n) => `${n} min hoy`,
