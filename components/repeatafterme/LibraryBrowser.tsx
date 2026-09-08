@@ -19,6 +19,14 @@ import { buildLibraryTree, type LibraryTreeNode } from "@/lib/repeatafterme/libr
 
 type Strings = ReturnType<typeof getStrings>;
 
+/** A browsable collection in the library — a deck library or a podcast feed. */
+interface Collection {
+  id: string;
+  title: string;
+  kind: "decks" | "podcasts";
+  subtitle: string;
+}
+
 export default function LibraryBrowser() {
   const [native, setNative] = useState<LangCode>("en");
   const t = getStrings(native);
@@ -26,7 +34,7 @@ export default function LibraryBrowser() {
   const availableTargetLangs = Array.from(new Set(LIBRARIES.map((l) => l.targetLang)));
   const [targetLang, setTargetLang] = useState<LangCode>(availableTargetLangs[0] ?? "fr");
   const librariesForLang = LIBRARIES.filter((l) => l.targetLang === targetLang);
-  const [activeLibraryId, setActiveLibraryId] = useState<string | null>(librariesForLang[0]?.id ?? null);
+  const [activeCollectionId, setActiveCollectionId] = useState<string | null>(librariesForLang[0]?.id ?? null);
 
   const [manifest, setManifest] = useState<LibraryManifest | null>(null);
   const [manifestLoading, setManifestLoading] = useState(false);
@@ -50,7 +58,7 @@ export default function LibraryBrowser() {
   }
 
   useEffect(() => {
-    const meta = LIBRARIES.find((l) => l.id === activeLibraryId);
+    const meta = LIBRARIES.find((l) => l.id === activeCollectionId);
     if (!meta) {
       setManifest(null);
       return;
@@ -65,7 +73,7 @@ export default function LibraryBrowser() {
       .then((data: LibraryManifest) => setManifest(data))
       .catch(() => setManifestError(true))
       .finally(() => setManifestLoading(false));
-  }, [activeLibraryId]);
+  }, [activeCollectionId]);
 
   useEffect(() => {
     if (!podcastLibrary) {
@@ -112,6 +120,33 @@ export default function LibraryBrowser() {
     setStatus(t.statusLibraryDeckAdded(deck.label));
   }
 
+  // Deck libraries and podcasts presented as one list of collections. Podcasts used
+  // to sit in their own section between the chooser and the tree it controls, which
+  // split the browser in two; as a peer it's chosen the same way as everything else.
+  // Episode counts come from the fetched manifest rather than a hand-maintained
+  // number on PODCAST_LIBRARIES, so they can't drift as episodes are added.
+  const collections = useMemo(() => {
+    const list: Collection[] = LIBRARIES.filter((l) => l.targetLang === targetLang).map((l) => ({
+      id: l.id,
+      title: l.title,
+      kind: "decks",
+      subtitle: `${t.libraryDeckCount(l.deckCount)} · ${t.libraryWordCount(l.wordCount)}`,
+    }));
+    if (podcastLibrary) {
+      const episodes = podcasts?.episodes ?? [];
+      list.push({
+        id: podcastLibrary.id,
+        title: podcastLibrary.title,
+        kind: "podcasts",
+        subtitle: episodes.length
+          ? `${t.podcastEpisodeCount(episodes.length)} · ${t.libraryWordCount(episodes.reduce((n, e) => n + e.pairs.length, 0))}`
+          : "",
+      });
+    }
+    return list;
+  }, [targetLang, podcastLibrary, podcasts, t]);
+
+  const showingPodcasts = collections.find((c) => c.id === activeCollectionId)?.kind === "podcasts";
   const tree = manifest ? buildLibraryTree(manifest.decks) : [];
 
   return (
@@ -122,7 +157,15 @@ export default function LibraryBrowser() {
           {t.libraryNavLink}
           <em>.</em>
         </h1>
-        <span className="deck-label">{manifest ? t.libraryDeckCount(manifest.decks.length) : ""}</span>
+        <span className="deck-label">
+          {showingPodcasts
+            ? podcasts
+              ? t.podcastEpisodeCount(podcasts.episodes.length)
+              : ""
+            : manifest
+              ? t.libraryDeckCount(manifest.decks.length)
+              : ""}
+        </span>
       </header>
 
       <AppNav native={native} />
@@ -143,7 +186,7 @@ export default function LibraryBrowser() {
                   onClick={() => {
                     setTargetLang(lc);
                     const first = LIBRARIES.find((l) => l.targetLang === lc);
-                    setActiveLibraryId(first?.id ?? null);
+                    setActiveCollectionId(first?.id ?? null);
                   }}
                 >
                   {LANGS[lc].name}
@@ -153,17 +196,18 @@ export default function LibraryBrowser() {
           </div>
         </div>
 
-        {librariesForLang.length > 1 && (
+        {collections.length > 1 && (
           <div className="panel" style={{ marginTop: 10 }}>
-            {librariesForLang.map((lib) => (
-              <div className="row" key={lib.id}>
-                <label onClick={() => setActiveLibraryId(lib.id)} style={{ cursor: "pointer" }}>
-                  {lib.title}
-                  <span className="hint">
-                    {t.libraryDeckCount(lib.deckCount)} · {t.libraryWordCount(lib.wordCount)}
-                  </span>
+            {collections.map((c) => (
+              <div className="row" key={c.id}>
+                <label onClick={() => setActiveCollectionId(c.id)} style={{ cursor: "pointer" }}>
+                  {c.title}
+                  {c.subtitle && <span className="hint">{c.subtitle}</span>}
                 </label>
-                <button className={"chip" + (activeLibraryId === lib.id ? " primary" : "")} onClick={() => setActiveLibraryId(lib.id)}>
+                <button
+                  className={"chip" + (activeCollectionId === c.id ? " primary" : "")}
+                  onClick={() => setActiveCollectionId(c.id)}
+                >
                   {t.libraryBrowseBtn}
                 </button>
               </div>
@@ -171,9 +215,9 @@ export default function LibraryBrowser() {
           </div>
         )}
 
-        {podcasts && podcasts.episodes.length > 0 && (
+        {showingPodcasts && podcasts && podcasts.episodes.length > 0 && (
           <>
-            <h2>{t.podcastsHeading}</h2>
+            <h2>{podcasts.title}</h2>
             <div className="hint" style={{ margin: "0 4px 8px" }}>{t.podcastsIntro}</div>
             <div className="lib-tree">
               {podcasts.episodes.map((ep) => {
@@ -205,10 +249,10 @@ export default function LibraryBrowser() {
           </>
         )}
 
-        {manifestLoading && <div className="status">{t.libraryLoading}</div>}
-        {manifestError && <div className="status err">{t.libraryLoadFailed}</div>}
+        {!showingPodcasts && manifestLoading && <div className="status">{t.libraryLoading}</div>}
+        {!showingPodcasts && manifestError && <div className="status err">{t.libraryLoadFailed}</div>}
 
-        {manifest && (
+        {!showingPodcasts && manifest && (
           <>
             <h2>{manifest.title}</h2>
             <div className="lib-tree">
