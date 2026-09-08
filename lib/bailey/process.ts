@@ -37,6 +37,40 @@ export async function patchGalleryImage(
   return error ? error.message : null
 }
 
+/**
+ * Write the stored thumbnail + responsive variants for a master.
+ *
+ * Only used when USE_TRANSFORM_URLS is false. Never upscales: a variant wider
+ * than the master is pointless bytes.
+ */
+async function writeStoredVariants(
+  db: ReturnType<typeof createAdminClient>,
+  supabaseUrl: string,
+  basePath: string,
+  master: Buffer,
+  masterWidth: number,
+): Promise<{ thumbUrl: string | null; variants: NonNullable<GalleryImage['variants']> }> {
+  const all: NonNullable<GalleryImage['variants']> = []
+  for (const width of [THUMB_WIDTH, ...VARIANT_WIDTHS]) {
+    if (width >= masterWidth) continue
+    const resized = await sharp(master)
+      .resize(width)
+      .webp({ quality: MASTER_WEBP_QUALITY })
+      .toBuffer()
+    const variantPath = `${basePath}-${width}.webp`
+    const { error } = await db.storage
+      .from(GALLERY_BUCKET)
+      .upload(variantPath, resized, { contentType: 'image/webp', upsert: true })
+    if (error) throw new Error(`Variant ${width}px upload failed: ${error.message}`)
+    all.push({ width, path: variantPath, url: galleryPublicUrl(supabaseUrl, variantPath) })
+  }
+  return {
+    thumbUrl: all[0]?.url ?? null,
+    // The thumb is delivered via thumb_url; srcset carries the wider ones.
+    variants: all.filter((v) => v.width !== THUMB_WIDTH),
+  }
+}
+
 /** Physically rotate an image's master by 90/180/270 (clockwise) and
  *  persist. Writes a NEW object (cache-safe: Supabase CDN caches public
  *  URLs, so overwriting in place would serve stale pixels), removes the old
@@ -72,11 +106,35 @@ export async function rotateMaster(
     const patch: Partial<GalleryImage> = {
       master_path: newPath,
       url: galleryPublicUrl(supabaseUrl, newPath),
-      thumb_url: USE_TRANSFORM_URLS
-        ? galleryTransformUrl(supabaseUrl, newPath, TRANSFORM_THUMB_WIDTH)
-        : image.thumb_url,
       width: rotated.info.width,
       height: rotated.info.height,
+    }
+
+    if (USE_TRANSFORM_URLS) {
+      // The transform URL is derived from the master path, so it follows the
+      // rotation for free.
+      patch.thumb_url = galleryTransformUrl(supabaseUrl, newPath, TRANSFORM_THUMB_WIDTH)
+    } else {
+      // Stored variants are separate objects and do NOT follow the master —
+      // leaving them would show the thumbnail and every srcset entry still
+      // un-rotated. Rebuild from the rotated bytes and bin the old objects.
+      const stale = [
+        ...(image.variants ?? []).map((v) => v.path),
+        // The 400px thumb isn't in `variants`; reconstruct its path.
+        image.master_path.replace(/\.webp$/, `-${THUMB_WIDTH}.webp`),
+      ]
+      const { thumbUrl, variants } = await writeStoredVariants(
+        db,
+        supabaseUrl,
+        newPath.replace(/\.webp$/, ''),
+        rotated.data,
+        rotated.info.width,
+      )
+      patch.thumb_url = thumbUrl ?? patch.url
+      patch.variants = variants
+      if (stale.length) {
+        await db.storage.from(GALLERY_BUCKET).remove(stale).catch(() => {})
+      }
     }
     const saveError = await patchGalleryImage(galleryId, image.id, patch)
     if (saveError) throw new Error(saveError)
@@ -158,22 +216,15 @@ export async function processImage(
       patch.variants = null
     } else {
       // Spike-#1 fallback: stored thumb + responsive variants.
-      const variants: NonNullable<GalleryImage['variants']> = []
-      for (const width of [THUMB_WIDTH, ...VARIANT_WIDTHS]) {
-        if (width >= master.info.width) continue // never upscale
-        const resized = await sharp(master.data)
-          .resize(width)
-          .webp({ quality: MASTER_WEBP_QUALITY })
-          .toBuffer()
-        const variantPath = `${dir}/${sourceKey}-${width}.webp`
-        const { error: vErr } = await db.storage
-          .from(GALLERY_BUCKET)
-          .upload(variantPath, resized, { contentType: 'image/webp', upsert: true })
-        if (vErr) throw new Error(`Variant ${width}px upload failed: ${vErr.message}`)
-        variants.push({ width, path: variantPath, url: galleryPublicUrl(supabaseUrl, variantPath) })
-      }
-      patch.thumb_url = variants[0]?.url ?? patch.url
-      patch.variants = variants.filter((v) => v.width !== THUMB_WIDTH)
+      const { thumbUrl, variants } = await writeStoredVariants(
+        db,
+        supabaseUrl,
+        `${dir}/${sourceKey}`,
+        master.data,
+        master.info.width,
+      )
+      patch.thumb_url = thumbUrl ?? patch.url
+      patch.variants = variants
     }
 
     const saveError = await patchGalleryImage(galleryId, image.id, patch)

@@ -25,12 +25,23 @@ export const HEIC_REJECT_MESSAGE =
 
 // ── Processing (stage 3) ────────────────────────────────────────────────────
 
-/** Spike #1 RESOLVED 2026-07-24 on production: Supabase render/transform
- *  URLs work on this plan (200, image/jpeg, auto-format). Thumbs + srcset
- *  are transform URLs off the single master — no stored variants, free
- *  resizing later. The `false` branch (stored variants) remains implemented
- *  as an escape hatch if plan/pricing ever changes. */
-export const USE_TRANSFORM_URLS = true
+/**
+ * Spike #1 REVISITED 2026-09-08 — the escape hatch is now the live path.
+ *
+ * Transform URLs work, but Supabase bills Image Transformations per *origin
+ * image per month*, and the Pro plan includes only 100. Every gallery image
+ * gets a transform thumbnail, so the allowance is a hard ceiling on how many
+ * images can exist across all tenants — 153 images put us at 153% with no
+ * unusual traffic at all. It is a cost that scales with the archive rather
+ * than with use, which is the wrong shape entirely.
+ *
+ * Stored variants are ordinary storage objects: no transformation billing,
+ * and storage is the cheap resource (100GB included, ~500KB per master).
+ *
+ * This changes newly processed images only. Existing images keep the transform
+ * thumbnails already recorded on them until they are reprocessed.
+ */
+export const USE_TRANSFORM_URLS = false
 
 /** Web master: max long edge + WebP quality. */
 export const MASTER_MAX_EDGE = 2000
