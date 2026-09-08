@@ -10,6 +10,8 @@ interface Props {
   initialSlug: string
   initialContext: string | null
   initialShowCaptions: boolean
+  initialEventDate: string | null
+  initialFeatured: boolean
   isPublished: boolean
 }
 
@@ -28,6 +30,8 @@ export default function GallerySettingsPanel({
   initialSlug,
   initialContext,
   initialShowCaptions,
+  initialEventDate,
+  initialFeatured,
   isPublished,
 }: Props) {
   const router = useRouter()
@@ -45,10 +49,15 @@ export default function GallerySettingsPanel({
   const [regenResult, setRegenResult] = useState<string | null>(null)
   const [showCaptions, setShowCaptions] = useState(initialShowCaptions)
   const [savingCaptions, setSavingCaptions] = useState(false)
+  const [eventDate, setEventDate] = useState(initialEventDate ?? '')
+  const [savedEventDate, setSavedEventDate] = useState(initialEventDate ?? '')
+  const [featured, setFeatured] = useState(initialFeatured)
+  const [savingFeatured, setSavingFeatured] = useState(false)
 
   const dirty =
     title.trim() !== saved.title ||
     context.trim() !== (saved.context ?? '') ||
+    eventDate !== savedEventDate ||
     (editSlug && slug.trim() !== saved.slug)
 
   async function save() {
@@ -67,6 +76,7 @@ export default function GallerySettingsPanel({
           tenantId,
           title: title.trim(),
           gallery_context: context.trim(),
+          gallery_event_date: eventDate || null,
           ...(editSlug && slug.trim() !== saved.slug ? { slug: slug.trim() } : {}),
         }),
       })
@@ -79,6 +89,8 @@ export default function GallerySettingsPanel({
         slug: data.gallery?.slug ?? slug,
       }
       setSaved(next)
+      setSavedEventDate(data.gallery?.gallery_event_date ?? '')
+      setEventDate(data.gallery?.gallery_event_date ?? '')
       setTitle(next.title)
       setContext(next.context)
       setSlug(next.slug)
@@ -96,6 +108,27 @@ export default function GallerySettingsPanel({
       setError(e instanceof Error ? e.message : 'Save failed')
     } finally {
       setSaving(false)
+    }
+  }
+
+  async function toggleFeatured(next: boolean) {
+    setFeatured(next)
+    setSavingFeatured(true)
+    setError(null)
+    try {
+      const res = await fetch(`/api/galleries/${galleryId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tenantId, gallery_featured: next }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error ?? 'Could not save')
+      router.refresh()
+    } catch (e) {
+      setFeatured(!next)
+      setError(e instanceof Error ? e.message : 'Could not save')
+    } finally {
+      setSavingFeatured(false)
     }
   }
 
@@ -205,6 +238,21 @@ export default function GallerySettingsPanel({
         />
       </label>
 
+      <label className="block">
+        <span className="text-xs text-slate-500">Event date</span>
+        <input
+          type="date"
+          value={eventDate}
+          onChange={(e) => setEventDate(e.target.value)}
+          className="mt-1 w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+        />
+        <span className="block text-xs text-slate-400 mt-1">
+          When the event actually happened, which is what a visitor wants to
+          know — not when you uploaded it. Shown on the gallery listing as month
+          and year. Leave it blank and no date is shown at all.
+        </span>
+      </label>
+
       <div>
         <span className="text-xs text-slate-500">Address</span>
         {editSlug ? (
@@ -248,6 +296,27 @@ export default function GallerySettingsPanel({
       </div>
 
       {notice && <p className="text-sm text-amber-700">{notice}</p>}
+
+      <div className="border-t border-slate-200 pt-3">
+        <label className="flex items-start gap-2 text-sm text-slate-700 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={featured}
+            disabled={savingFeatured}
+            onChange={(e) => void toggleFeatured(e.target.checked)}
+            className="mt-0.5"
+          />
+          <span>
+            Feature this gallery on the home page
+            <span className="block text-xs text-slate-500">
+              Your site leads with this gallery&apos;s lead image. Only one
+              gallery can be featured — turning this on releases whichever one
+              currently is. Choose the image itself with &ldquo;Use as lead
+              image&rdquo; on any photo below.
+            </span>
+          </span>
+        </label>
+      </div>
 
       <div className="border-t border-slate-200 pt-3 space-y-2">
         <h3 className="text-sm font-semibold text-slate-900">Captions</h3>

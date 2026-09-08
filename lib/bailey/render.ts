@@ -150,11 +150,12 @@ export function galleryJsonLd(
   }
 }
 
-/** Lead image for the Shopify article featured image (feeds Shopify's auto
- *  image sitemap + og:image). First ready image for now; a user-chosen lead
- *  can override later. */
+/** Lead image — the article's featured image, the gallery card cover, and the
+ *  home page hero on consumer sites that use one. An explicit choice wins;
+ *  otherwise the first ready, visible image, as before. */
 export function leadImage(images: GalleryImage[]): GalleryImage | null {
-  return images.find((i) => i.status === 'ready' && i.url && !i.hidden) ?? null
+  const usable = (i: GalleryImage) => i.status === 'ready' && !!i.url && !i.hidden
+  return images.find((i) => i.lead && usable(i)) ?? images.find(usable) ?? null
 }
 
 /** Thumb width export kept here for future gallery-index rendering. */

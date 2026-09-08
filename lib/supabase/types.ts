@@ -77,6 +77,9 @@ export type Database = {
           gallery_images: Json | null
           gallery_context: string | null
           gallery_show_captions: boolean | null
+          gallery_display_order: number | null
+          gallery_event_date: string | null
+          gallery_featured: boolean | null
           consent_attested_by: string | null
           consent_attested_at: string | null
           last_refreshed_at: string | null
@@ -123,6 +126,9 @@ export type Database = {
           gallery_images?: Json | null
           gallery_context?: string | null
           gallery_show_captions?: boolean | null
+          gallery_display_order?: number | null
+          gallery_event_date?: string | null
+          gallery_featured?: boolean | null
           consent_attested_by?: string | null
           consent_attested_at?: string | null
           last_refreshed_at?: string | null
@@ -169,6 +175,9 @@ export type Database = {
           gallery_images?: Json | null
           gallery_context?: string | null
           gallery_show_captions?: boolean | null
+          gallery_display_order?: number | null
+          gallery_event_date?: string | null
+          gallery_featured?: boolean | null
           consent_attested_by?: string | null
           consent_attested_at?: string | null
           last_refreshed_at?: string | null

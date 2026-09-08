@@ -30,6 +30,7 @@ export async function PATCH(request: Request, { params }: Params) {
   if (typeof body.alt === 'string') patch.alt = body.alt.trim() || null
   if (typeof body.caption === 'string') patch.caption = body.caption.trim() || null
   if (typeof body.hidden === 'boolean') patch.hidden = body.hidden
+  if (body.lead === true) patch.lead = true
 
   // Mark the text as human-authored so a later "regenerate captions" run leaves
   // it alone. Hiding an image is not an edit to its text, so it doesn't count.
@@ -38,6 +39,16 @@ export async function PATCH(request: Request, { params }: Params) {
   }
   if (!Object.keys(patch).length) {
     return NextResponse.json({ error: 'Nothing to update — send alt, caption and/or hidden' }, { status: 400 })
+  }
+
+  // One lead per gallery: clear the flag on every other image first, so the
+  // choice can never end up ambiguous.
+  if (patch.lead === true) {
+    const others = galleryImages(gallery).filter((i) => i.id !== imageId && i.lead)
+    for (const other of others) {
+      const err = await patchGalleryImage(gallery.id, other.id, { lead: false })
+      if (err) return NextResponse.json({ error: err }, { status: 500 })
+    }
   }
 
   const saveError = await patchGalleryImage(gallery.id, imageId, patch)

@@ -15,10 +15,13 @@ export default async function BaileyPage() {
   const db = createAdminClient()
   const { data } = await db
     .from('blog_posts')
-    .select('id, title, slug, status, gallery_images, gallery_context, created_at')
+    .select('id, title, slug, status, gallery_images, gallery_context, gallery_display_order, gallery_event_date, gallery_featured, created_at')
     .eq('tenant_id', workspace.tenantId)
     .eq('content_type', 'gallery')
     .is('deleted_at', null)
+    // Manual order first; never-ordered galleries fall to the end, newest
+    // first — the behaviour this list had before ordering existed.
+    .order('gallery_display_order', { ascending: true, nullsFirst: false })
     .order('created_at', { ascending: false })
 
   const galleries = (data ?? []).map((g) => {
@@ -32,6 +35,9 @@ export default async function BaileyPage() {
       readyCount: images.filter((i) => i.status === 'ready').length,
       failedCount: images.filter((i) => i.status === 'failed').length,
       created_at: g.created_at,
+      displayOrder: g.gallery_display_order,
+      eventDate: g.gallery_event_date,
+      featured: g.gallery_featured ?? false,
     }
   })
 

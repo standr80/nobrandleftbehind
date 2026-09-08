@@ -6,7 +6,7 @@ import { generateSlug, rid } from '@/lib/bailey/galleries'
 import type { GalleryImage } from '@/lib/bailey/constants'
 
 const LIST_COLUMNS =
-  'id, title, slug, status, gallery_images, gallery_context, created_at, updated_at'
+  'id, title, slug, status, gallery_images, gallery_context, gallery_display_order, gallery_event_date, gallery_featured, created_at, updated_at'
 
 // GET — list the active workspace's galleries (Bailey dashboard).
 export async function GET() {
@@ -23,6 +23,9 @@ export async function GET() {
     .eq('tenant_id', workspace.tenantId)
     .eq('content_type', 'gallery')
     .is('deleted_at', null)
+    // Manual order first; anything never ordered falls to the end, newest
+    // first — which is what the list did before any of this existed.
+    .order('gallery_display_order', { ascending: true, nullsFirst: false })
     .order('created_at', { ascending: false })
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
@@ -36,6 +39,9 @@ export async function GET() {
         slug: g.slug,
         status: g.status,
         context: g.gallery_context,
+        displayOrder: g.gallery_display_order,
+        eventDate: g.gallery_event_date,
+        featured: g.gallery_featured ?? false,
         imageCount: images.length,
         readyCount: images.filter((i) => i.status === 'ready').length,
         failedCount: images.filter((i) => i.status === 'failed').length,

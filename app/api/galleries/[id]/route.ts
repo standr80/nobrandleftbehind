@@ -68,6 +68,9 @@ export async function PATCH(request: Request, { params }: Params) {
     title?: string
     slug?: string
     gallery_show_captions?: boolean
+    gallery_event_date?: string | null
+    gallery_featured?: boolean
+    gallery_display_order?: number | null
     gallery_context?: string | null
     body_mdx?: string | null
     meta_description?: string | null
@@ -86,6 +89,19 @@ export async function PATCH(request: Request, { params }: Params) {
   }
   if (typeof body.gallery_show_captions === 'boolean') {
     patch.gallery_show_captions = body.gallery_show_captions
+  }
+  if (typeof body.gallery_event_date === 'string' || body.gallery_event_date === null) {
+    const raw = (body.gallery_event_date ?? '').trim()
+    if (raw && !/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
+      return NextResponse.json({ error: 'Event date must be YYYY-MM-DD' }, { status: 400 })
+    }
+    patch.gallery_event_date = raw || null
+  }
+  if (typeof body.gallery_display_order === 'number') {
+    patch.gallery_display_order = body.gallery_display_order
+  }
+  if (typeof body.gallery_featured === 'boolean') {
+    patch.gallery_featured = body.gallery_featured
   }
   if (typeof body.body_mdx === 'string') patch.body_mdx = body.body_mdx.trim() || null
   if (typeof body.meta_description === 'string') patch.meta_description = body.meta_description.trim() || null
@@ -113,6 +129,19 @@ export async function PATCH(request: Request, { params }: Params) {
 
   const db = createAdminClient()
 
+  // At most one featured gallery per tenant: clear the others first. Done
+  // before the write so a failure here leaves nothing half-applied.
+  if (patch.gallery_featured === true) {
+    const { error: clearErr } = await db
+      .from('blog_posts')
+      .update({ gallery_featured: false })
+      .eq('tenant_id', workspace.tenantId)
+      .eq('content_type', 'gallery')
+      .eq('gallery_featured', true)
+      .neq('id', gallery.id)
+    if (clearErr) return NextResponse.json({ error: clearErr.message }, { status: 500 })
+  }
+
   // Same collision strategy as creation: try the clean slug, then a suffixed
   // one. 23505 is a per-tenant unique violation on (tenant_id, slug).
   const candidates = wantedSlug
@@ -126,7 +155,7 @@ export async function PATCH(request: Request, { params }: Params) {
       .update(attempt)
       .eq('id', gallery.id)
       .eq('tenant_id', workspace.tenantId)
-      .select('title, slug, gallery_context, gallery_show_captions, status')
+      .select('title, slug, gallery_context, gallery_show_captions, gallery_event_date, gallery_featured, gallery_display_order, status')
       .single()
 
     if (!error && data) {

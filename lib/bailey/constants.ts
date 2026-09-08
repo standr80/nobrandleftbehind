@@ -81,6 +81,10 @@ export interface GalleryImage {
   /** Hidden images stay in the gallery (admin) but are excluded from the
    *  published page, the publish-readiness gate, and the lead image. */
   hidden?: boolean | null
+  /** The image a consumer should lead with — gallery cover, og:image, and the
+   *  home page hero on sites that use one. At most one per gallery; setting it
+   *  clears the others. Falls back to the first ready image when unset. */
+  lead?: boolean | null
   /** Set when a human edits alt or caption. Regenerating captions skips these
    *  by default — a re-run must never silently discard someone's corrections. */
   edited?: boolean | null

@@ -128,6 +128,11 @@ export async function GET(
       .eq('tenant_id', tenant.id)
       .eq('status', 'published')
       .is('deleted_at', null)
+    // Galleries carry a manual order; anything unordered falls to the end,
+    // newest first. The column is null on every other content type, so this
+    // is a no-op for blog and FAQ listings.
+    q = q
+      .order('gallery_display_order', { ascending: true, nullsFirst: false })
       .order('published_at', { ascending: false })
       .order('id', { ascending: false })
     if (tag) q = q.contains('tags', [tag])

@@ -92,7 +92,7 @@ export async function resolveTenant(db: Db, slug: string): Promise<ResolvedTenan
 
 /** Columns selected for list/summary responses. */
 export const SUMMARY_COLUMNS =
-  'id, title, slug, excerpt, meta_description, tags, hero_image_url, hero_image_alt, hero_image_credit, created_by, published_at, updated_at, deleted_at, status, content_type, author:authors(name, job_title, bio, links, slug)'
+  'id, title, slug, excerpt, meta_description, tags, hero_image_url, hero_image_alt, hero_image_credit, created_by, published_at, updated_at, deleted_at, status, content_type, gallery_event_date, gallery_featured, gallery_display_order, author:authors(name, job_title, bio, links, slug)'
 
 /** Same as summary plus the body (and FAQ / gallery data) for single-post
  *  responses. `gallery_images` is deliberately NOT in SUMMARY_COLUMNS: the
@@ -116,6 +116,9 @@ export interface RawPost {
   deleted_at: string | null
   status: string | null
   content_type?: string | null
+  gallery_event_date?: string | null
+  gallery_featured?: boolean | null
+  gallery_display_order?: number | null
   body_mdx?: string | null
   faq_items?: unknown
   gallery_images?: unknown
@@ -226,6 +229,9 @@ export function toTombstone(p: RawPost) {
  */
 export interface PublicGalleryImage {
   id: string
+  /** The chosen cover image. Exactly one at most; absent flags mean none was
+   *  chosen and the first image serves. */
+  lead: boolean
   url: string
   thumb_url: string
   width: number
@@ -235,6 +241,7 @@ export interface PublicGalleryImage {
 }
 
 interface RawGalleryImage {
+  lead?: unknown
   id?: unknown
   url?: unknown
   thumb_url?: unknown
@@ -272,6 +279,7 @@ export function parseGalleryImages(raw: unknown): PublicGalleryImage[] {
     .sort((a, b) => (Number(a.order) || 0) - (Number(b.order) || 0))
     .map((img) => ({
       id: String(img.id ?? ''),
+      lead: img.lead === true,
       url: String(img.url),
       // Falls back to the master when no transform/variant thumb was stored.
       thumb_url: typeof img.thumb_url === 'string' && img.thumb_url ? img.thumb_url : String(img.url),
@@ -357,6 +365,17 @@ export function toSummary(p: RawPost, domain: string, fallbackAuthor: AuthorRow 
     author_title: a?.job_title ?? '',
     author_slug: a?.slug ?? '',
     content_type: p.content_type ?? 'blog',
+    // Galleries only. `event_date` is when the thing happened, as opposed to
+    // when it was published — consumers show it in place of published_at, and
+    // show nothing when it is absent. `featured` marks the one gallery a site
+    // should lead with.
+    ...(p.content_type === 'gallery'
+      ? {
+          event_date: p.gallery_event_date ?? '',
+          featured: p.gallery_featured === true,
+          display_order: p.gallery_display_order ?? null,
+        }
+      : {}),
     published_at: p.published_at ?? '',
     updated_at: p.updated_at ?? '',
     url: publicPostUrl(domain, p.slug ?? '', p.content_type),
@@ -387,7 +406,10 @@ export function toPost(p: RawPost, domain: string, bodyHtml: string, fallbackAut
       ? {
           gallery: {
             images: galleryImages,
-            lead_image: galleryImages[0]?.url ?? null,
+            // An explicit choice wins; otherwise the first image, which is what
+            // happened before a lead could be chosen.
+            lead_image:
+              (galleryImages.find((i) => i.lead) ?? galleryImages[0])?.url ?? null,
             // Whether the consumer should render captions under each image.
             // The text is returned either way — it still feeds alt text,
             // structured data and search even when it isn't displayed.

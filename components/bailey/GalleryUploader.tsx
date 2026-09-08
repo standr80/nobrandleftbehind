@@ -282,6 +282,27 @@ export default function GalleryUploader({
     setEditCaption(img?.caption ?? '')
   }, [previewIndex, images])
 
+  /**
+   * Make this image the gallery's lead: the cover on listings, the og:image,
+   * and the home page hero when the gallery is featured. The server clears the
+   * flag on the other images; mirror that locally so two images never both
+   * look selected.
+   */
+  async function setLeadImage(imageId: string) {
+    setNotice(null)
+    const res = await fetch(`/api/galleries/${galleryId}/images/${imageId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ tenantId, lead: true }),
+    })
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok) {
+      setNotice(data.error ?? 'Could not set the lead image')
+      return
+    }
+    setImages((imgs) => imgs.map((i) => ({ ...i, lead: i.id === imageId })))
+  }
+
   async function saveMeta() {
     if (previewIndex === null || savingMeta) return
     const img = images[previewIndex]
@@ -782,6 +803,19 @@ export default function GalleryUploader({
                     ⟳ 90°
                   </button>
                   {rotating && <span className="text-white/50 text-xs">Rotating…</span>}
+                  <button
+                    type="button"
+                    onClick={() => void setLeadImage(images[previewIndex].id)}
+                    disabled={
+                      !!images[previewIndex].lead ||
+                      !!images[previewIndex].hidden ||
+                      images[previewIndex].status !== 'ready'
+                    }
+                    title="Use as the gallery cover, og:image, and home page hero"
+                    className="px-2.5 py-1.5 rounded-lg bg-white/10 text-white text-sm hover:bg-white/20 disabled:opacity-30"
+                  >
+                    {images[previewIndex].lead ? '★ Lead image' : 'Use as lead image'}
+                  </button>
                   <button
                     type="button"
                     onClick={() => void setHidden([images[previewIndex].id], !images[previewIndex].hidden)}
