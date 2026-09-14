@@ -765,7 +765,11 @@ export async function runShopifyPublish(tenantId: string, postId: string): Promi
   }
   if (post.meta_description) article.summary = post.meta_description
   if (seoMetafields.length) article.metafields = seoMetafields
-  if (Array.isArray(post.tags) && post.tags.length) article.tags = post.tags
+  // Galleries send an empty list deliberately: articleUpdate leaves tags untouched
+  // when the field is absent, so tags someone cleared in Bailey would otherwise
+  // stay live. Blog and FAQ posts keep the old rule — their rows can hold [] from
+  // drafting, and sending it would wipe tags added in the Shopify admin.
+  if (Array.isArray(post.tags) && (post.tags.length || isGallery)) article.tags = post.tags
   // Shopify needs a publicly reachable image URL; skip repo-relative paths.
   // Gallery: the lead (first ready) image becomes the article featured image —
   // this feeds Shopify's auto image sitemap and og:image. Shopify's image

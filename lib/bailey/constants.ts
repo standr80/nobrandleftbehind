@@ -110,6 +110,51 @@ export function fileExtension(filename: string): string {
   return idx === -1 ? '' : filename.slice(idx + 1).toLowerCase()
 }
 
+// ── Tags ────────────────────────────────────────────────────────────────────
+
+/** Tags per gallery. Clem suggests 3-6; hand-added groupings ("christmas")
+ *  need some headroom on top of that. */
+export const MAX_GALLERY_TAGS = 10
+
+/** A tag is a grouping, not a sentence. */
+export const MAX_GALLERY_TAG_LENGTH = 40
+
+/** Clean a tag list: lowercase, inner whitespace collapsed, no commas (Shopify
+ *  splits tags on them), no duplicates, capped. Lowercase is not cosmetic —
+ *  Related reading and the Content API's ?tag= filter both match exactly, so
+ *  "Christmas" and "christmas" would otherwise be two different groupings. */
+export function normaliseGalleryTags(raw: unknown[]): string[] {
+  const out: string[] = []
+  for (const value of raw) {
+    const tag = String(value ?? '')
+      .toLowerCase()
+      .replace(/,/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .slice(0, MAX_GALLERY_TAG_LENGTH)
+      .trim()
+    if (tag && !out.includes(tag)) out.push(tag)
+    if (out.length === MAX_GALLERY_TAGS) break
+  }
+  return out
+}
+
+/** Shopify's page listing every article in a blog with this tag, derived from
+ *  one published article URL (https://host/blogs/<blog>/<handle>). Null for
+ *  anything that isn't a Shopify article URL. The tag segment is Shopify's
+ *  handle form: "christmas parties" → "christmas-parties". */
+export function shopifyTagPageUrl(articleUrl: string | null, tag: string): string | null {
+  const blog = articleUrl ? /^(https?:\/\/[^/]+\/blogs\/[^/?#]+)\/[^/?#]+/.exec(articleUrl) : null
+  if (!blog) return null
+  const handle = tag
+    .toLowerCase()
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+  return handle ? `${blog[1]}/tagged/${handle}` : null
+}
+
 /** Public CDN URL for an object in the gallery bucket. */
 export function galleryPublicUrl(supabaseUrl: string, path: string): string {
   return `${supabaseUrl.replace(/\/$/, '')}/storage/v1/object/public/${GALLERY_BUCKET}/${path}`

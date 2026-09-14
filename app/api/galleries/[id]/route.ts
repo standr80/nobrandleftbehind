@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getActiveWorkspace, resolveMutationWorkspace } from '@/lib/workspace/active'
 import { galleryImages, generateSlug, getGallery, rid } from '@/lib/bailey/galleries'
-import { galleryPublicUrl } from '@/lib/bailey/constants'
+import { galleryPublicUrl, normaliseGalleryTags } from '@/lib/bailey/constants'
 import { repairRelatedLinks, runShopifyDelete, type RemovedPostRef } from '@/lib/clem/shopify'
 
 // The delete itself is quick; the sibling link repair that follows it reads
@@ -43,7 +43,10 @@ export async function GET(_request: Request, { params }: Params) {
 }
 
 // PATCH — edit the gallery. Body: { tenantId, title?, gallery_context?,
-// slug?, body_mdx?, meta_description? }.
+// slug?, body_mdx?, meta_description?, tags? }.
+//
+// `tags` replaces the whole list. An empty array is stored as [] rather than
+// null, so the Shopify adapter sends it and a cleared list clears live too.
 //
 // Slug handling is the subtle part:
 //  - renaming a DRAFT regenerates the slug from the new title. Nothing is
@@ -74,6 +77,7 @@ export async function PATCH(request: Request, { params }: Params) {
     gallery_context?: string | null
     body_mdx?: string | null
     meta_description?: string | null
+    tags?: string[]
     updated_at?: string
   } = {}
 
@@ -105,6 +109,7 @@ export async function PATCH(request: Request, { params }: Params) {
   }
   if (typeof body.body_mdx === 'string') patch.body_mdx = body.body_mdx.trim() || null
   if (typeof body.meta_description === 'string') patch.meta_description = body.meta_description.trim() || null
+  if (Array.isArray(body.tags)) patch.tags = normaliseGalleryTags(body.tags)
 
   // Work out the slug we want, if any.
   const isPublished = gallery.status === 'published'
@@ -155,7 +160,7 @@ export async function PATCH(request: Request, { params }: Params) {
       .update(attempt)
       .eq('id', gallery.id)
       .eq('tenant_id', workspace.tenantId)
-      .select('title, slug, gallery_context, gallery_show_captions, gallery_event_date, gallery_featured, gallery_display_order, status')
+      .select('title, slug, gallery_context, gallery_show_captions, gallery_event_date, gallery_featured, gallery_display_order, tags, status')
       .single()
 
     if (!error && data) {

@@ -93,6 +93,7 @@ export default async function GalleryPage({ params }: Props) {
         initialTags={gallery.tags}
         initialClusterId={gallery.cluster_id}
         isPublished={gallery.status === 'published'}
+        shopifyArticleUrl={gallery.shopify_article_url}
       />
       <GalleryUploader
         key={gallery.id}

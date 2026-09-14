@@ -29,19 +29,24 @@ export async function POST(request: Request, { params }: Params) {
 
   try {
     const copy = await generateGalleryCopy(gallery, workspace.tenantId)
+    // Tags are hand-editable, so Clem only fills an empty list. A regenerate
+    // must never quietly replace a grouping someone chose ("christmas") —
+    // clearing the tags first is how you ask for fresh suggestions.
+    const tagsKept = (gallery.tags?.length ?? 0) > 0
+    const tags = tagsKept ? gallery.tags! : copy.tags
     const db = createAdminClient()
     const { error } = await db
       .from('blog_posts')
       .update({
         body_mdx: copy.body_mdx,
         meta_description: copy.meta_description || null,
-        tags: copy.tags.length ? copy.tags : null,
+        tags: tags.length ? tags : null,
         cluster_id: copy.cluster_id,
         updated_at: new Date().toISOString(),
       })
       .eq('id', gallery.id)
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-    return NextResponse.json({ ok: true, ...copy })
+    return NextResponse.json({ ok: true, ...copy, tags, tagsKept })
   } catch (err) {
     const { error, status } = aiErrorResponse(err)
     return NextResponse.json({ error }, { status })

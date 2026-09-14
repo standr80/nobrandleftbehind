@@ -10,6 +10,7 @@ import { anthropic } from '@/lib/anthropic'
 import { createAdminClient } from '@/lib/supabase/admin'
 import type { GalleryRow } from './galleries'
 import { galleryImages } from './galleries'
+import { normaliseGalleryTags } from './constants'
 
 const CLAUDE_MODEL = 'claude-sonnet-4-6'
 
@@ -108,10 +109,7 @@ export async function generateGalleryCopy(
   return {
     body_mdx: paragraphs.join('\n\n'),
     meta_description: clampMeta(parsed.meta_description),
-    tags: (Array.isArray(parsed.tags) ? parsed.tags : [])
-      .map((t) => String(t).toLowerCase().trim())
-      .filter(Boolean)
-      .slice(0, 6),
+    tags: normaliseGalleryTags(Array.isArray(parsed.tags) ? parsed.tags : []).slice(0, 6),
     cluster_id: clusterNames.has(parsed.cluster ?? '') ? (parsed.cluster as string) : null,
   }
 }
