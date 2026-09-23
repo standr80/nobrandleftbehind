@@ -273,3 +273,14 @@
 .repeatafterme .deck-source:hover{ text-decoration:underline; }
 .repeatafterme header .deck-source{ margin-top:2px; }
 .repeatafterme .row label .deck-source{ margin-top:3px; }
+
+/* ---- tap the card to see both sides ---- */
+/* The card's children were direct flex items; the live region now wraps the text, so
+   it has to carry the same column layout or the card collapses to one row. */
+.repeatafterme .card-live{
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  gap:14px; width:100%;
+}
+.repeatafterme .card-tappable{ cursor:pointer; }
+.repeatafterme .card-tappable:focus-visible{ outline:3px solid var(--blue); outline-offset:2px; }
+.repeatafterme .card.peeking{ border-color:var(--blue); box-shadow:0 1px 3px rgba(39,67,199,.18); }

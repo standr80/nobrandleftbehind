@@ -46,6 +46,7 @@ export interface UiStrings {
   loopDeck: string;
   showText: string;
   showTextHint: string;
+  peekAria: string;
 
   // deck section
   myDecksHeading: string;
@@ -251,6 +252,7 @@ const en: UiStrings = {
   loopDeck: "Loop deck",
   showText: "Show text",
   showTextHint: "Off = audio only",
+  peekAria: "Show both sides of this card",
 
   myDecksHeading: "My Decks",
   activeDeckLabel: "Active deck",
@@ -441,6 +443,7 @@ const fr: UiStrings = {
   loopDeck: "Boucler le paquet",
   showText: "Afficher le texte",
   showTextHint: "Désactivé = audio seul",
+  peekAria: "Afficher les deux faces de cette carte",
 
   myDecksHeading: "Mes paquets",
   activeDeckLabel: "Paquet actif",
@@ -631,6 +634,7 @@ const es: UiStrings = {
   loopDeck: "Repetir mazo",
   showText: "Mostrar texto",
   showTextHint: "Desactivado = solo audio",
+  peekAria: "Mostrar las dos caras de esta tarjeta",
 
   myDecksHeading: "Mis mazos",
   activeDeckLabel: "Mazo activo",

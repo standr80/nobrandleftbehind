@@ -489,7 +489,20 @@ export default function Player() {
             {minutesToday > 0 && t.statsMinutesToday(minutesToday)}
           </div>
         )}
-        <div className="card" role="status" aria-live="polite">
+        <div
+          className={"card card-tappable" + (snap.peeking ? " peeking" : "")}
+          onClick={() => engine.togglePeek()}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              engine.togglePeek();
+            }
+          }}
+          role="button"
+          tabIndex={0}
+          aria-pressed={snap.peeking}
+          aria-label={t.peekAria}
+        >
           <span className="counter">{snap.pos + 1} / {snap.order.length}</span>
           <span className="score">
             {snap.results.length > 0 && (
@@ -498,21 +511,28 @@ export default function Player() {
               </>
             )}
           </span>
-          <span className={"phase-tag" + (snap.phaseClass ? " " + snap.phaseClass : "")}>
-            <span className="dot"></span>
-            <span>{snap.phaseLabel}</span>
-          </span>
-          <div className="en-line">{snap.promptText}</div>
-          <div className="thinkbar" ref={thinkbarRef}>
-            <div ref={thinkfillRef}></div>
+          {/* The live region is the text, not the whole card — the card itself is now
+              a button, and announcing a button's entire contents on every phase change
+              is not what aria-live is for. */}
+          <div className="card-live" role="status" aria-live="polite">
+            <span className={"phase-tag" + (snap.phaseClass ? " " + snap.phaseClass : "")}>
+              <span className="dot"></span>
+              <span>{snap.phaseLabel}</span>
+            </span>
+            <div className="en-line">{snap.promptText}</div>
+            <div className="thinkbar" ref={thinkbarRef}>
+              <div ref={thinkfillRef}></div>
+            </div>
+            <div className={"fr-line" + (snap.revealAnswer ? "" : " hidden-answer")}>{snap.answerText || " "}</div>
           </div>
-          <div className={"fr-line" + (snap.revealAnswer ? "" : " hidden-answer")}>{snap.answerText || " "}</div>
 
-          <div className={"markrow" + (snap.markVisible ? " show" : "")}>
+          {/* Marking and summary are real choices — a tap on them must not also
+              count as a tap on the card. */}
+          <div className={"markrow" + (snap.markVisible ? " show" : "")} onClick={(e) => e.stopPropagation()}>
             <button className="mark good" onClick={() => engine.markKnew()}>{t.knewIt}</button>
             <button className="mark bad" onClick={() => engine.markMissed()}>{t.missedIt}</button>
           </div>
-          <div className={"summaryrow" + (snap.summaryVisible ? " show" : "")}>
+          <div className={"summaryrow" + (snap.summaryVisible ? " show" : "")} onClick={(e) => e.stopPropagation()}>
             {snap.missedCount > 0 && (
               <button className="mark bad" onClick={() => engine.practiseMisses()}>
                 {t.practiseMisses(snap.missedCount)}

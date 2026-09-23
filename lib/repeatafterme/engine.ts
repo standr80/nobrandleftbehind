@@ -32,6 +32,7 @@ export interface EngineSnapshot {
   promptText: string;
   answerText: string;
   revealAnswer: boolean;
+  peeking: boolean;
   markVisible: boolean;
   summaryVisible: boolean;
   results: boolean[];
@@ -86,6 +87,12 @@ export class RepetezEngine {
   private promptText: string;
   private answerText = "";
   private revealAnswer = false;
+  /** Whether the player itself has reached the answer, kept apart from `peek` so the
+   *  two never feed back into each other when the card is re-rendered. */
+  private naturalReveal = false;
+  /** A manual "show me both sides" on the current card — tapping the card. Deliberately
+   *  not a setting: any resync (next card, reveal, mode change) ends it. */
+  private peek = false;
   private markVisible = false;
   private summaryVisible = false;
   private deckLabel: string;
@@ -150,6 +157,7 @@ export class RepetezEngine {
       promptText: this.promptText,
       answerText: this.answerText,
       revealAnswer: this.revealAnswer,
+      peeking: this.peek,
       markVisible: this.markVisible,
       summaryVisible: this.summaryVisible,
       results: this.results,
@@ -277,13 +285,31 @@ export class RepetezEngine {
   }
 
   private syncCard(revealAnswer: boolean) {
+    this.naturalReveal = revealAnswer;
+    this.peek = false; // a peek lasts only as long as the card it was taken on
+    this.applyCard();
+  }
+
+  /** Renders prompt/answer from the current card plus whatever is revealing it —
+   *  the player reaching the answer, or the learner peeking. Peeking overrides
+   *  "show text" off as well: the point is to see what you couldn't. */
+  private applyCard() {
     const [native, target] = this.deck[this.order[this.pos]];
     const prompt = this.settings.dir === "EF" ? native : target;
     const answer = this.settings.dir === "EF" ? target : native;
-    this.promptText = this.settings.showText ? prompt : "🎧";
+    const showText = this.settings.showText || this.peek;
+    this.promptText = showText ? prompt : "🎧";
     this.answerText = answer;
-    this.revealAnswer = revealAnswer && this.settings.showText;
+    this.revealAnswer = (this.naturalReveal || this.peek) && showText;
   }
+
+  /** Tap the card to see both sides without waiting for the player. */
+  togglePeek() {
+    this.peek = !this.peek;
+    this.applyCard();
+    this.emit();
+  }
+
 
   // ---------- player loop ----------
   private async runFrom(startPos: number) {
@@ -641,7 +667,7 @@ export class RepetezEngine {
   }
   toggleShowText() {
     this.settings.showText = !this.settings.showText;
-    this.syncCard(this.revealAnswer);
+    this.syncCard(this.naturalReveal);
     this.emit();
     this.onDeckOrSettingsChange?.();
   }
