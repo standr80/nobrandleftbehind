@@ -8,7 +8,7 @@ export const viewport: Viewport = {
 
 export const metadata: Metadata = {
   title: "Répétez — Speak-Along Language Drill",
-  description: "A Michel Thomas / Paul Noble-style speak-along drill across English, French and Spanish. Free, no account, bring your own AI key.",
+  description: "A Michel Thomas / Paul Noble-style speak-along drill across English, French, Spanish and Italian. Free, no account, bring your own AI key.",
   manifest: "/repeatafterme/manifest.webmanifest",
   icons: {
     // Explicit sizes/type so this clearly outranks the platform's own site-wide

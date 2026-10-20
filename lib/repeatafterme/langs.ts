@@ -1,15 +1,23 @@
 // Originally ported from French/repetez/repetez.html, since extended to support any
-// native/target pairing across English, French and Spanish (not just "English is
-// always the native language"). Adding a fourth language means: add a LangCode, a
-// LANGS entry (voice/TTS/focuses), a STARTER_PHRASES column, and a UiStrings
-// dictionary in i18n.ts.
+// native/target pairing (not just "English is always the native language").
+//
+// Adding a language you can STUDY means: a LangCode, a LANGS entry
+// (voice/TTS/focuses) and a STARTER_PHRASES column. Also translating the interface
+// into it — a whole UiStrings dictionary in i18n.ts — additionally makes it available
+// as a NATIVE language. The two stay separate so a language can be learnable before
+// the UI speaks it; en/fr/es/it are currently all four.
 
 export type Pair = [string, string];
 
-export type LangCode = "en" | "fr" | "es";
+export type LangCode = "en" | "fr" | "es" | "it";
+
+/** The subset of LangCode the interface itself is translated into — i.e. the ones
+ *  with a dictionary in i18n.ts's DICTS. Only these can be the native language. */
+export type UiLangCode = "en" | "fr" | "es" | "it";
+export const UI_LANGS: UiLangCode[] = ["en", "fr", "es", "it"];
 
 /** Fixed canonical ordering used for "available targets" and UI seg controls. */
-export const LANG_ORDER: LangCode[] = ["en", "fr", "es"];
+export const LANG_ORDER: LangCode[] = ["en", "fr", "es", "it"];
 
 export function availableTargets(native: LangCode): LangCode[] {
   return LANG_ORDER.filter((c) => c !== native);
@@ -100,9 +108,33 @@ export const LANGS: Record<LangCode, LangConfig> = {
       ["Comparatives", "comparatives and superlatives: más...que, menos...que, el más..."],
     ],
   },
+  it: {
+    name: "Italian",
+    tts: "it-IT",
+    short: "IT",
+    title: "Ripetete",
+    voiceNames: ["alice", "federica", "luca", "eloisa", "google italiano"],
+    articles: "il, lo, la, l', i, gli, le, un, uno or una",
+    styleNote: "Natural, useful, spoken Italian (Lei form where a stranger is addressed).",
+    focuses: [
+      ["Passato prossimo", "the passato prossimo, mixing avere and essere auxiliaries (and the agreement essere forces)"],
+      ["Imperfetto", "the imperfetto for habits, descriptions and background in the past"],
+      ["Passato prossimo vs imperfetto", "contrasting passato prossimo and imperfetto in the same sentences (e.g. 'I was doing X when Y happened')"],
+      ["Preposizioni articolate", "prepositions combined with the article: del, nel, al, dal, sul, and when each is used"],
+      ["Futuro semplice", "the futuro semplice, including its use for supposition ('sarà vero')"],
+      ["Condizionale", "the condizionale (vorrei, mi piacerebbe, polite requests and hypotheticals)"],
+      ["Congiuntivo", "the congiuntivo after penso che, credo che, benché, è possibile che"],
+      ["Reflexive verbs", "reflexive verbs (alzarsi, ricordarsi, divertirsi...)"],
+      ["Object pronouns", "direct and indirect object pronouns: lo, la, li, le, gli, and combined forms like glielo"],
+      ["Ne and ci", "the particles ne and ci, which English has no direct equivalent for"],
+      ["Piacere-type verbs", "piacere and verbs that work like it: mancare, servire, interessare, far male"],
+      ["Noun and adjective agreement", "gender and number agreement between nouns and adjectives, including irregular plurals"],
+      ["Comparatives", "comparatives and superlatives: più...di, meno...di, il più..., -issimo"],
+    ],
+  },
 };
 
-// One canonical set of 30 everyday concepts, translated into all three languages.
+// One canonical set of 30 everyday concepts, translated into every language.
 // Any native/target pairing is derived from this at runtime via getStarterDeck() —
 // there's no separate "starter deck" per language anymore.
 const STARTER_PHRASES: Record<LangCode, string[]> = {
@@ -201,6 +233,38 @@ const STARTER_PHRASES: Record<LangCode, string[]> = {
     "Perdone, busco la panadería.",
     "La comida estaba estupenda.",
     "Muchas gracias, adiós.",
+  ],
+  it: [
+    "Buongiorno, come sta?",
+    "Vorrei un caffè, per favore.",
+    "Dov'è la stazione?",
+    "Quanto costa?",
+    "Non capisco.",
+    "Può parlare più lentamente?",
+    "Che ore sono?",
+    "Il conto, per favore.",
+    "Sto imparando una nuova lingua.",
+    "È una bella giornata.",
+    "Abito vicino alla costa.",
+    "Avete un tavolo per due?",
+    "Vorrei un bicchiere di vino rosso.",
+    "Dove sono i bagni?",
+    "Può aiutarmi?",
+    "Domani vado al mercato.",
+    "Questo pane è delizioso.",
+    "Ieri abbiamo visitato il duomo.",
+    "Il mio cane è molto pigro.",
+    "Vado in bicicletta ogni fine settimana.",
+    "Potrei avere il menù?",
+    "Prendo questo.",
+    "Cosa consiglia?",
+    "A domani.",
+    "Devo comprare del formaggio.",
+    "Oggi il tempo è bellissimo.",
+    "Questo pomeriggio andiamo a nuotare.",
+    "Mi scusi, cerco la panetteria.",
+    "È stato un pasto delizioso.",
+    "Grazie mille, arrivederci.",
   ],
 };
 

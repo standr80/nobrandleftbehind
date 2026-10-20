@@ -5,7 +5,7 @@ import Link from "next/link";
 import AppNav from "@/components/repeatafterme/AppNav";
 import IntroCard from "@/components/repeatafterme/IntroCard";
 import { RepetezEngine } from "@/lib/repeatafterme/engine";
-import { LANGS, LANG_ORDER, availableTargets } from "@/lib/repeatafterme/langs";
+import { LANGS, UI_LANGS, availableTargets } from "@/lib/repeatafterme/langs";
 import { getStrings, aiErrorText } from "@/lib/repeatafterme/i18n";
 import { parseLines, deckToCsv, extractPairs } from "@/lib/repeatafterme/deckParsing";
 import {
@@ -751,7 +751,7 @@ export default function Player() {
             <div className="row">
               <label>{t.nativeLanguage}</label>
               <div className="seg">
-                {LANG_ORDER.map((code) => (
+                {UI_LANGS.map((code) => (
                   <button key={code} className={native === code ? "on" : ""} onClick={() => native !== code && engine.setNativeLang(code)}>
                     {LANGS[code].short}
                   </button>

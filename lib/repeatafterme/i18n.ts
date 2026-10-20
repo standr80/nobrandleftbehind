@@ -1,12 +1,20 @@
-import type { LangCode } from "./langs";
+import type { LangCode, UiLangCode } from "./langs";
 import type { AiErrorKind } from "./providers";
 
 // Localised name of each LangCode, as it should read in each UI language — used to
 // interpolate into phrases like "Your turn — say it in {language}".
-export const LANG_NAMES: Record<LangCode, Record<LangCode, string>> = {
-  en: { en: "English", fr: "French", es: "Spanish" },
-  fr: { en: "anglais", fr: "français", es: "espagnol" },
-  es: { en: "inglés", fr: "francés", es: "español" },
+/** Name of `lang` as it should read in `uiLang`. Use this rather than indexing
+ *  LANG_NAMES directly — the UI language may be one the interface isn't translated
+ *  into, in which case the English names are the sensible fallback. */
+export function langName(uiLang: LangCode, lang: LangCode): string {
+  return (LANG_NAMES[uiLang as UiLangCode] ?? LANG_NAMES.en)[lang];
+}
+
+export const LANG_NAMES: Record<UiLangCode, Record<LangCode, string>> = {
+  en: { en: "English", fr: "French", es: "Spanish", it: "Italian" },
+  fr: { en: "anglais", fr: "français", es: "espagnol", it: "italien" },
+  es: { en: "inglés", fr: "francés", es: "español", it: "italiano" },
+  it: { en: "inglese", fr: "francese", es: "spagnolo", it: "italiano" },
 };
 
 export interface UiStrings {
@@ -791,7 +799,198 @@ const es: UiStrings = {
   statusLibraryDeckAdded: (label) => `Se añadió «${label}» a tus mazos.`,
 };
 
-const DICTS: Record<LangCode, UiStrings> = { en, fr, es };
+const it: UiStrings = {
+  phaseReady: "Pronto",
+  promptPressPlay: "Premi play per iniziare",
+  phaseListen: "Ascolta",
+  phaseYourTurn: (lang) => `Tocca a te — dillo in ${lang}`,
+  phaseAnswer: "Risposta",
+  phaseDidYouGetIt: "L'hai indovinato?",
+  phasePaused: "In pausa",
+  phaseTestComplete: "Test completato",
+  phaseDeckComplete: "Mazzo completato",
+  phaseTestReady: "Test pronto — premi play",
+  phaseReadyNextCard: "Pronto per la prossima carta — premi play",
+  correctOutOf: (c, t) => `${c} / ${t} corrette`,
+
+  starterDeck: (n) => `Mazzo iniziale · ${n} frasi`,
+  deckPhrases: (label, n) => `${label} · ${n} frasi`,
+
+  nativeLanguage: "Lingua madre",
+  language: "Lingua di studio",
+  mode: "Modalità",
+  modeHint: "Test = valutati da solo e ottieni un punteggio",
+  drill: "Esercizio",
+  test: "Test",
+  autoplay: "Riproduzione automatica",
+  autoplayHint: "Disattivata = pausa dopo ogni carta, premi play per la successiva",
+  thinkingTime: "Tempo di riflessione",
+  thinkingTimeHint: "Pausa prima della risposta",
+  speechSpeed: "Velocità della voce",
+  direction: "Direzione",
+  dirTo: (short) => `→ ${short}`,
+  shuffle: "Mescola",
+  loopDeck: "Ripeti il mazzo",
+  showText: "Mostra il testo",
+  showTextHint: "Disattivato = solo audio",
+  peekAria: "Mostra entrambi i lati di questa carta",
+
+  myDecksHeading: "I miei mazzi",
+  activeDeckLabel: "Mazzo attivo",
+  uploadCsv: "Carica CSV",
+  pastePhrases: "Incolla frasi",
+  aiSettingsBtn: "Impostazioni IA",
+  generateWithAi: "✦ Genera con l'IA",
+  generateDisabledTitle: "Aggiungi prima una chiave API in Impostazioni IA",
+  downloadDeck: "Scarica il mazzo",
+  saveCurrentDeck: "Salva il mazzo attuale",
+  pasteBoxPlaceholder: "Una frase per riga:\nDov'è la stazione?, Où est la gare ?\nVorrei un caffè, Je voudrais un café",
+  loadPhrases: "Carica le frasi",
+  cancel: "Annulla",
+  saveDeckNamePlaceholder: "Nome del mazzo",
+  save: "Salva",
+  forgetKey: "Dimentica la chiave",
+  aiKeyPlaceholder: "La tua chiave API — salvata solo in questo browser",
+  noGrammarFocus: "Nessun focus grammaticale — solo argomento",
+  topicPlaceholder: "Argomento (facoltativo), es. ordinare il vino, andare in bici, in ceramica",
+  phrasesOption: "Frasi",
+  singleWordsOption: "Parole singole",
+  beginner: "Principiante",
+  intermediate: "Intermedio",
+  advanced: "Avanzato",
+  countOption: (n) => `${n} frasi`,
+  generate: "Genera",
+  generating: "Generazione…",
+  yourDecks: "I tuoi mazzi",
+  load: "Carica",
+  delete: "Elimina",
+
+  knewIt: "✓ Lo sapevo",
+  missedIt: "✗ Sbagliato",
+  newTest: "Nuovo test",
+  practiseMisses: (n) => `Esercitati su ${n} ${n === 1 ? "errore" : "errori"}`,
+
+  dueToday: (n) => `Da ripassare oggi (${n})`,
+  dueQueueLabel: (n) => `Da ripassare oggi · ${n} ${n === 1 ? "frase" : "frasi"}`,
+
+  saveAndSync: "Salva e sincronizza",
+  syncIntro: "Porta i tuoi mazzi e i tuoi progressi su un altro dispositivo. Genera una chiave su questo dispositivo — niente account, niente email.",
+  syncGenerateKey: "Genera una chiave",
+  syncYourKey: "La tua chiave",
+  syncKeyHint: "Annotala — non esiste il recupero della password. Chiunque abbia questa chiave può leggere e sovrascrivere questi dati.",
+  syncReveal: "Mostra",
+  syncHide: "Nascondi",
+  syncCopy: "Copia",
+  statusSyncCopied: "Chiave copiata negli appunti.",
+  syncNow: "Sincronizza ora",
+  syncStop: "Interrompi la sincronizzazione su questo dispositivo",
+  syncRestoreLabel: "Hai già una chiave da un altro dispositivo?",
+  syncRestorePlaceholder: "XXXX-XXXX-XXXX-XXXX-XXXX",
+  syncRestoreBtn: "Ripristina",
+
+  resetLabel: "Reimposta questo dispositivo",
+  resetHint: "Cancella da questo browser i mazzi salvati, le impostazioni, i punteggi, il calendario di ripasso, la chiave API e questa chiave: l'app torna come la vede chi entra per la prima volta. La tua copia sincronizzata non viene eliminata — ripristinala con la chiave qui sopra. Annota prima la chiave: senza, quella copia non è più recuperabile.",
+  resetBtn: "Reimposta…",
+  resetConfirmBtn: "Sì, cancella questo dispositivo",
+  resetBusy: "Cancellazione…",
+
+  navLabel: "Sezioni principali",
+  repetezNavLink: "Répétez",
+  repetezNavHint: "Ad alta voce",
+  ecoutezNavHint: "Ascoltare",
+  libraryNavHint: "Mazzi pronti",
+  repetezIntro: "Ascolta la frase, dilla ad alta voce nella tua lingua di studio, poi ascolta la risposta. Carica un mazzo qui sotto — oppure passa alla modalità Test per valutarti.",
+  introHide: "Nascondi questa nota",
+  introShow: "Mostra la nota su questa pagina",
+
+  settingsHeading: "Impostazioni",
+  groupLanguages: "Lingue",
+  groupPractice: "Allenamento",
+  groupPlayback: "Riproduzione",
+  sessionHeading: "Questa sessione",
+  deckGetPhrases: "Aggiungi frasi",
+
+  ecoutezNavLink: "Écoutez",
+  ecoutezSourceLabel: "Fonte",
+  ecoutezIntro: "Ascolta un breve testo al tuo livello, due volte — prima lento, poi naturale — con il vocabolario prima e un riepilogo dopo.",
+  ecoutezModeTopic: "Argomento",
+  ecoutezModePaste: "Incolla un testo da semplificare",
+  ecoutezTopicPlaceholder: "Argomento (facoltativo), es. una gita al mercato, i piani per il fine settimana",
+  ecoutezPastePlaceholder: "Incolla un testo autentico e verrà semplificato al tuo livello",
+  ecoutezLevelLabel: "Livello",
+  ecoutezGenerate: "Genera episodio",
+  ecoutezGenerating: "Sto scrivendo il tuo episodio…",
+  ecoutezVocabHeading: "Anteprima del vocabolario",
+  ecoutezPreviewVocab: "Ascolta il vocabolario",
+  ecoutezStartListening: "Inizia ad ascoltare",
+  ecoutezPass1: "Ascolto — passaggio lento",
+  ecoutezPass2: "Ascolto — passaggio naturale",
+  ecoutezSummaryHeading: "Riepilogo",
+  ecoutezQuestionsHeading: "Domande di comprensione",
+  ecoutezKeyPhrasesHeading: "Frasi chiave",
+  ecoutezExportDeck: "Esporta il vocabolario come mazzo",
+  ecoutezGoToDrill: "Vai a esercitarti con questo mazzo",
+  ecoutezNewEpisode: "Nuovo episodio",
+
+  libraryNavLink: "Biblioteca",
+  libraryIntro: "Esplora mazzi già pronti per lingua e argomento e aggiungili direttamente ai tuoi mazzi — senza scrivere né caricare nulla.",
+  libraryLanguageLabel: "Lingua",
+  libraryBrowseBtn: "Sfoglia",
+  libraryWordCount: (n) => `${n} parole`,
+  libraryDeckCount: (n) => `${n} mazzi`,
+  libraryLoading: "Caricamento della biblioteca…",
+  libraryLoadFailed: "Impossibile caricare questa biblioteca — riprova tra poco.",
+  libraryAddBtn: "Aggiungi ai miei mazzi",
+  libraryAddedBtn: "✓ Aggiunto",
+  libraryMixedGroup: "Varie (categorie più piccole raggruppate)",
+
+  podcastsHeading: "Podcast",
+  podcastsIntro: "Ascolta un episodio, aggiungi il suo vocabolario come mazzo, esercitati e riascolta — il link resta con il mazzo.",
+  podcastListen: "Ascolta",
+  podcastEpisodeCount: (n) => `${n} ${n === 1 ? "episodio" : "episodi"}`,
+
+  statsStreak: (n) => `🔥 ${n} giorni di fila`,
+  statsMinutesToday: (n) => `${n} min oggi`,
+
+  goToCard: "Vai alla carta",
+  goToCardPlaceholder: "#",
+  goToBtn: "Vai",
+  bookmarkSet: "🔖 Segna qui",
+  bookmarkGo: (n) => `↩ Vai al segnalibro (${n})`,
+  statusBookmarkSet: (n) => `Segnalibro sulla carta ${n}.`,
+
+  footer: "Collega un altoparlante Bluetooth e premi play. Tieni lo schermo acceso mentre ti eserciti.",
+
+  statusLoadedPhrases: (n) => `Caricate ${n} frasi.`,
+  statusNoPhrasesFound: "Nessuna frase trovata — servono due colonne, una coppia per riga.",
+  statusSwitchedTarget: (name) => `Passato a ${name} — mazzo iniziale caricato. Carica o genera un mazzo per sostituirlo.`,
+  statusSavedDeck: (name) => `"${name}" salvato nei tuoi mazzi.`,
+  statusGenerating: (deckName) => `Generazione: ${deckName}…`,
+  statusGenerationFailed: (msg) => `Generazione non riuscita: ${msg}`,
+
+  aiErrNoKey: "Nessuna chiave API — aggiungine una in Impostazioni IA e riprova.",
+  aiErrAuth: "La tua chiave API è stata rifiutata. Potrebbe essere scaduta, revocata o incollata in modo incompleto — aggiungine una nuova in Impostazioni IA.",
+  aiErrRateLimit: "Il tuo fornitore di IA sta limitando le richieste. Aspetta un momento e riprova.",
+  aiErrQuota: "Il tuo account IA ha esaurito il credito. Ricaricalo presso il fornitore e riprova.",
+  aiErrProvider: "Il tuo fornitore di IA ha avuto un problema dalla sua parte. Riprova tra un minuto.",
+  aiErrNetwork: "Impossibile contattare il tuo fornitore di IA. Controlla la connessione e riprova.",
+  statusAiSettingsSaved: "Impostazioni IA salvate.",
+  statusAiSettingsSavedNoKey: "Impostazioni IA salvate — nessuna chiave impostata, Genera resta disattivato finché non ne aggiungi una.",
+  statusKeyForgotten: "Chiave API dimenticata.",
+  statusGenerationEmptyResponse: "non è stato possibile leggere il formato della risposta",
+  statusNothingDue: "Niente da ripassare al momento — ottimo lavoro.",
+  statusSyncSaved: "Sincronizzato.",
+  statusSyncRestored: "Ripristinato dalla sincronizzazione.",
+  statusSyncFailed: (msg) => `Sincronizzazione non riuscita: ${msg}`,
+  statusSyncStopped: "Sincronizzazione interrotta su questo dispositivo — i tuoi dati restano qui, non è stato eliminato nulla.",
+  statusSyncNeedsKey: "Inserisci prima una chiave.",
+  statusEcoutezGenerationFailed: (msg) => `Impossibile generare questo episodio: ${msg}`,
+  statusEcoutezExported: (name) => `Esportato come "${name}" — lo trovi in I tuoi mazzi.`,
+  statusEcoutezNeedsKey: "Aggiungi prima una chiave API in Impostazioni IA nella pagina principale.",
+  statusLibraryDeckAdded: (label) => `"${label}" aggiunto ai tuoi mazzi.`,
+};
+
+const DICTS: Record<UiLangCode, UiStrings> = { en, fr, es, it };
 
 /** Turns a failure kind from the generate route into something worth reading. Falls
  *  back to the vendor's own message only for "unknown" — everything the app can
@@ -816,5 +1015,8 @@ export function aiErrorText(t: UiStrings, kind: AiErrorKind | undefined, fallbac
 }
 
 export function getStrings(uiLang: LangCode): UiStrings {
-  return DICTS[uiLang];
+  // Falls back to English for a studiable-but-untranslated language. Shouldn't
+  // normally arise — the native-language control only offers UI_LANGS — but it
+  // keeps a restored setting or synced payload from blanking the whole interface.
+  return DICTS[uiLang as UiLangCode] ?? en;
 }

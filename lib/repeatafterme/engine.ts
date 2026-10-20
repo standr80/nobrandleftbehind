@@ -1,5 +1,5 @@
 import { LANGS, LANG_ORDER, availableTargets, getStarterDeck, type LangCode, type Pair } from "./langs";
-import { getStrings, LANG_NAMES, type UiStrings } from "./i18n";
+import { getStrings, langName, type UiStrings } from "./i18n";
 import { hashContent } from "./srs";
 import { loadAiSettings } from "./aiSettings";
 import { fetchSpeech, playBlob } from "./fetchedTts";
@@ -330,7 +330,7 @@ export class RepetezEngine {
 
       const ms = Math.max(2200, answer.length * 90 * this.settings.pause);
       const answerLangCode = answerLang === "target" ? this.settings.targetLang : this.settings.nativeLang;
-      this.setPhase("yourturn", this.t.phaseYourTurn(LANG_NAMES[this.settings.nativeLang][answerLangCode]));
+      this.setPhase("yourturn", this.t.phaseYourTurn(langName(this.settings.nativeLang, answerLangCode)));
       this.emit();
       this.onThinkStart?.(ms);
       await sleep(ms);
@@ -630,9 +630,11 @@ export class RepetezEngine {
    *  and, if the current target is no longer valid (target === new native), picks the
    *  first remaining available target. Resets to that pairing's starter deck. */
   setNativeLang(code: LangCode) {
+    // Strings first: stop() writes a phase label ("Paused"), and doing it the other
+    // way round left that label stranded in the outgoing language.
+    this.t = getStrings(code);
     this.stop();
     this.settings.nativeLang = code;
-    this.t = getStrings(code);
     const targets = availableTargets(code);
     if (!targets.includes(this.settings.targetLang)) {
       this.settings.targetLang = targets[0];
@@ -647,7 +649,7 @@ export class RepetezEngine {
     this.resetTest();
     this.syncCard(false);
     this.deckLabel = this.t.starterDeck(this.deck.length);
-    this.status = this.t.statusSwitchedTarget(LANG_NAMES[native][target]);
+    this.status = this.t.statusSwitchedTarget(langName(native, target));
     this.statusErr = false;
     this.emit();
     this.onDeckOrSettingsChange?.();

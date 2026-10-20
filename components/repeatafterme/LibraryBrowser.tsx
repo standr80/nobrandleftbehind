@@ -3,8 +3,8 @@
 import { useEffect, useMemo, useState } from "react";
 import AppNav from "@/components/repeatafterme/AppNav";
 import IntroCard from "@/components/repeatafterme/IntroCard";
-import { LANGS, type LangCode } from "@/lib/repeatafterme/langs";
-import { getStrings } from "@/lib/repeatafterme/i18n";
+import { type LangCode } from "@/lib/repeatafterme/langs";
+import { getStrings, langName } from "@/lib/repeatafterme/i18n";
 import { getSettings, listDecks, saveDeckToLibrary } from "@/lib/repeatafterme/db";
 import {
   LIBRARIES,
@@ -189,7 +189,7 @@ export default function LibraryBrowser() {
                     setActiveCollectionId(first?.id ?? null);
                   }}
                 >
-                  {LANGS[lc].name}
+                  {langName(native, lc)}
                 </button>
               ))}
             </div>
