@@ -59,6 +59,17 @@ export const LIBRARIES: LibraryMeta[] = [
     deckCount: 14,
     wordCount: 4242,
   },
+  {
+    id: "it-media-and-arts",
+    title: "Media and Arts",
+    description:
+      "Italian media and arts vocabulary — cinema, television, the press, the internet, music, art, theatre and literature — split into one deck per topic.",
+    nativeLang: "en",
+    targetLang: "it",
+    manifestUrl: "/repeatafterme/library/it-media-and-arts.json",
+    deckCount: 12,
+    wordCount: 244,
+  },
 ];
 
 // ---------- podcasts ----------
