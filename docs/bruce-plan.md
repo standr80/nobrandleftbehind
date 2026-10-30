@@ -225,6 +225,40 @@ name + email with consent for marketing follow-up.
 - When a week closes, its page still plays (old posts keep working) but shows
   "This week's draw has closed — try this week's belt →".
 
+### Series settings (client-editable in Bruce)
+
+Everything client-specific is a setting on the series in the Bruce dashboard
+(**Series settings** panel, like Bailey's "Gallery settings"), not a code change
+or a request to us.
+
+| Setting | Notes |
+|---|---|
+| **Prize** | Text + optional image (e.g. "A Fortnum's hamper"). Editable any time; see the prize-change rule below. |
+| **Privacy notice URL** | Required before the series can publish. Linked from the entry form and every email. |
+| **Data processing agreement** | Click-through acceptance of our standard DPA (who accepted, when, version). Required before the series can publish. It's a contract, so it's accepted, not configured. |
+| **Show prize values** | On/off (default **off** for this client). Off hides £ values on the belt and the "value won" total. |
+| **Schedule** | Day of week + time + timezone (default Europe/London), e.g. Tuesday 09:00. Each approved week opens automatically at that time and closes when the next opens. The weekly email sends at the same time. |
+| **Logo** | Upload (stored in Supabase Storage, like Bailey's images). Shown on the start and results screens. |
+| **"Brought to you by" name** | Defaults to the workspace name. |
+| **End-of-game link** | Label + URL (e.g. "Peace of mind for you and your family →"). |
+| **Accent colour** | Used by the game and the embed. |
+| **Consent wording** | Pre-filled with our compliant default; the client name is filled in automatically. Edits create a new consent version, and the "boxes unticked, separate, optional" structure can't be changed. |
+| **Draw terms** | Generated from the settings above (prize, schedule, eligibility); the client can add extra lines. |
+
+**Prize-change rule.** The client can change the prize any time, but changing
+the prize of a draw people have already entered is unfair to entrants (and
+risky under consumer protection law). So:
+
+- Changes apply from the **next** week by default.
+- The **current** week's prize can only be changed until its first entry. After
+  that, Bruce shows "This week's draw already has entries; your change will
+  apply from next week."
+- Each week stores a snapshot of the prize and terms it ran with, so the record
+  of what entrants were promised is permanent.
+
+The business questions still sit with the client: who pays for the prize and
+who sends it. Bruce just displays and records what they set.
+
 ### Where the form goes
 
 **After the game, never before.** A sign-up wall before playing kills play
@@ -331,10 +365,16 @@ blog content and has no publish-to-CMS step:
   `game_type` (`'cuddly_toy'`), `status` (`draft | published | ended`), `title`,
   `description`, `fb_caption`, `config jsonb` (the belt: items, decoys, timings,
   accent colour), `created_at`, `published_at`.
-- `games` also gets `series_id` (nullable), `opens_at`, `closes_at`,
-  `prize_text`, `branding jsonb` (logo, "brought to you by", end link).
-- `game_series` — `id`, `workspace_id`, `slug`, `title`, `terms_md`,
-  `privacy_url`, `consent_texts jsonb` (versioned wording), `weekly_email bool`.
+- `games` also gets `series_id` (nullable), `opens_at`, `closes_at`, and
+  `settings_snapshot jsonb` — the prize, terms, branding and consent version the
+  week actually ran with (frozen at first entry).
+- `game_series` — `id`, `workspace_id`, `slug`, `title`, and the series
+  settings: `prize_text`, `prize_image_url`, `show_values bool`,
+  `schedule_day`, `schedule_time`, `timezone`, `logo_url`, `brand_name`,
+  `end_link_label`, `end_link_url`, `accent`, `privacy_url`, `terms_extra_md`,
+  `consent_texts jsonb` (versioned wording), `weekly_email bool`,
+  `dpa_version`, `dpa_accepted_by`, `dpa_accepted_at`. Publishing is blocked
+  until `privacy_url` and DPA acceptance are set.
 - `game_plays` — `id`, `game_id`, `started_at`, `completed_at`, `score`,
   `level`, `mode`, `via_challenge bool`, `embed bool`. Insert-only from a public
   endpoint, rate-limited per IP.
@@ -402,12 +442,9 @@ go: (1) schema + generate + validate; (2) Bruce review UI; (3) game engine;
 
 ## Open decisions
 
-- Data processing agreement with the first client (they're the controller, we're
-  the processor), and their privacy notice URL, before any entries are taken.
-- Weekly prize: what, who funds it, and who sends it to the winner.
+- Draft our standard click-through DPA (needed before any client can accept it
+  in Series settings); a quick legal review is worth it.
 - Who can publish: our own sites only first, or clients from day one?
-- Prize values: £ prices (more TV-show feel) or omit them (avoids implying a
-  real offer on a tenant's site)?
 - Should tenant-branded games live on the tenant's own domain
   (`theirsite.com/play/...`) via the existing tenant-host routing, or always on
   `nobrandleftbehind.com`? Platform domain is simpler for v1.
