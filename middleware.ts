@@ -10,6 +10,7 @@ const isPublicRoute = createRouteMatcher([
   '/academy(.*)',    // public academy page
   '/repeatafterme(.*)',     // Répétez — public, no-account, BYOK language drill app
   '/api/repeatafterme(.*)', // Répétez API routes — BYOK, no NBLB auth required
+  '/play(.*)',       // Cuddly Toy! games — public, shared as links on Facebook
   '/sitemap.xml',    // marketing sitemap (crawlers)
   '/robots.txt',     // marketing robots (crawlers)
   '/sign-in(.*)',

@@ -1,0 +1,55 @@
+import type { Belt } from './types'
+
+/**
+ * Hand-written belt for the /play/demo spike. Phase 1 replaces this with belts
+ * Bruce generates and a human reviews (docs/bruce-plan.md).
+ */
+export const DEMO_BELT: Belt = {
+  slug: 'demo',
+  title: '1970s Kitchen',
+  description: 'Watch the prizes go by on the belt, then see how many you can remember.',
+  items: [
+    { id: 'teasmade', name: 'Teasmade', emoji: '🫖', patter: 'Wakes you up with a cuppa. Luxury!' },
+    { id: 'fondue', name: 'Fondue set', emoji: '🫕', patter: 'Dinner parties will never be the same.' },
+    { id: 'cuddly-toy', name: 'Cuddly toy', emoji: '🧸', patter: 'Cuddly toy! Cuddly toy!', isCuddlyToy: true },
+    { id: 'fizzy', name: 'Fizzy drinks maker', emoji: '🥤', patter: 'Homemade pop, whenever you fancy.' },
+    { id: 'toaster', name: 'Toaster', emoji: '🍞', patter: 'Two slices at once. Whatever next?' },
+    { id: 'pressure-cooker', name: 'Pressure cooker', emoji: '🍲', patter: 'Sunday stew in half the time.' },
+    { id: 'egg-timer', name: 'Egg timer', emoji: '⏳', patter: 'For the perfect dippy egg.' },
+    { id: 'cheese-plant', name: 'Cheese plant', emoji: '🪴', patter: 'Every front room had one.' },
+    { id: 'biscuit-barrel', name: 'Biscuit barrel', emoji: '🍪', patter: 'Keep your custard creams fresh.' },
+    { id: 'radio', name: 'Transistor radio', emoji: '📻', patter: 'Pop music in the kitchen, how modern!' },
+    { id: 'picnic-hamper', name: 'Picnic hamper', emoji: '🧺', patter: 'Ready for a day at the seaside.' },
+    { id: 'cheese-board', name: 'Cheese board', emoji: '🧀', patter: 'Cheese and pineapple on sticks, anyone?' },
+    { id: 'ice-bucket', name: 'Pineapple ice bucket', emoji: '🍍', patter: 'The height of sophistication.' },
+    { id: 'wine-glasses', name: 'Wine glasses', emoji: '🍷', patter: 'A set of six, for best.' },
+    { id: 'alarm-clock', name: 'Alarm clock', emoji: '⏰', patter: 'Two bells on top. You will not oversleep.' },
+    { id: 'salt-pepper', name: 'Salt and pepper set', emoji: '🧂', patter: 'A matching pair for the table.' },
+    { id: 'cake-tin', name: 'Cake tin', emoji: '🎂', patter: 'For your Victoria sponge.' },
+    { id: 'cookery-book', name: 'Cookery book', emoji: '📕', patter: 'Prawn cocktail on page one.' },
+    { id: 'scales', name: 'Kitchen scales', emoji: '⚖️', patter: 'Pounds and ounces, of course.' },
+    { id: 'toffee-tin', name: 'Tin of toffees', emoji: '🍬', patter: 'A present from Blackpool.' },
+  ],
+  decoys: [
+    { id: 'bicycle', name: 'Bicycle', emoji: '🚲' },
+    { id: 'guitar', name: 'Guitar', emoji: '🎸' },
+    { id: 'umbrella', name: 'Umbrella', emoji: '☂️' },
+    { id: 'football', name: 'Football', emoji: '⚽' },
+    { id: 'camera', name: 'Camera', emoji: '📷' },
+    { id: 'television', name: 'Television', emoji: '📺' },
+    { id: 'lamp', name: 'Table lamp', emoji: '💡' },
+    { id: 'watch', name: 'Wristwatch', emoji: '⌚' },
+    { id: 'top-hat', name: 'Top hat', emoji: '🎩' },
+    { id: 'shoes', name: 'Pair of shoes', emoji: '👞' },
+    { id: 'candle', name: 'Candle', emoji: '🕯️' },
+    { id: 'kite', name: 'Kite', emoji: '🪁' },
+    { id: 'sewing', name: 'Sewing kit', emoji: '🧵' },
+    { id: 'paintbrush', name: 'Paintbrush', emoji: '🖌️' },
+    { id: 'trumpet', name: 'Trumpet', emoji: '🎺' },
+    { id: 'dartboard', name: 'Dartboard', emoji: '🎯' },
+    { id: 'fishing-rod', name: 'Fishing rod', emoji: '🎣' },
+    { id: 'roller-skates', name: 'Roller skates', emoji: '🛼' },
+    { id: 'jigsaw', name: 'Jigsaw puzzle', emoji: '🧩' },
+    { id: 'playing-cards', name: 'Pack of cards', emoji: '🃏' },
+  ],
+}
