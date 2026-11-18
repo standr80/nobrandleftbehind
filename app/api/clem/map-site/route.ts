@@ -2,6 +2,7 @@ import { auth } from '@clerk/nextjs/server'
 import { NextResponse } from 'next/server'
 import { resolveMutationWorkspace } from '@/lib/workspace/active'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { discoverSite, hostOf, mapLimit, metaFromHtml, type PageMeta } from '@/lib/clem/siteScan'
 
 export const maxDuration = 60
 
@@ -11,13 +12,12 @@ interface ScannedPage {
   description: string
 }
 
-function normaliseUrl(raw: string): string {
+const MAX_PAGES = 80
+
+function normaliseDomain(raw: string): string {
   const u = raw.trim().replace(/\/$/, '')
   return /^https?:\/\//i.test(u) ? u : `https://${u}`
 }
-
-const ASSET_RE = /\.(jpe?g|png|webp|gif|svg|ico|css|js|json|xml|pdf|zip|woff2?|ttf|mp4|webm)(\?|$)/i
-const SKIP_PATH_RE = /^\/(blog|tag|tags|category|author|wp-|cdn-cgi|_)/i
 
 function labelFromUrl(u: string): string {
   try {
@@ -31,37 +31,17 @@ function labelFromUrl(u: string): string {
 }
 
 /** Pull <title> + meta description from a page's HTML head (cheap, no scrape credits). */
-async function fetchMeta(url: string): Promise<{ title?: string; description?: string }> {
+async function fetchMeta(url: string): Promise<PageMeta> {
   try {
     const res = await fetch(url, {
       headers: { 'User-Agent': 'NBLB-SiteScan/1.0' },
       signal: AbortSignal.timeout(8000),
     })
     if (!res.ok) return {}
-    const head = (await res.text()).slice(0, 30000)
-    const title = head.match(/<title[^>]*>([^<]*)<\/title>/i)?.[1]?.trim()
-    const description =
-      head.match(/<meta[^>]+name=["']description["'][^>]+content=["']([^"']*)["']/i)?.[1] ??
-      head.match(/<meta[^>]+content=["']([^"']*)["'][^>]+name=["']description["']/i)?.[1] ??
-      head.match(/<meta[^>]+property=["']og:description["'][^>]+content=["']([^"']*)["']/i)?.[1]
-    return { title: title || undefined, description: description?.trim() || undefined }
+    return metaFromHtml(await res.text())
   } catch {
     return {}
   }
-}
-
-/** Run an async fn over items with bounded concurrency. */
-async function mapLimit<T, R>(items: T[], limit: number, fn: (t: T) => Promise<R>): Promise<R[]> {
-  const results: R[] = new Array(items.length)
-  let i = 0
-  async function worker() {
-    while (i < items.length) {
-      const idx = i++
-      results[idx] = await fn(items[idx])
-    }
-  }
-  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker))
-  return results
 }
 
 // POST — scan the active workspace's website and return its content pages
@@ -75,9 +55,6 @@ export async function POST(request: Request) {
   if (!workspace) return NextResponse.json({ error: 'No workspace found' }, { status: 404 })
   if (workspace.role !== 'admin') return NextResponse.json({ error: 'Admin only' }, { status: 403 })
 
-  const apiKey = process.env.FIRECRAWL_API_KEY
-  if (!apiKey) return NextResponse.json({ error: 'FIRECRAWL_API_KEY is not set' }, { status: 500 })
-
   // resolveMutationWorkspace returns only ids/role, so load the tenant's domain.
   const db = createAdminClient()
   const { data: tenantRow } = await db
@@ -87,63 +64,41 @@ export async function POST(request: Request) {
     .maybeSingle()
   if (!tenantRow?.domain) return NextResponse.json({ error: 'Workspace domain not set' }, { status: 400 })
 
-  const siteUrl = normaliseUrl(tenantRow.domain)
+  const siteUrl = normaliseDomain(tenantRow.domain)
   let host: string
   try {
-    host = new URL(siteUrl).host.replace(/^www\./, '')
+    host = hostOf(siteUrl)
   } catch {
     return NextResponse.json({ error: 'Invalid workspace domain' }, { status: 400 })
   }
 
-  // 1. Map — one cheap call returns all URLs on the site.
-  const mapRes = await fetch('https://api.firecrawl.dev/v1/map', {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ url: siteUrl, limit: 100 }),
-  })
-  if (!mapRes.ok) {
-    const text = await mapRes.text()
-    return NextResponse.json({ error: `Site scan failed: ${mapRes.status} ${text}` }, { status: 502 })
+  // Firecrawl is optional: it speeds things up and handles JavaScript-only sites, but the
+  // scan still works without it (or when it fails) by crawling the site directly.
+  const { urls, meta, method, mapStatus } = await discoverSite(siteUrl, process.env.FIRECRAWL_API_KEY)
+
+  if (urls.length === 0) {
+    return NextResponse.json(
+      {
+        error: `Couldn't read any pages from ${host}. Check the workspace domain is correct and the site is online (map status: ${mapStatus}).`,
+      },
+      { status: 502 },
+    )
   }
-  const mapData = (await mapRes.json()) as { links?: string[]; urls?: string[] }
-  const rawUrls = mapData.links ?? mapData.urls ?? []
 
-  // 2. Filter to same-domain content pages; drop assets, blog, taxonomy pages.
-  const seen = new Set<string>()
-  const urls = rawUrls
-    .map((u) => {
-      try {
-        const parsed = new URL(u)
-        parsed.hash = ''
-        parsed.search = ''
-        return parsed.toString().replace(/\/$/, '')
-      } catch {
-        return ''
-      }
-    })
-    .filter((u) => {
-      if (!u) return false
-      let p: URL
-      try { p = new URL(u) } catch { return false }
-      if (p.host.replace(/^www\./, '') !== host) return false
-      if (ASSET_RE.test(p.pathname)) return false
-      if (SKIP_PATH_RE.test(p.pathname)) return false
-      if (seen.has(u)) return false
-      seen.add(u)
-      return true
-    })
-    .slice(0, 80)
+  // Shallow pages come first (the crawl is breadth-first), so truncating keeps the best ones.
+  const limited = urls.slice(0, MAX_PAGES)
 
-  // 3. Cheap head-fetch each page for title + meta description (no scrape credits).
-  const pages: ScannedPage[] = await mapLimit(urls, 10, async (url) => {
-    const meta = await fetchMeta(url)
+  // Title + meta description for each page: reuse what the crawl already downloaded and
+  // only head-fetch the rest (no scrape credits).
+  const pages: ScannedPage[] = await mapLimit(limited, 10, async (url) => {
+    const m = meta.get(url) ?? (await fetchMeta(url))
     return {
       url,
-      label: meta.title || labelFromUrl(url),
-      description: meta.description || meta.title || '',
+      label: m.title || labelFromUrl(url),
+      description: m.description || m.title || '',
     }
   })
 
   pages.sort((a, b) => a.url.localeCompare(b.url))
-  return NextResponse.json({ pages })
+  return NextResponse.json({ pages, method })
 }
